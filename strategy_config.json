@@ -1,0 +1,36 @@
+{
+    "assets": [
+        "^NDX",
+        "^GSPC",
+        "GC=F",
+        "BTC-USD",
+        "ETH-USD"
+    ],
+    "timeframes": [
+        "1h",
+        "4h",
+        "1d",
+        "4d"
+    ],
+    "timeframe_weights": {
+        "1h": 1.0,
+        "4h": 1.0,
+        "1d": 2.5,
+        "4d": 3.0
+    },
+    "lookback_candles": 5000,
+    "triple_barrier": {
+        "pt_pct": 0.03,
+        "sl_pct": 0.04,
+        "time_limit_days": 40
+    },
+    "model": {
+        "type": "RandomForestClassifier",
+        "n_estimators": 100,
+        "max_depth": 5,
+        "confidence_threshold": 0.6
+    },
+    "backtest": {
+        "test_size": 300
+    }
+}

@@ -1,0 +1,7 @@
+__pycache__/
+*.pkl
+!model.pkl
+.venv
+.env
+.DS_Store
+backtest_result.png
