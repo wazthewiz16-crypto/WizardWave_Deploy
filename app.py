@@ -203,13 +203,27 @@ def analyze_timeframe(timeframe_label):
                 
                 type_display = f"⬆️ {trade['Position']}" if trade['Position'] == 'LONG' else f"⬇️ {trade['Position']}"
                 
+                # Calculate TP/SL Prices
+                pt_pct = 0.03 if is_trad else 0.08
+                sl_pct = 0.04 if is_trad else 0.05
+                ep = trade['Entry Price']
+                
+                if trade['Position'] == 'LONG':
+                    tp_price = ep * (1 + pt_pct)
+                    sl_price = ep * (1 - sl_pct)
+                else:
+                    tp_price = ep * (1 - pt_pct)
+                    sl_price = ep * (1 + sl_pct)
+
                 active_trade_data = {
                     "_sort_key": sort_ts,
                     "Asset": asset['name'],
                     "Type": type_display,
                     "Timeframe": timeframe_label,
                     "Entry Time": ts_str,
-                    "Entry Price": f"{trade['Entry Price']:.2f}",
+                    "Entry Price": f"{ep:.2f}",
+                    "Take Profit": f"{tp_price:.2f}",
+                    "Stop Loss": f"{sl_price:.2f}",
                     "PnL (%)": f"{trade['PnL (%)']:.2f}%",
                     "Confidence": f"{entry_conf:.0%}",
                     "Action": rec_action
@@ -474,8 +488,8 @@ with tab_dash:
         if show_take_only:
              df_display = df_display[df_display['Action'].str.contains("TAKE")]
         
-        cols = ["Confidence", "Timeframe", "Asset", "Type", "Entry Time", "Entry Price", "PnL (%)", "Action"]
-        st.dataframe(df_display[cols].reset_index(drop=True).style.apply(highlight_confidence, axis=1), use_container_width=True)
+        cols = ["Confidence", "Timeframe", "Asset", "Type", "Entry Time", "Entry Price", "Take Profit", "Stop Loss", "PnL (%)", "Action"]
+        st.dataframe(df_display[cols].reset_index(drop=True).style.apply(highlight_confidence, axis=1), use_container_width=False)
     else:
         st.info("No active signals found on 4H/1D.")
 
