@@ -4,7 +4,11 @@
         "^GSPC",
         "GC=F",
         "BTC-USD",
-        "ETH-USD"
+        "ETH-USD",
+        "SI=F",
+        "ARB-USD",
+        "AVAX-USD",
+        "ADA-USD"
     ],
     "timeframes": [
         "1h",

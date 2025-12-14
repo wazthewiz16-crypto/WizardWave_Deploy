@@ -58,6 +58,10 @@ ASSETS = [
     {"symbol": "EURUSD=X", "type": "trad", "name": "EUR/USD"},
     {"symbol": "GBPUSD=X", "type": "trad", "name": "GBP/USD"},
     {"symbol": "AUDUSD=X", "type": "trad", "name": "AUD/USD"},
+    {"symbol": "SI=F", "type": "trad", "name": "Silver Futures"},
+    {"symbol": "ARB/USDT", "type": "crypto", "name": "Arbitrum"},
+    {"symbol": "AVAX/USDT", "type": "crypto", "name": "Avalanche"},
+    {"symbol": "ADA/USDT", "type": "crypto", "name": "Cardano"},
 ]
 
 # Initialize Session State
