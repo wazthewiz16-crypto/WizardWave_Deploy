@@ -189,10 +189,12 @@ def analyze_timeframe(timeframe_label):
                 threshold = 0.6 # Low threshold for crypto?
                 rec_action = "✅ TAKE" if entry_conf > threshold else "❌ SKIP"
                 
+                type_display = f"⬆️ {trade['Position']}" if trade['Position'] == 'LONG' else f"⬇️ {trade['Position']}"
+                
                 active_trade_data = {
                     "_sort_key": sort_ts,
                     "Asset": asset['name'],
-                    "Type": trade['Position'],
+                    "Type": type_display,
                     "Timeframe": timeframe_label,
                     "Entry Time": ts_str,
                     "Entry Price": f"{trade['Entry Price']:.2f}",
@@ -322,7 +324,7 @@ with tab_dash:
         if show_take_only:
              df_display = df_display[df_display['Action'].str.contains("TAKE")]
         
-        cols = ["Timeframe", "Asset", "Type", "Entry Time", "Entry Price", "PnL (%)", "Confidence", "Action"]
+        cols = ["Confidence", "Timeframe", "Asset", "Type", "Entry Time", "Entry Price", "PnL (%)", "Action"]
         st.dataframe(df_display[cols].reset_index(drop=True).style.apply(highlight_confidence, axis=1), use_container_width=True)
     else:
         st.info("No active signals found on 4H/1D.")
