@@ -29,7 +29,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Application Header
-st.title("🧙‍♂️ Wizard Wave V9 Signals (Meta-Labeled)")
+st.title("🧙‍♂️ Wizard Wave Signals")
 
 # Strategy Settings (Hardcoded)
 lookback = 29
@@ -403,7 +403,8 @@ def highlight_confidence(row):
 
 # --- Render UI ---
 
-tab_dash, tab_history = st.tabs(["⚡ Active Signals Dashboard", "📜 Search Signal History"])
+# tab_dash, tab_history = st.tabs(["⚡ Active Signals Dashboard", "📜 Search Signal History"])
+[tab_dash] = st.tabs(["⚡ Active Signals Dashboard"])
 
 # We collect data first (Aggregate 4 Timeframes)
 # NOTE: To save time for this specific request, checking only 1D and 4H would be faster,
@@ -475,7 +476,7 @@ if not hist_df.empty:
         # st.area_chart(eq_df, color="#00FF00")
 
 with tab_dash:
-    st.subheader("🔥 Active Signal Recommendations (Newest First)")
+    st.subheader("🔥 Active Signals")
     
     # Filter Controls
     col_filter, _ = st.columns([0.3, 0.7])
@@ -493,14 +494,14 @@ with tab_dash:
     else:
         st.info("No active signals found on 4H/1D.")
 
-with tab_history:
-    st.subheader("📜 Recent Signal History & Probabilities")
-    
-    if not hist_df.empty:
-        cols_hist = ["Timeframe", "Asset", "Time", "Type", "Price", "Confidence", "Model"]
-        st.dataframe(hist_df[cols_hist].reset_index(drop=True).style.apply(highlight_confidence, axis=1), use_container_width=True)
-    else:
-        st.info("No history available.")
+# with tab_history:
+#     st.subheader("📜 Recent Signal History & Probabilities")
+#     
+#     if not hist_df.empty:
+#         cols_hist = ["Timeframe", "Asset", "Time", "Type", "Price", "Confidence", "Model"]
+#         st.dataframe(hist_df[cols_hist].reset_index(drop=True).style.apply(highlight_confidence, axis=1), use_container_width=True)
+#     else:
+#         st.info("No history available.")
 
 # Manual Refresh
 if st.button("Refresh Analysis"):
