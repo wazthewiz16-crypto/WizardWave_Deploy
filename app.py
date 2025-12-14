@@ -121,6 +121,8 @@ def analyze_timeframe(timeframe_label):
     historical_signals = [] # Store all historical signals found
     
     tf_map = {
+        "15 Minutes": "15m",
+        "30 Minutes": "30m",
         "1 Hour": "1h",
         "4 Hours": "4h",
         "1 Day": "1d", 
@@ -290,9 +292,11 @@ tab_dash, tab_history = st.tabs(["⚡ Active Signals Dashboard", "📜 Search Si
 # Actually, let's run them all.
 
 status_msg = st.empty()
-status_msg.info("Running Analysis on 1H, 4H, 1D, 4D...")
+status_msg.info("Running Analysis on 15m, 30m, 1H, 4H, 1D, 4D...")
 
 # Run All Timeframes
+r15m, a15m, h15m = analyze_timeframe("15 Minutes")
+r30m, a30m, h30m = analyze_timeframe("30 Minutes")
 r1h, a1h, h1h = analyze_timeframe("1 Hour")
 r4h, a4h, h4h = analyze_timeframe("4 Hours")
 r1d, a1d, h1d = analyze_timeframe("1 Day")
@@ -302,10 +306,10 @@ r4d, a4d, h4d = analyze_timeframe("4 Days")
 status_msg.empty()
 
 # Consolidate
-active_dfs = [df for df in [a1h, a4h, a1d, a4d] if not df.empty]
+active_dfs = [df for df in [a15m, a30m, a1h, a4h, a1d, a4d] if not df.empty]
 combined_active = pd.concat(active_dfs).sort_values(by='_sort_key', ascending=False) if active_dfs else pd.DataFrame()
 
-all_history = h1h + h4h + h1d + h4d
+all_history = h15m + h30m + h1h + h4h + h1d + h4d
 hist_df = pd.DataFrame(all_history)
 if not hist_df.empty:
     hist_df.sort_values(by='_sort_key', ascending=False, inplace=True)

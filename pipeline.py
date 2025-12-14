@@ -148,7 +148,12 @@ def apply_triple_barrier(df, symbol, tf):
     time_limit_days = config['triple_barrier'].get('time_limit_days', 40)
     
     # Convert days to bars
-    if tf == '1h':
+    # Convert days to bars
+    if tf == '15m':
+        bars_per_day = 96
+    elif tf == '30m':
+        bars_per_day = 48
+    elif tf == '1h':
         bars_per_day = 24
     elif tf == '4h':
         bars_per_day = 6
