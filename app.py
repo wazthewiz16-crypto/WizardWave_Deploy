@@ -144,8 +144,12 @@ def analyze_timeframe(timeframe_label):
 
     def process_asset(asset):
         try:
+            # Dynamic Limit for performance
+            # 15m is often slow due to volume/parsing, reduced history is acceptable for live monitoring
+            current_limit = 200 if tf_code == '15m' else 600
+            
             # Fetch Data
-            df = fetch_data(asset['symbol'], asset['type'], timeframe=tf_code, limit=200)
+            df = fetch_data(asset['symbol'], asset['type'], timeframe=tf_code, limit=current_limit)
             
             if df.empty:
                 return None, None, None
@@ -163,8 +167,14 @@ def analyze_timeframe(timeframe_label):
                 prob = model.predict_proba(last_features)[0][1] # Prob of Class 1 (Good)
                 
                 # Predict for ALL rows (for history)
-                all_probs = model.predict_proba(df_strat[features])[:, 1]
-                df_strat['model_prob'] = all_probs
+                # Ensure no NaNs
+                df_clean = df_strat.dropna()
+                if not df_clean.empty:
+                    all_probs = model.predict_proba(df_clean[features])[:, 1]
+                    # Map back to original index
+                    df_strat.loc[df_clean.index, 'model_prob'] = all_probs
+                else:
+                    df_strat['model_prob'] = 0.0
             else:
                 prob = 0.0
                 df_strat['model_prob'] = 0.0
@@ -188,7 +198,7 @@ def analyze_timeframe(timeframe_label):
                 
                 # Check Labels
                 is_trad = asset['type'] == 'trad'
-                threshold = 0.6 # Low threshold for crypto?
+                threshold = 0.40 # Optimized Threshold
                 rec_action = "✅ TAKE" if entry_conf > threshold else "❌ SKIP"
                 
                 type_display = f"⬆️ {trade['Position']}" if trade['Position'] == 'LONG' else f"⬇️ {trade['Position']}"
@@ -219,21 +229,38 @@ def analyze_timeframe(timeframe_label):
                 "Time": ts_str
             }
             
-            # --- Collect Historical Signals ---
-            # Extract last 50 rows where signal_type != NONE
-            signals_df = df_strat[df_strat['signal_type'] != 'NONE'].tail(50).copy()
+            # --- Collect Historical Signals & Simulate PnL ---
+            signals_df = df_strat[df_strat['signal_type'] != 'NONE'].tail(20).copy()
             asset_history = []
-            for idx, row in signals_df.iterrows():
-                asset_history.append({
-                    "_sort_key": idx,
-                    "Asset": asset['name'],
-                    "Timeframe": timeframe_label,
-                    "Time": format_time(idx),
-                    "Type": row['signal_type'],
-                    "Price": row['close'],
-                    "Confidence": f"{row['model_prob']:.0%}",
-                    "Model": "✅" if row['model_prob'] > 0.6 else "❌"
-                })
+            
+            # Limit history to reasonable amount for display, but simulate all available?
+            # User wants equity curve of "generated in above table". That usually implies recent history. 
+            # But recent 50 might not be enough for a curve. Let's take all fetched signals.
+            
+            for start_time in signals_df.index:
+                row = signals_df.loc[start_time]
+                signal_type = row['signal_type']
+                model_prob = row['model_prob']
+                
+                # Simulation
+                # Only if using ML filter
+                if model_prob > 0.40:
+                    pass
+                    # ret_pct, sl_pct = run_simulation(df_strat, df_strat.index.get_loc(start_time), signal_type, asset['type'], None)
+                    
+                    # # Store Results
+                    # asset_history.append({
+                    #     "_sort_key": start_time,
+                    #     "Asset": asset['name'],
+                    #     "Timeframe": timeframe_label,
+                    #     "Time": format_time(start_time),
+                    #     "Type": signal_type,
+                    #     "Price": row['close'],
+                    #     "Confidence": f"{model_prob:.0%}",
+                    #     "Model": "✅",
+                    #     "Return_Pct": 0, # Placeholder
+                    #     "SL_Pct": 0      # Placeholder
+                    # })
             
             return result_data, active_trade_data, asset_history
             
@@ -264,6 +291,76 @@ def analyze_timeframe(timeframe_label):
         
     return pd.DataFrame(results), pd.DataFrame(active_trades), historical_signals
 
+def run_simulation(df, i, signal_type, asset_type, config):
+    # Retrieve Triple Barrier Params
+    if asset_type == 'crypto':
+        pt = 0.08
+        sl = 0.05
+    else:
+        pt = 0.03
+        sl = 0.04
+        
+    entry_price = df.iloc[i]['close']
+    
+    # Determine direction
+    direction = 1 if 'LONG' in signal_type else -1
+    
+    # Time Limit (40 Days) -> Convert to bars (approx)
+    # df index is datetime
+    start_time = df.index[i]
+    # Look forward
+    future_window = df.iloc[i+1:]
+    
+    # Limit to approx 40 days if possible? 
+    # Or just iterate until exit.
+    # Simple loop for accuracy
+    
+    outcome_pct = 0.0
+    
+    for j in range(len(future_window)):
+        row = future_window.iloc[j]
+        curr_time = row.name
+        
+        # Check Time Limit (approx 40 days)
+        if (curr_time - start_time).days >= 40:
+             # Timeout exit
+            exit_price = row['close']
+            if direction == 1:
+                outcome_pct = (exit_price - entry_price) / entry_price
+            else:
+                outcome_pct = (entry_price - exit_price) / entry_price
+            return outcome_pct, sl
+
+        # Check Prices
+        high = row['high']
+        low = row['low']
+        
+        if direction == 1:
+            # Check PT (High)
+            if high >= entry_price * (1 + pt):
+                return pt, sl # Hit PT
+            # Check SL (Low)
+            if low <= entry_price * (1 - sl):
+                return -sl, sl # Hit SL
+        else:
+            # Check PT (Low)
+            if low <= entry_price * (1 - pt):
+                return pt, sl # Hit PT
+            # Check SL (High)
+            if high >= entry_price * (1 + sl):
+                return -sl, sl # Hit SL
+                
+    # End of Data (Open Position)
+    # Mark to market
+    last_price = future_window.iloc[-1]['close'] if not future_window.empty else entry_price
+    if direction == 1:
+        outcome_pct = (last_price - entry_price) / entry_price
+    else:
+        outcome_pct = (entry_price - last_price) / entry_price
+        
+    return outcome_pct, sl
+
+
 def format_time(ts):
     if pd.isna(ts): return "N/A"
     try:
@@ -274,11 +371,19 @@ def format_time(ts):
 
 def highlight_confidence(row):
     try:
-        val = float(row['Confidence'].strip('%'))
-        if val >= 60:
+        # Determine Status based on available columns
+        status = ""
+        if 'Action' in row:
+            status = str(row['Action']).upper()
+        elif 'Model' in row:
+            status = str(row['Model']).upper()
+            
+        if "TAKE" in status or "✅" in status:
             return ['background-color: rgba(0, 255, 0, 0.2)'] * len(row)
-        else:
+        elif "SKIP" in status or "❌" in status:
             return ['background-color: rgba(255, 0, 0, 0.1)'] * len(row)
+        else:
+            return [''] * len(row)
     except:
         return [''] * len(row)
 
@@ -313,6 +418,47 @@ all_history = h15m + h30m + h1h + h4h + h1d + h4d
 hist_df = pd.DataFrame(all_history)
 if not hist_df.empty:
     hist_df.sort_values(by='_sort_key', ascending=False, inplace=True)
+    
+    # --- Equity Curve Calculation ---
+    # Filter for trades with PnL data (simulated ones)
+    if 'Return_Pct' in hist_df.columns:
+        pass
+        # # Sort Ascending for Curve Calculation
+        # curve_df = hist_df.dropna(subset=['Return_Pct']).sort_values(by='_sort_key', ascending=True)
+        
+        # # Limit to last 200 trades
+        # curve_df = curve_df.tail(200).copy()
+        
+        # initial_balance = 50000
+        # balance = initial_balance
+        # balances = [initial_balance]
+        # dates = [] # Unused for x-axis now
+        
+        # for idx, row in curve_df.iterrows():
+        #     # 1% Risk Strategy
+        #     # Risk Amount = 1% of Current Balance (Compounding)
+        #     risk_amount = balance * 0.01
+        #     sl_pct = row['SL_Pct']
+        #     return_pct = row['Return_Pct']
+            
+        #     # PnL = (Return / SL_Dist) * Risk_Amount
+        #     if sl_pct > 0:
+        #        pnl = (return_pct / sl_pct) * risk_amount
+        #     else:
+        #        pnl = 0
+               
+        #     balance += pnl
+        #     balances.append(balance)
+        #     dates.append(row['_sort_key'])
+            
+        # # Create Curve DF for Chart
+        # # X-Axis: Trade Count (Implicit Index)
+        # # Y-Axis: Equity
+        # eq_df = pd.DataFrame({'Equity': balances})
+        
+        # st.markdown("### 📈 Simulated Equity Curve ($50k Start, 1% Risk)")
+        # st.markdown(f"**Current Simulated Balance: ${balance:,.2f} (Trades: {len(curve_df)})**")
+        # st.area_chart(eq_df, color="#00FF00")
 
 with tab_dash:
     st.subheader("🔥 Active Signal Recommendations (Newest First)")

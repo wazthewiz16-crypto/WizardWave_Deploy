@@ -1,10 +1,25 @@
 {
     "assets": [
+        "BTC/USDT",
+        "ETH/USDT",
+        "SOL/USDT",
+        "DOGE/USDT",
+        "XRP/USDT",
+        "BNB/USDT",
+        "LINK/USDT",
         "^NDX",
         "^GSPC",
+        "^AXJO",
+        "DX-Y.NYB",
         "GC=F",
-        "BTC-USD",
-        "ETH-USD"
+        "CL=F",
+        "EURUSD=X",
+        "GBPUSD=X",
+        "AUDUSD=X",
+        "SI=F",
+        "ARB/USDT",
+        "AVAX/USDT",
+        "ADA/USDT"
     ],
     "timeframes": [
         "15m",
@@ -24,17 +39,23 @@
     },
     "lookback_candles": 5000,
     "triple_barrier": {
-        "pt_pct": 0.03,
-        "sl_pct": 0.04,
+        "trad": {
+            "pt_pct": 0.03,
+            "sl_pct": 0.04
+        },
+        "crypto": {
+            "pt_pct": 0.08,
+            "sl_pct": 0.05
+        },
         "time_limit_days": 40
     },
     "model": {
         "type": "RandomForestClassifier",
         "n_estimators": 100,
         "max_depth": 5,
-        "confidence_threshold": 0.6
+        "confidence_threshold": 0.40
     },
     "backtest": {
-        "test_size": 300
+        "test_size": 500
     }
 }

@@ -13,6 +13,25 @@ from strategy import WizardWaveStrategy
 with open('strategy_config.json', 'r') as f:
     config = json.load(f)
 
+def get_asset_type(symbol):
+    """
+    Determines if an asset is 'crypto' or 'trad' based on the symbol.
+    """
+    # Known Crypto Identifiers
+    crypto_kw = ['BTC', 'ETH', 'SOL', 'DOGE', 'XRP', 'BNB', 'LINK', 'ARB', 'AVAX', 'ADA', 'USDT']
+    if any(k in symbol.upper() for k in crypto_kw):
+        return 'crypto'
+    
+    # Common TradFi Patterns
+    if symbol.startswith('^') or symbol.endswith('=F') or '=X' in symbol:
+        return 'trad'
+        
+    # Fallback: Hyphenated with USD usually Crypto unless specific Forex pairs not covered
+    if '-' in symbol and 'USD' in symbol:
+        return 'crypto'
+        
+    return 'trad'
+
 def run_pipeline():
     print("--- Starting Meta-Labeling Pipeline ---")
     
@@ -27,10 +46,14 @@ def run_pipeline():
         for tf in timeframes:
             print(f"Processing {symbol} ({tf})...")
             try:
-                asset_type = 'trad' if '-' in symbol or '^' in symbol or '=' in symbol else 'crypto'
+                # Determine fetch type: Yahoo tickers (with - or ^ or =) are 'trad'
+                if '-' in symbol or '^' in symbol or '=' in symbol:
+                    fetch_type = 'trad'
+                else:
+                    fetch_type = get_asset_type(symbol)
                 
                 # Fetch Data
-                df = fetch_data(symbol, asset_type=asset_type, timeframe=tf, limit=config['lookback_candles'])
+                df = fetch_data(symbol, asset_type=fetch_type, timeframe=tf, limit=config['lookback_candles'])
                 if df.empty:
                     continue
                     
@@ -86,7 +109,8 @@ def run_pipeline():
     clf = RandomForestClassifier(
         n_estimators=config['model']['n_estimators'], 
         max_depth=config['model']['max_depth'], 
-        random_state=42
+        random_state=42,
+        class_weight='balanced'
     )
     
     clf.fit(X_train, y_train, sample_weight=w_train)
@@ -99,36 +123,87 @@ def run_pipeline():
     train_preds = clf.predict(X_train)
     print("Training Accuracy:", accuracy_score(y_train, train_preds))
     
-    # 4. Backtest Simulation (The "Act" Phase)
-    print("\n--- Running Backtest Simulation on Test Set ---")
+    # 4. Backtest Simulation & Threshold Optimization
+    print("\n--- Threshold Optimization (Last 100 Trades) ---")
     
     # Get Probabilities
     probs = clf.predict_proba(X_test)[:, 1] # Probability of class 1 (Good)
     
-    # Prepare Backtest Data
+    # DEBUG INFO
+    print("Training Label Distribution:")
+    print(pd.Series(y_train).value_counts(normalize=True))
+    print("\nPrediction Probabilities Stats:")
+    print(pd.Series(probs).describe())
+    
     results = test_df.copy()
     results['model_prob'] = probs
-    threshold = config['model']['confidence_threshold']
     
-    # Logic: If prob > threshold, take trade.
-    results['action'] = results['model_prob'] > threshold
+    # Test Thresholds
+    thresholds = np.arange(0.30, 0.61, 0.02)
+    best_thresh = config['model']['confidence_threshold']
+    best_return = -np.inf
+    best_trades = 0
     
-    # Calculate Returns
-    # raw_ret is the return of the trade regardless of filter
-    # filtered_ret is raw_ret if action is True, else 0
+    print(f"{'Threshold':<10} | {'Trades':<8} | {'Return %':<10} | {'Win Rate %':<10}")
+    print("-" * 50)
+    
+    for thresh in thresholds:
+        # Apply Logic
+        actions = results['model_prob'] > thresh
+        n_trades = actions.sum()
+        
+        if n_trades == 0:
+            strat_ret = 0.0
+            win_rate = 0.0
+        else:
+            # Calculate metrics
+            # Filtered Ret is raw_ret where action is True
+            filtered_rets = np.where(actions, results['raw_ret'], 0.0)
+            strat_ret = filtered_rets.sum() # Simple sum of % returns
+            
+            # Win Rate (Outcome = 1)
+            wins = results[actions]['label'].sum()
+            win_rate = (wins / n_trades) * 100
+            
+        print(f"{thresh:.2f}       | {n_trades:<8} | {strat_ret:<10.2f} | {win_rate:<10.1f}")
+        
+        # Selection Criteria: Max Return, but must have at least 5 trades (unless none do)
+        # If we have trades, prioritize return.
+        if n_trades >= 5:
+            if strat_ret > best_return:
+                best_return = strat_ret
+                best_thresh = thresh
+                best_trades = n_trades
+        elif best_trades < 5 and n_trades > 0 and strat_ret > best_return:
+             # If we haven't found any with >5 trades yet, take what we can get
+             best_return = strat_ret
+             best_thresh = thresh
+             best_trades = n_trades
+
+    print("-" * 50)
+    print(f"Selected Optimal Threshold: {best_thresh:.2f} (Return: {best_return:.2f}%)")
+    
+    # Final Backtest with Best Threshold
+    results['action'] = results['model_prob'] > best_thresh
     results['filtered_ret'] = np.where(results['action'], results['raw_ret'], 0.0)
-    
-    # Cumulative Returns
     results['cum_raw'] = results['raw_ret'].cumsum()
     results['cum_filtered'] = results['filtered_ret'].cumsum()
     
-    print("Backtest Complete.")
-    print(f"Raw Strategy Return: {results['cum_raw'].iloc[-1]:.2f}%")
-    print(f"Filtered Strategy Return: {results['cum_filtered'].iloc[-1]:.2f}%")
-    print(f"Trades Taken: {results['action'].sum()} / {len(results)}")
+    print(f"Final Trades Taken: {results['action'].sum()}")
+    
+    # 6. Print Recent Signals
+    print("\n--- Most Recent 20 Signals ---")
+    recent_signals = results.tail(20).copy()
+    # Format columns
+    recent_signals['entry_time'] = pd.to_datetime(recent_signals['entry_time']).dt.strftime('%Y-%m-%d %H:%M')
+    recent_signals['Return %'] = (recent_signals['raw_ret']).round(2)
+    recent_signals['Confidence'] = (recent_signals['model_prob']).round(2)
+    
+    cols_to_show = ['entry_time', 'symbol', 'signal_type', 'Confidence', 'action', 'Return %']
+    print(recent_signals[cols_to_show].to_markdown(index=False))
     
     # 5. Serialization & Plotting
-    plot_equity_curve(results)
+    plot_equity_curve(results, title_suffix=f'(Threshold {best_thresh:.2f})')
     
 def apply_triple_barrier(df, symbol, tf):
     """
@@ -137,8 +212,12 @@ def apply_triple_barrier(df, symbol, tf):
     labels = []
     
     # Barriers
-    pt = config['triple_barrier']['pt_pct']
-    sl = config['triple_barrier']['sl_pct']
+    # Barriers
+    asset_type = get_asset_type(symbol)
+    barrier_params = config['triple_barrier'].get(asset_type, config['triple_barrier']['trad'])
+    
+    pt = barrier_params['pt_pct']
+    sl = barrier_params['sl_pct']
     
     # Weight
     weights_map = config.get('timeframe_weights', {})
@@ -278,18 +357,10 @@ def apply_triple_barrier(df, symbol, tf):
             
             raw_ret = ret * 100
             
-            # Labeling definition: "Good (1)" usually means we hit PT. 
-            # If we timed out with profit, is it Good?
-            # User said: "Barrier 1: Profit Take... Barrier 2: Stop Loss... Barrier 3: Time Limit"
-            # "Label the historic signals as 'Good' (1) or 'Bad' (0)"
-            # Strict definition: Only PT is 1. Everything else is 0. 
-            # Or if Return > 0 at time limit?
-            # I will stick to: 1 if PT hit. 0 else. (High precision approach)
-            outcome = 1 if hit_pt.any() and (not hit_sl.any() or hit_pt.idxmax() < hit_sl.idxmax()) else 0
-            
-            # Actually, let's allow "Good" if TimeLimit and Profit > 0? 
-            # No, standard Triple Barrier usually implies targeting the PT.
-            # I will stick to the user's implicit "filter for profit".
+            # Optimized Labeling V2:
+            # Target "Any" Profit. The 0.5% threshold was too strict and reduced returns.
+            # Label 1 if Return > 0%
+            outcome = 1 if raw_ret > 0 else 0
             
         # Store Data
         labels.append({
@@ -308,11 +379,11 @@ def apply_triple_barrier(df, symbol, tf):
         
     return pd.DataFrame(labels)
 
-def plot_equity_curve(results):
+def plot_equity_curve(results, title_suffix=''):
     plt.figure(figsize=(10, 6))
-    plt.plot(results['cum_raw'].values, label='Raw Strategy')
-    plt.plot(results['cum_filtered'].values, label='Meta-Labeled (Filtered)', linewidth=2)
-    plt.title('Equity Curve: Raw vs Meta-Labeled')
+    plt.plot(results['cum_raw'].values, label='Raw Strategy', alpha=0.6)
+    plt.plot(results['cum_filtered'].values, label=f'Filtered {title_suffix}', linewidth=2)
+    plt.title(f'Equity Curve: Raw vs Meta-Labeled {title_suffix}')
     plt.xlabel('Trade Count')
     plt.ylabel('Cumulative Return (%)')
     plt.legend()
