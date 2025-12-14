@@ -307,9 +307,19 @@ if not hist_df.empty:
 with tab_dash:
     st.subheader("🔥 Active Signal Recommendations (Newest First)")
     
+    # Filter Controls
+    col_filter, _ = st.columns([0.3, 0.7])
+    with col_filter:
+        show_take_only = st.checkbox("Show only ✅ TAKE signals", value=True)
+    
     if not combined_active.empty:
+        df_display = combined_active.copy()
+        
+        if show_take_only:
+             df_display = df_display[df_display['Action'].str.contains("TAKE")]
+        
         cols = ["Timeframe", "Asset", "Type", "Entry Time", "Entry Price", "PnL (%)", "Confidence", "Action"]
-        st.dataframe(combined_active[cols].reset_index(drop=True).style.apply(highlight_confidence, axis=1), use_container_width=True)
+        st.dataframe(df_display[cols].reset_index(drop=True).style.apply(highlight_confidence, axis=1), use_container_width=True)
     else:
         st.info("No active signals found on 4H/1D.")
 
