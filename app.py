@@ -808,11 +808,11 @@ st.markdown("""
     
     /* Global Compactness Overrides */
     .stVerticalBlockBorderWrapper {
-        margin-bottom: 15px !important; 
+        margin-bottom: 5px !important; 
         padding: 15px !important;
     }
     div[data-testid="stVerticalBlock"] {
-        gap: 0.5rem !important;
+        gap: 0.2rem !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -840,7 +840,7 @@ with col_center:
         c1, c2, c3, c4 = st.columns(4)
         c1.button("PORTAL", use_container_width=True, type="primary" if st.session_state.active_tab=='PORTAL' else "secondary", on_click=set_tab, args=('PORTAL',))
         
-        c2.button("PROP RISK", use_container_width=True, type="primary" if st.session_state.active_tab=='RISK' else "secondary", on_click=set_tab, args=('RISK',))
+        c2.button("SHIELD", use_container_width=True, type="primary" if st.session_state.active_tab=='RISK' else "secondary", on_click=set_tab, args=('RISK',))
         
         # Placeholders
         c3.button("RULES", use_container_width=True, disabled=True)
@@ -890,9 +890,11 @@ with col_center:
             st.markdown("<br>", unsafe_allow_html=True) # Spacer
             
             # Invoke Button
-            if st.button("INVOKE", use_container_width=True, type="primary"):
-                st.toast("🔮 Invocation Ritual Started... (Modal Placeholder)")
-                # In a real app, this would open a st.dialog or st.expander with the checklist
+            _, c_inv, _ = st.columns([0.3, 0.4, 0.3])
+            with c_inv:
+                if st.button("INVOKE", use_container_width=True, type="primary"):
+                    st.toast("🔮 Invocation Ritual Started... (Modal Placeholder)")
+                    # In a real app, this would open a st.dialog or st.expander with the checklist
 
 
 # --- RIGHT COLUMN: STATS, ORACLE, WIZARD ---
@@ -1051,13 +1053,13 @@ with col_left:
         """, unsafe_allow_html=True)
     
     # 3. Runic Trade Alerts
-    with st.container(border=True):
+    with st.container(border=False):
         # Header Row with Refresh Button
-        c_title, c_btn = st.columns([0.8, 0.2])
+        c_title, c_btn, c_rest = st.columns([0.45, 0.15, 0.4], gap="small")
         with c_title:
-             st.markdown('<div class="runic-header" style="font-size: 1rem; border: none; margin-bottom: 0; text-align: left;">RUNIC ALERTS</div>', unsafe_allow_html=True)
+             st.markdown('<div class="runic-header" style="font-size: 1rem; border: none !important; margin-bottom: 0; padding: 5px 0; background: transparent; text-align: left;">RUNIC ALERTS</div>', unsafe_allow_html=True)
         with c_btn:
-            if st.button("↻", key="refresh_top", help="Refresh"):
+            if st.button("↻", key="refresh_top", help="Refresh", use_container_width=True):
                  # Clear Cache
                 if 'combined_active_df' in st.session_state:
                     del st.session_state['combined_active_df']
