@@ -724,7 +724,7 @@ st.markdown("""
     /* Grand Portal Styling */
     /* Remove default top padding */
     .block-container {
-        padding-top: 1rem !important;
+        padding-top: 3rem !important;
         padding-bottom: 0rem !important;
     }
     
@@ -770,6 +770,7 @@ st.markdown("""
         color: #fff;
     }
 
+
     .runic-header {
 
         text-align: center;
@@ -777,8 +778,8 @@ st.markdown("""
         font-size: 1.2rem;
         font-weight: bold;
         border-bottom: 1px solid #4a3b22;
-        padding-bottom: 10px;
-        margin-bottom: 15px;
+        padding-bottom: 5px;
+        margin-bottom: 5px;
         text-shadow: 0 0 5px #c5a059;
     }
 
@@ -837,7 +838,7 @@ st.markdown("""
         display: flex;
         gap: 10px;
         justify-content: center;
-        margin-bottom: 5px;
+        margin-bottom: 2px;
     }
     .spell-card {
         flex: 1;
@@ -887,9 +888,9 @@ st.markdown("""
     /* Arcane Portal Header */
     .arcane-header-container {
         text-align: center;
-        margin-bottom: 30px;
+        margin-bottom: 10px;
         position: relative;
-        padding: 20px 0;
+        padding: 10px 0;
         background: radial-gradient(circle at center, rgba(11, 12, 21, 0) 0%, rgba(11, 12, 21, 0.8) 100%);
         border-bottom: 2px solid transparent; 
         border-image: linear-gradient(90deg, transparent, #c5a059, transparent) 1;
@@ -897,7 +898,7 @@ st.markdown("""
 
     .arcane-title {
         font-family: 'Cinzel', serif;
-        font-size: 3.5rem;
+        font-size: 2.0rem;
         font-weight: 700;
         color: #f0e6d2; /* Light gold/parchment base */
         text-transform: uppercase;
@@ -993,7 +994,7 @@ with col_center:
               new TradingView.widget(
               {
               "width": "100%",
-              "height": "560", 
+              "height": "550", 
               "autosize": false,
               "symbol": "COINBASE:BTCUSD",
               "interval": "60",
@@ -1017,7 +1018,7 @@ with col_center:
               </script>
             </div>
             """
-            components.html(tv_widget_code, height=580, scrolling=False)
+            components.html(tv_widget_code, height=570, scrolling=False)
             
             st.markdown("<br>", unsafe_allow_html=True) # Spacer
             
@@ -1061,7 +1062,7 @@ with col_right:
         time_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
         
         st.markdown(f"""
-            <div style="text-align: center;">
+            <div style="text-align: center; min-height: 215px; display: flex; flex-direction: column; justify-content: center;">
                 <div style="font-size: 0.8rem; color: #a0c5e8;">NEXT CAST IN</div>
                 <div style="font-size: 2.5rem; font-weight: bold; color: white; text-shadow: 0 0 10px #a0c5e8;">{time_str}</div>
             </div>
@@ -1083,7 +1084,7 @@ with col_right:
         selected_quote = random.choice(quotes)
         
         st.markdown(f"""
-            <div style="font-family: 'Cinzel', serif; color: #ffd700; text-align: center; font-style: italic; line-height: 1.6;">
+            <div style="font-family: 'Cinzel', serif; color: #ffd700; text-align: center; font-style: italic; line-height: 1.6; min-height: 215px; display: flex; align-items: center; justify-content: center;">
                 "{selected_quote}"
             </div>
         """, unsafe_allow_html=True)
@@ -1099,7 +1100,7 @@ with col_left:
         
         # Glowing Gradient Bar
         st.markdown(f"""
-            <div style="background-color: #0b0c15; border: 1px solid #444; border-radius: 6px; height: 30px; margin-bottom: 12px; position: relative; box-shadow: inset 0 0 10px #000;">
+            <div style="background-color: #0b0c15; border: 1px solid #444; border-radius: 6px; height: 25px; margin-bottom: 6px; position: relative; box-shadow: inset 0 0 10px #000;">
                 <div style="
                     background: linear-gradient(90deg, #00eaff 0%, #00ff88 100%);
                     width: {mana_pct}%; 
