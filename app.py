@@ -602,7 +602,7 @@ st.markdown("""
     .stVerticalBlockBorderWrapper {
         background-color: #0b0c15;
         /* Ultra-Thick Magical Frame */
-        border: 5px solid #ffd700 !important;
+        border: 2px solid #ffd700 !important;
         border-radius: 12px !important;
         
         /* Maximum Glow Power */
@@ -620,17 +620,17 @@ st.markdown("""
     /* Epic Invoke Button */
     div.stButton > button[kind="primary"] {
         width: 100%;
-        height: 60px;
+        height: 80px;
         background: linear-gradient(135deg, #c5a059 0%, #8a6e3c 100%);
         color: #000;
         font-family: 'Cinzel', serif;
-        font-size: 1.5rem;
+        font-size: 2.5rem;
         font-weight: bold;
         border: 2px solid #ffd700;
         box-shadow: 0 0 20px rgba(197, 160, 89, 0.6);
         transition: all 0.3s ease;
         text-transform: uppercase;
-        letter-spacing: 2px;
+        letter-spacing: 4px;
     }
     div.stButton > button[kind="primary"]:hover {
         transform: scale(1.02);
@@ -792,6 +792,28 @@ st.markdown("""
         opacity: 0.7;
     }
 
+    /* Compact Multiselect Tags - LIGHT BLUE UPDATE */
+    span[data-baseweb="tag"] {
+        background-color: #00f0ff !important;
+        color: #000000 !important;
+        font-size: 0.7rem !important;
+        font-weight: bold !important;
+        padding: 0px 4px !important;
+        height: 22px !important;
+        margin-top: 2px !important;
+        margin-bottom: 2px !important;
+        border: 1px solid #00f0ff;
+        box-shadow: 0 0 5px #00f0ff;
+    }
+    
+    /* Global Compactness Overrides */
+    .stVerticalBlockBorderWrapper {
+        margin-bottom: 15px !important; 
+        padding: 15px !important;
+    }
+    div[data-testid="stVerticalBlock"] {
+        gap: 0.5rem !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -839,7 +861,8 @@ with col_center:
               new TradingView.widget(
               {
               "width": "100%",
-              "height": "100%",
+              "height": "560", 
+              "autosize": false,
               "symbol": "COINBASE:BTCUSD",
               "interval": "60",
               "timezone": "America/New_York",
@@ -855,7 +878,6 @@ with col_center:
               "hotlist": false,
               "calendar": true,
               "studies": [
-                "RSI@tv-basicstudies",
                 "MASimple@tv-basicstudies"
               ]
             }
@@ -863,12 +885,12 @@ with col_center:
               </script>
             </div>
             """
-            components.html(tv_widget_code, height=800, scrolling=False)
+            components.html(tv_widget_code, height=580, scrolling=False)
             
             st.markdown("<br>", unsafe_allow_html=True) # Spacer
             
             # Invoke Button
-            if st.button("INVOKE SPELL", use_container_width=True, type="primary"):
+            if st.button("INVOKE", use_container_width=True, type="primary"):
                 st.toast("🔮 Invocation Ritual Started... (Modal Placeholder)")
                 # In a real app, this would open a st.dialog or st.expander with the checklist
 
@@ -1031,7 +1053,9 @@ with col_left:
     # 3. Runic Trade Alerts
     with st.container(border=True):
         # Header Row with Refresh Button
-        c_btn, c_title, c_emp = st.columns([0.2, 0.6, 0.2])
+        c_title, c_btn = st.columns([0.8, 0.2])
+        with c_title:
+             st.markdown('<div class="runic-header" style="font-size: 1rem; border: none; margin-bottom: 0; text-align: left;">RUNIC ALERTS</div>', unsafe_allow_html=True)
         with c_btn:
             if st.button("↻", key="refresh_top", help="Refresh"):
                  # Clear Cache
@@ -1040,8 +1064,6 @@ with col_left:
                 if 'hist_df' in st.session_state:
                     del st.session_state['hist_df']
                 st.rerun()
-        with c_title:
-             st.markdown('<div class="runic-header" style="font-size: 1rem; border: none; margin-bottom: 0;">ALERTS</div>', unsafe_allow_html=True)
         
         # --- Timeframe Filter (Inside Box) ---
         if not combined_active.empty:
