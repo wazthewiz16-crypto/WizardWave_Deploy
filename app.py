@@ -506,7 +506,7 @@ show_take_only = True
 @st.fragment(run_every=60)
 def show_runic_alerts():
     # Header Row with Refresh Button
-    with st.container(border=False):
+    with st.container(border=True):
         c_title, c_btn, c_rest = st.columns([0.45, 0.15, 0.4], gap="small")
         with c_title:
              st.markdown('<div class="runic-header" style="font-size: 1rem; border: none !important; margin-bottom: 0; padding: 5px 0; background: transparent; text-align: left;">RUNIC ALERTS</div>', unsafe_allow_html=True)
@@ -729,8 +729,7 @@ st.markdown("""
     }
     
     /* SUPER ROBUST MAGICAL BORDER SELECTOR */
-    /* Target the container by its content */
-    div[data-testid="stVerticalBlock"]:has(.runic-header),
+    /* Target only explicit border wrappers */
     div[data-testid="stVerticalBlockBorderWrapper"],
     .stVerticalBlockBorderWrapper {
         background-color: #0b0c15;
