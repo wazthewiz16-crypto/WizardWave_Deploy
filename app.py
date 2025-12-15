@@ -27,9 +27,8 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
-
 # Application Header
-st.title("🧙‍♂️ Wizard Wave Signals")
+# st.title("🧙‍♂️ Wizard Wave Signals")
 
 # Strategy Settings (Hardcoded)
 lookback = 29
@@ -403,8 +402,8 @@ def highlight_confidence(row):
 
 # --- Render UI ---
 
-# tab_dash, tab_history = st.tabs(["⚡ Active Signals Dashboard", "📜 Search Signal History"])
-[tab_dash] = st.tabs(["⚡ Active Signals Dashboard"])
+# Tabs removed for cleaner UI
+# [tab_dash] = st.tabs(["⚡ Active Signals Dashboard"])
 
 # We collect data first (Aggregate 4 Timeframes)
 # NOTE: To save time for this specific request, checking only 1D and 4H would be faster,
@@ -486,216 +485,254 @@ else:
         # st.markdown(f"**Current Simulated Balance: ${balance:,.2f} (Trades: {len(curve_df)})**")
         # st.area_chart(eq_df, color="#00FF00")
 
-with tab_dash:
-    st.subheader("🔥 Active Signals")
+# --- Main Dashboard Logic (Simplified) ---
+show_take_only = True # Default behavior
+
+# Move Logic Inside Main Container
+# --- CSS for Runic Theme ---
+st.markdown("""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Lato:wght@400;700&display=swap');
+
+    /* Target native container to look like Runic Box */
+    div[data-testid="stVerticalBlockBorderWrapper"] {
+        background-color: #0b0c15;
+        border: 2px solid #c5a059 !important;
+        border-radius: 10px;
+        box-shadow: 0 0 15px rgba(197, 160, 89, 0.3);
+        padding: 15px;
+    }
+
+    .runic-header {
+        text-align: center;
+        color: #c5a059;
+        font-size: 1.2rem;
+        font-weight: bold;
+        border-bottom: 1px solid #4a3b22;
+        padding-bottom: 10px;
+        margin-bottom: 15px;
+        text-shadow: 0 0 5px #c5a059;
+    }
+
+    .runic-item {
+        display: flex;
+        align-items: center;
+        background: linear-gradient(90deg, rgba(20, 20, 30, 0.8) 0%, rgba(35, 35, 50, 0.8) 100%);
+        border: 1px solid #4a4a60;
+        border-left: 4px solid #444;
+        margin-bottom: 10px;
+        padding: 10px;
+        border-radius: 5px;
+        transition: all 0.3s ease;
+    }
+
+    .runic-item:hover {
+        box-shadow: 0 0 10px rgba(197, 160, 89, 0.2);
+        border-color: #c5a059;
+    }
+
+    .runic-icon {
+        font-size: 24px;
+        margin-right: 15px;
+        width: 30px;
+        text-align: center;
+    }
+
+    .runic-content {
+        flex-grow: 1;
+    }
+
+    .runic-title {
+        font-family: 'Lato', sans-serif;
+        font-weight: bold;
+        font-size: 0.95rem;
+        color: #e0e0e0;
+        margin: 0;
+    }
+
+    .runic-subtitle {
+        font-family: 'Lato', sans-serif;
+        font-size: 0.8rem;
+        color: #888;
+        margin: 2px 0 0 0;
+    }
+
+    .bullish { border-left-color: #00ff88; }
+    .bearish { border-left-color: #ff3344; }
     
-    # Filter Controls
-    col_filter, _ = st.columns([0.3, 0.7])
-    with col_filter:
-        show_take_only = st.checkbox("Show only ✅ TAKE signals", value=True)
+    .bullish .runic-icon { color: #00ff88; text-shadow: 0 0 8px rgba(0, 255, 136, 0.5); }
+    .bearish .runic-icon { color: #ff3344; text-shadow: 0 0 8px rgba(255, 51, 68, 0.5); }
+    </style>
+""", unsafe_allow_html=True)
+
+with st.container(border=True):
+    # Header Row with Refresh Button
+    c_btn, c_title, c_emp = st.columns([0.15, 0.7, 0.15])
+    with c_btn:
+        if st.button("Refresh", key="refresh_top"):
+             # Clear Cache
+            if 'combined_active_df' in st.session_state:
+                del st.session_state['combined_active_df']
+            if 'hist_df' in st.session_state:
+                del st.session_state['hist_df']
+            st.rerun()
+    with c_title:
+         st.markdown('<div class="runic-header">RUNIC TRADE ALERTS</div>', unsafe_allow_html=True)
     
+    # --- Timeframe Filter (Inside Box) ---
     if not combined_active.empty:
-        # Filter Logic
+        # Get unique timeframes and sort chronologically
+        tf_order = {
+            "15 Minutes": 0, "30 Minutes": 1, 
+            "1 Hour": 2, "4 Hours": 3, 
+            "1 Day": 4, "4 Days": 5
+        }
+        
+        unique_tfs = combined_active['Timeframe'].unique().tolist()
+        available_tfs = sorted(unique_tfs, key=lambda x: tf_order.get(x, 99))
+        
+        # Multiselect with Label hidden for cleaner look? User asked "underneath", standard label is fine.
+        selected_tfs = st.multiselect("Filter Timeframes", options=available_tfs, default=available_tfs)
+        
+        # --- Filter Data ---
         df_display = combined_active.copy()
+        
         if show_take_only:
              df_display = df_display[df_display['Action'].str.contains("TAKE")]
         
-        # --- CSS for Runic Theme ---
-        st.markdown("""
-            <style>
-            @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Lato:wght@400;700&display=swap');
+        if selected_tfs:
+            df_display = df_display[df_display['Timeframe'].isin(selected_tfs)]
+        else:
+            st.warning("Please select at least one timeframe.")
+            df_display = pd.DataFrame(columns=df_display.columns) # Empty
 
-            .runic-container {
-                background-color: #0b0c15;
-                border: 2px solid #c5a059;
-                border-radius: 10px;
-                padding: 15px;
-                box-shadow: 0 0 15px rgba(197, 160, 89, 0.3);
-                font-family: 'Cinzel', serif;
-                color: #d4d4d4;
-                /* max-width set to auto to fill column */
-                width: 100%;
-            }
-
-            .runic-header {
-                text-align: center;
-                color: #c5a059;
-                font-size: 1.2rem;
-                font-weight: bold;
-                border-bottom: 1px solid #4a3b22;
-                padding-bottom: 10px;
-                margin-bottom: 15px;
-                text-shadow: 0 0 5px #c5a059;
-            }
-
-            .runic-item {
-                display: flex;
-                align-items: center;
-                background: linear-gradient(90deg, rgba(20, 20, 30, 0.8) 0%, rgba(35, 35, 50, 0.8) 100%);
-                border: 1px solid #4a4a60;
-                border-left: 4px solid #444;
-                margin-bottom: 10px;
-                padding: 10px;
-                border-radius: 5px;
-                transition: all 0.3s ease;
-            }
-
-            .runic-item:hover {
-                box-shadow: 0 0 10px rgba(197, 160, 89, 0.2);
-                border-color: #c5a059;
-            }
-
-            .runic-icon {
-                font-size: 24px;
-                margin-right: 15px;
-                width: 30px;
-                text-align: center;
-            }
-
-            .runic-content {
-                flex-grow: 1;
-            }
-
-            .runic-title {
-                font-family: 'Lato', sans-serif;
-                font-weight: bold;
-                font-size: 0.95rem;
-                color: #e0e0e0;
-                margin: 0;
-            }
-
-            .runic-subtitle {
-                font-family: 'Lato', sans-serif;
-                font-size: 0.8rem;
-                color: #888;
-                margin: 2px 0 0 0;
-            }
-
-            .bullish { border-left-color: #00ff88; }
-            .bearish { border-left-color: #ff3344; }
+        # --- Render ---
+        if df_display.empty:
+            st.info("No active signals match your filters.")
+        else:
+            # Pagination Logic
+            ITEMS_PER_PAGE = 5
+            if 'page_number' not in st.session_state:
+                st.session_state.page_number = 0
+                
+            total_pages = max(1, (len(df_display) - 1) // ITEMS_PER_PAGE + 1)
             
-            .bullish .runic-icon { color: #00ff88; text-shadow: 0 0 8px rgba(0, 255, 136, 0.5); }
-            .bearish .runic-icon { color: #ff3344; text-shadow: 0 0 8px rgba(255, 51, 68, 0.5); }
-            </style>
-        """, unsafe_allow_html=True)
+            # Ensure page number is valid
+            if st.session_state.page_number >= total_pages:
+                st.session_state.page_number = total_pages - 1
+            if st.session_state.page_number < 0:
+                st.session_state.page_number = 0
+                
+            start_idx = st.session_state.page_number * ITEMS_PER_PAGE
+            end_idx = start_idx + ITEMS_PER_PAGE
+            
+            current_batch = df_display.iloc[start_idx:end_idx]
+            
+            # Build HTML for Items
+            html_content = ""
+            
+            for index, row in current_batch.iterrows():
+                is_long = "LONG" in row['Type']
+                direction_class = "bullish" if is_long else "bearish"
+                
+                # Icon Logic
+                asset_name = row['Asset']
+                
+                # SVG Bolt for reliable coloring
+                icon_bolt = """<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" stroke="none" style="display: block; margin: 0 auto;"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>"""
+                
+                icon = icon_bolt
+                if "BTC" in asset_name: icon = "₿"
+                elif "ETH" in asset_name: icon = "Ξ"
+                elif "SOL" in asset_name: icon = "◎"
+                elif "Short" in row['Type']: icon = "⬇"
+                elif "Long" in row['Type']: icon = "⬆"
+                
+                action_text = "BULLISH" if is_long else "BEARISH"
+                signal_desc = f"{asset_name}: {action_text}"
+                
+                # Data Points
+                conf = row['Confidence']
+                entry_time = row['Entry Time']
+                entry_price = row['Entry Price']
+                sl_price = row['Stop Loss']
+                tp_price = row['Take Profit']
+                pnl_val = row['PnL (%)']
+                action_val = row['Action']
+                tf = row['Timeframe']
 
-        # Pagination Logic
-        ITEMS_PER_PAGE = 5
-        if 'page_number' not in st.session_state:
-            st.session_state.page_number = 0
-            
-        total_pages = max(1, (len(df_display) - 1) // ITEMS_PER_PAGE + 1)
-        
-        # Ensure page number is valid
-        if st.session_state.page_number >= total_pages:
-            st.session_state.page_number = total_pages - 1
-        if st.session_state.page_number < 0:
-            st.session_state.page_number = 0
-            
-        start_idx = st.session_state.page_number * ITEMS_PER_PAGE
-        end_idx = start_idx + ITEMS_PER_PAGE
-        
-        current_batch = df_display.iloc[start_idx:end_idx]
-        
-        # Layout: Center for Runic Box
-        # col_box, col_details = st.columns([1, 2])
-        
-        # with col_box:
-        # Build HTML
-        html_content = '<div class="runic-container"><div class="runic-header">RUNIC TRADE ALERTS</div>'
-        
-        for index, row in current_batch.iterrows():
-            is_long = "LONG" in row['Type']
-            direction_class = "bullish" if is_long else "bearish"
-            
-            # Icon Logic
-            asset_name = row['Asset']
-            
-            # SVG Bolt for reliable coloring
-            icon_bolt = """<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" stroke="none" style="display: block; margin: 0 auto;"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>"""
-            
-            icon = icon_bolt
-            if "BTC" in asset_name: icon = "₿"
-            elif "ETH" in asset_name: icon = "Ξ"
-            elif "SOL" in asset_name: icon = "◎"
-            elif "Short" in row['Type']: icon = "⬇"
-            elif "Long" in row['Type']: icon = "⬆"
-            
-            action_text = "BULLISH" if is_long else "BEARISH"
-            signal_desc = f"{asset_name}: {action_text}"
-            
-            # Data Points
-            conf = row['Confidence']
-            entry_time = row['Entry Time']
-            entry_price = row['Entry Price']
-            sl_price = row['Stop Loss']
-            tp_price = row['Take Profit']
-            pnl_val = row['PnL (%)']
-            action_val = row['Action']
-            tf = row['Timeframe']
-
-            # Color for PnL
-            pnl_color = "#00ff88" if not pnl_val.startswith("-") else "#ff3344"
-            
-            html_content += f"""
+                # Color for PnL
+                pnl_color = "#00ff88" if not pnl_val.startswith("-") else "#ff3344"
+                
+                # IMPORTANT: No indentation inside the HTML string to strictly prevent markdown code block rendering
+                html_content += f"""
 <div class="runic-item {direction_class}">
 <div class="runic-icon">{icon}</div>
 <div class="runic-content">
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-        <div class="runic-title">{signal_desc}</div>
-        <div style="font-weight: bold; color: {pnl_color};">{pnl_val}</div>
-    </div>
-    <div class="runic-subtitle" style="color: #e0e0e0; margin-top: 4px;">
-        {action_val} | Conf: {conf} | {tf}
-    </div>
-    <div class="runic-subtitle" style="margin-top: 2px;">
-        Entry: {entry_price} | TP: {tp_price} | SL: {sl_price}
-    </div>
-    <div class="runic-subtitle" style="font-size: 0.75rem; color: #666; margin-top: 2px;">
-        Time: {entry_time}
-    </div>
+<div style="display: flex; justify-content: space-between; align-items: center;">
+<div class="runic-title">{signal_desc}</div>
+<div style="font-weight: bold; color: {pnl_color};">{pnl_val}</div>
+</div>
+<div class="runic-subtitle" style="color: #e0e0e0; margin-top: 4px;">
+{action_val} | Conf: {conf} | {tf}
+</div>
+<div class="runic-subtitle" style="margin-top: 2px;">
+Entry: {entry_price} | TP: {tp_price} | SL: {sl_price}
+</div>
+<div class="runic-subtitle" style="font-size: 0.75rem; color: #666; margin-top: 2px;">
+Time: {entry_time}
+</div>
 </div>
 </div>
 """
-        html_content += "</div>"
-        st.markdown(html_content, unsafe_allow_html=True)
-        
-        # Pagination Controls
-        c_prev, c_info, c_next = st.columns([1, 2, 1])
-        with c_prev:
-            if st.button("◀", key="prev_page"):
-                if st.session_state.page_number > 0:
+            st.markdown(html_content, unsafe_allow_html=True)
+            
+            # --- Advanced Numbered Pagination ---
+            # Max visible pages: e.g. 7 (Prev, 1..5, Next)
+            
+            # Determine range of pages to show
+            window = 2
+            start_page = max(0, st.session_state.page_number - window)
+            end_page = min(total_pages - 1, st.session_state.page_number + window)
+            
+            # Adjust if close to edges
+            if end_page - start_page < 2 * window:
+                if start_page == 0:
+                    end_page = min(total_pages - 1, start_page + 2 * window)
+                elif end_page == total_pages - 1:
+                    start_page = max(0, end_page - 2 * window)
+            
+            page_range = range(start_page, end_page + 1)
+            
+            # Build Columns: Prev + [Pages] + Next
+            total_cols = len(page_range) + 2
+            cols = st.columns(total_cols)
+            
+            # Prev Button
+            with cols[0]:
+                if st.button("◀", key="prev_main", disabled=(st.session_state.page_number == 0)):
                     st.session_state.page_number -= 1
                     st.rerun()
-        with c_info:
-            st.markdown(f"<div style='text-align: center; color: #888; padding-top: 5px;'>Page {st.session_state.page_number + 1}/{total_pages}</div>", unsafe_allow_html=True)
-        with c_next:
-            if st.button("▶", key="next_page"):
-                if st.session_state.page_number < total_pages - 1:
+                    
+            # Page Number Buttons
+            for i, p_idx in enumerate(page_range):
+                col = cols[i+1]
+                with col:
+                    label = str(p_idx + 1)
+                    if p_idx == st.session_state.page_number:
+                        st.button(f"[{label}]", key=f"page_{p_idx}", disabled=True)
+                    else:
+                        if st.button(label, key=f"page_{p_idx}"):
+                            st.session_state.page_number = p_idx
+                            st.rerun()
+            
+            # Next Button
+            with cols[-1]:
+                if st.button("▶", key="next_main", disabled=(st.session_state.page_number >= total_pages - 1)):
                     st.session_state.page_number += 1
                     st.rerun()
-
-        # with col_details:
-        #      cols = ["Confidence", "Timeframe", "Asset", "Type", "Entry Time", "Entry Price", "Take Profit", "Stop Loss", "PnL (%)", "Action"]
-        #      st.dataframe(df_display[cols].reset_index(drop=True).style.apply(highlight_confidence, axis=1), use_container_width=True)
 
     else:
         st.info("No active signals found.")
 
-# with tab_history:
-#     st.subheader("📜 Recent Signal History & Probabilities")
-#     
-#     if not hist_df.empty:
-#         cols_hist = ["Timeframe", "Asset", "Time", "Type", "Price", "Confidence", "Model"]
-#         st.dataframe(hist_df[cols_hist].reset_index(drop=True).style.apply(highlight_confidence, axis=1), use_container_width=True)
-#     else:
-#         st.info("No history available.")
 
-# Manual Refresh
-if st.button("Refresh Analysis"):
-    # Clear Cache
-    if 'combined_active_df' in st.session_state:
-        del st.session_state['combined_active_df']
-    if 'hist_df' in st.session_state:
-        del st.session_state['hist_df']
-    st.rerun()
