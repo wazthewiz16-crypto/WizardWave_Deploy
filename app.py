@@ -106,14 +106,14 @@ def get_tv_symbol(asset_entry):
         return f"FX:{clean}"
     
     # Futures / Indices (Heuristics)
-    # Use OANDA/TVC CFDs for reliability in free widget
+    # Use OANDA/CAPITALCOM CFDs for maximum widget compatibility
     if s == "^NDX": return "OANDA:NAS100USD"
     if s == "^GSPC": return "OANDA:SPX500USD"
     if s == "^AXJO": return "OANDA:AU200AUD"
-    if s == "DX-Y.NYB": return "TVC:DXY"
-    if s == "GC=F": return "TVC:GOLD"
-    if s == "CL=F": return "TVC:USOIL"
-    if s == "SI=F": return "TVC:SILVER"
+    if s == "DX-Y.NYB": return "CAPITALCOM:DXY" # DXY CFD
+    if s == "GC=F": return "OANDA:XAUUSD" # Gold Spot (More reliable than TVC:GOLD)
+    if s == "CL=F": return "OANDA:WTICOUSD" # WTI Oil
+    if s == "SI=F": return "OANDA:XAGUSD" # Silver Spot
     
     return f"COINBASE:BTCUSD" # Fallback
 
@@ -725,9 +725,6 @@ def show_runic_alerts():
                                         <div style="font-size: 0.7rem; color: #666;">
                                             Entry: {row.get('Entry_Price')} | Now: <span style="color: #ffd700;">{row.get('Current_Price', 'N/A')}</span>
                                         </div>
-                                        <div style="font-size: 0.65rem; color: #555; margin-top: 1px;">
-                                            {row.get('Entry_Time', row.get('Signal_Time', 'N/A'))}
-                                        </div>
                                     </div>
                                 </div>
                             """, unsafe_allow_html=True)
@@ -735,14 +732,14 @@ def show_runic_alerts():
                         # --- 2. Button Section (Inside the Card) ---
                         with c_btn:
                             # Center the button vertically relative to content
-                            st.markdown('<div style="height: 5px;"></div>', unsafe_allow_html=True)
+                            st.markdown('<div style="height: 15px;"></div>', unsafe_allow_html=True)
                             
                             # Unique Key
                             unique_id = f"{row['Asset']}_{row.get('Timeframe','')}_{row.get('Entry_Time','')}"
                             unique_id = "".join(c for c in unique_id if c.isalnum() or c in ['_','-'])
                             
                             # Visual "View" Button
-                            if st.button("VIEW", key=f"btn_view_{unique_id}", use_container_width=True):
+                            if st.button("👁️", key=f"btn_card_{unique_id}", use_container_width=True):
                                 # 1. Resolve Trading View Symbol
                                 tv_sym = get_tv_symbol({'symbol': asset_symbol, 'name': asset_name})
                                 # 2. Resolve Interval
@@ -752,8 +749,21 @@ def show_runic_alerts():
                                 st.session_state.active_tv_symbol = tv_sym
                                 st.session_state.active_tv_interval = tv_int
                                 
-                                # 4. Trigger Main App Rerun (Critical for Chart Update)
+                                # 4. Trigger Main App Rerun
                                 st.rerun()
+                                
+                            # Time under button
+                            time_val = row.get('Entry_Time', row.get('Signal_Time', 'N/A'))
+                            # Try to make it shorter? e.g. 2025-12-15 17:30 -> 12-15 17:30
+                            try:
+                                if len(str(time_val)) > 10:
+                                    short_time = str(time_val)[5:-3] # remove YYYY- and :SS
+                                else:
+                                    short_time = str(time_val)
+                            except:
+                                short_time = str(time_val)
+                                
+                            st.markdown(f"<div style='text-align: center; font-size: 0.65rem; color: #666; margin-top: -2px;'>{short_time}</div>", unsafe_allow_html=True)
                             
                 
                 # --- Compact Numbered Pagination ---
