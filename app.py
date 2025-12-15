@@ -507,9 +507,9 @@ show_take_only = True
 def show_runic_alerts():
     # Header Row with Refresh Button
     with st.container(border=True):
-        c_title, c_btn, c_rest = st.columns([0.45, 0.15, 0.4], gap="small")
+        c_title, c_spacer, c_btn = st.columns([0.75, 0.1, 0.15], gap="small")
         with c_title:
-             st.markdown('<div class="runic-header" style="font-size: 1rem; border: none !important; margin-bottom: 0; padding: 5px 0; background: transparent; text-align: left;">RUNIC ALERTS</div>', unsafe_allow_html=True)
+             st.markdown('<div class="runic-header" style="font-size: 1rem; border: none !important; margin-bottom: 0; padding: 0; margin-top: -5px; background: transparent; text-align: left;">RUNIC ALERTS</div>', unsafe_allow_html=True)
         with c_btn:
             refresh_click = st.button("↻", key="refresh_top", help="Refresh", use_container_width=True)
             
@@ -584,6 +584,7 @@ def show_runic_alerts():
             display_opts = [tf_map.get(x, x) for x in sorted_tfs]
             
             # Compact Multiselect
+            st.markdown("<div style='margin-top: -15px;'></div>", unsafe_allow_html=True)
             selected_short = st.multiselect("Timeframes", options=display_opts, default=display_opts, label_visibility="collapsed")
             
             # Map back for filtering
@@ -775,11 +776,12 @@ st.markdown("""
 
         text-align: center;
         color: #c5a059;
-        font-size: 1.2rem;
+        font-size: 0.9rem;
         font-weight: bold;
         border-bottom: 1px solid #4a3b22;
-        padding-bottom: 5px;
+        padding-bottom: 3px;
         margin-bottom: 5px;
+        margin-top: -4px;
         text-shadow: 0 0 5px #c5a059;
     }
 
@@ -789,8 +791,8 @@ st.markdown("""
         background: linear-gradient(90deg, rgba(20, 20, 30, 0.8) 0%, rgba(35, 35, 50, 0.8) 100%);
         border: 1px solid #4a4a60;
         border-left: 4px solid #444;
-        margin-bottom: 10px;
-        padding: 10px;
+        margin-bottom: 4px;
+        padding: 4px;
         border-radius: 5px;
         transition: all 0.3s ease;
     }
@@ -836,7 +838,7 @@ st.markdown("""
     /* Spell Cards Styling */
     .spell-card-container {
         display: flex;
-        gap: 10px;
+        gap: 8px;
         justify-content: center;
         margin-bottom: 2px;
     }
@@ -844,14 +846,14 @@ st.markdown("""
         flex: 1;
         background-color: #0b0c15; /* Dark background */
         border: 2px solid; 
-        border-radius: 8px; /* Slightly rounded corners */
-        padding: 5px 10px;
+        border-radius: 6px; /* Slightly rounded corners */
+        padding: 3px 6px;
         display: flex;
         align-items: center;
         justify-content: center;
         font-family: 'Cinzel', serif;
         font-weight: bold;
-        font-size: 1.0rem;
+        font-size: 0.8rem;
         position: relative;
         text-transform: uppercase;
         letter-spacing: 1px;
@@ -875,8 +877,8 @@ st.markdown("""
     }
     
     .spell-icon {
-        margin-right: 8px;
-        font-size: 1.2rem;
+        margin-right: 6px;
+        font-size: 0.95rem;
     }
     
     .spell-value {
@@ -888,7 +890,7 @@ st.markdown("""
     /* Arcane Portal Header */
     .arcane-header-container {
         text-align: center;
-        margin-bottom: 10px;
+        margin-bottom: 5px;
         position: relative;
         padding: 10px 0;
         background: radial-gradient(circle at center, rgba(11, 12, 21, 0) 0%, rgba(11, 12, 21, 0.8) 100%);
@@ -941,8 +943,8 @@ st.markdown("""
     
     /* Global Compactness Overrides */
     .stVerticalBlockBorderWrapper {
-        margin-bottom: 5px !important; 
-        padding: 15px !important;
+        margin-bottom: 4px !important; 
+        padding: 8px !important;
     }
     div[data-testid="stVerticalBlock"] {
         gap: 0.2rem !important;
@@ -1098,9 +1100,8 @@ with col_left:
         # Calculate Percentage
         mana_pct = max(0, min(100, (st.session_state.mana / 500) * 100))
         
-        # Glowing Gradient Bar
         st.markdown(f"""
-            <div style="background-color: #0b0c15; border: 1px solid #444; border-radius: 6px; height: 25px; margin-bottom: 6px; position: relative; box-shadow: inset 0 0 10px #000;">
+            <div style="background-color: #0b0c15; border: 1px solid #444; border-radius: 6px; height: 22px; margin-bottom: 2px; position: relative; box-shadow: inset 0 0 10px #000;">
                 <div style="
                     background: linear-gradient(90deg, #00eaff 0%, #00ff88 100%);
                     width: {mana_pct}%; 
