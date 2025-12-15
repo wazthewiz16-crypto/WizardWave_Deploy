@@ -106,15 +106,34 @@ def get_tv_symbol(asset_entry):
         return f"FX:{clean}"
     
     # Futures / Indices (Heuristics)
-    if s == "^NDX": return "NASDAQ:NDX"
-    if s == "^GSPC": return "SP:SPX"
-    if s == "^AXJO": return "ASX:XJO"
+    # Use OANDA/TVC CFDs for reliability in free widget
+    if s == "^NDX": return "OANDA:NAS100USD"
+    if s == "^GSPC": return "OANDA:SPX500USD"
+    if s == "^AXJO": return "OANDA:AU200AUD"
     if s == "DX-Y.NYB": return "TVC:DXY"
-    if s == "GC=F": return "COMEX:GC1!"
-    if s == "CL=F": return "NYMEX:CL1!"
-    if s == "SI=F": return "COMEX:SI1!"
+    if s == "GC=F": return "TVC:GOLD"
+    if s == "CL=F": return "TVC:USOIL"
+    if s == "SI=F": return "TVC:SILVER"
     
     return f"COINBASE:BTCUSD" # Fallback
+
+# Helper for Timeframe Mapping
+def get_tv_interval(tf_label):
+    # TV uses minutes or 'D', 'W'
+    # "15 Minutes", "30 Minutes", "1 Hour", "4 Hours", "1 Day", "4 Days"
+    if "15" in tf_label: return "15"
+    if "30" in tf_label: return "30"
+    if "1 Hour" in tf_label: return "60"
+    if "4 Hour" in tf_label: return "240"
+    if "1 Day" in tf_label: return "D"
+    if "4 Day" in tf_label: return "240" # Fallback to 4H as 4D isn't standard in basic widget, or use 'D'
+    return "60"
+
+# Initialize Active Symbol/Interval State
+if 'active_tv_symbol' not in st.session_state:
+    st.session_state.active_tv_symbol = "COINBASE:BTCUSD"
+if 'active_tv_interval' not in st.session_state:
+    st.session_state.active_tv_interval = "60"
 
 # Initialize Active Symbol State
 if 'active_tv_symbol' not in st.session_state:
@@ -700,8 +719,14 @@ def show_runic_alerts():
                                         <div style="font-size: 0.75rem; color: #aaa; margin-top: 2px;">
                                             {row.get('Action')} | Conf: {row.get('Confidence')} | {row.get('Timeframe')}
                                         </div>
+                                        <div style="font-size: 0.7rem; color: #888; margin-top: 1px;">
+                                            TP: {row.get('Take_Profit', 'N/A')} | SL: {row.get('Stop_Loss', 'N/A')}
+                                        </div>
                                         <div style="font-size: 0.7rem; color: #666;">
                                             Entry: {row.get('Entry_Price')} | Now: <span style="color: #ffd700;">{row.get('Current_Price', 'N/A')}</span>
+                                        </div>
+                                        <div style="font-size: 0.65rem; color: #555; margin-top: 1px;">
+                                            {row.get('Entry_Time', row.get('Signal_Time', 'N/A'))}
                                         </div>
                                     </div>
                                 </div>
@@ -720,9 +745,14 @@ def show_runic_alerts():
                             if st.button("VIEW", key=f"btn_view_{unique_id}", use_container_width=True):
                                 # 1. Resolve Trading View Symbol
                                 tv_sym = get_tv_symbol({'symbol': asset_symbol, 'name': asset_name})
-                                # 2. Update Session State
+                                # 2. Resolve Interval
+                                tv_int = get_tv_interval(row.get('Timeframe', '1 Hour'))
+                                
+                                # 3. Update Session State
                                 st.session_state.active_tv_symbol = tv_sym
-                                # 3. Trigger Main App Rerun (Critical for Chart Update)
+                                st.session_state.active_tv_interval = tv_int
+                                
+                                # 4. Trigger Main App Rerun (Critical for Chart Update)
                                 st.rerun()
                             
                 
@@ -1019,6 +1049,7 @@ with col_center:
             # TradingView Widget
             # Use Active Symbol or Fallback
             tv_sym = st.session_state.get('active_tv_symbol', 'COINBASE:BTCUSD')
+            tv_int = st.session_state.get('active_tv_interval', '60')
             
             tv_widget_code = f"""
             <div class="tradingview-widget-container" style="height:100%;width:100%">
@@ -1031,7 +1062,7 @@ with col_center:
               "height": "550", 
               "autosize": false,
               "symbol": "{tv_sym}",
-              "interval": "60",
+              "interval": "{tv_int}",
               "timezone": "America/New_York",
               "theme": "dark",
               "style": "1",
