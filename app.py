@@ -411,28 +411,39 @@ def highlight_confidence(row):
 # but the user might want all. I'll stick to running all but optimizing.
 # Actually, let's run them all.
 
-status_msg = st.empty()
-status_msg.info("Running Analysis on 15m, 30m, 1H, 4H, 1D, 4D...")
+# Check Session State for Data
+if 'combined_active_df' not in st.session_state:
+    status_msg = st.empty()
+    status_msg.info("Running Analysis on 15m, 30m, 1H, 4H, 1D, 4D...")
 
-# Run All Timeframes
-r15m, a15m, h15m = analyze_timeframe("15 Minutes")
-r30m, a30m, h30m = analyze_timeframe("30 Minutes")
-r1h, a1h, h1h = analyze_timeframe("1 Hour")
-r4h, a4h, h4h = analyze_timeframe("4 Hours")
-r1d, a1d, h1d = analyze_timeframe("1 Day")
-r4d, a4d, h4d = analyze_timeframe("4 Days")
+    # Run All Timeframes
+    r15m, a15m, h15m = analyze_timeframe("15 Minutes")
+    r30m, a30m, h30m = analyze_timeframe("30 Minutes")
+    r1h, a1h, h1h = analyze_timeframe("1 Hour")
+    r4h, a4h, h4h = analyze_timeframe("4 Hours")
+    r1d, a1d, h1d = analyze_timeframe("1 Day")
+    r4d, a4d, h4d = analyze_timeframe("4 Days")
 
-# Clear the status message
-status_msg.empty()
+    # Clear the status message
+    status_msg.empty()
 
-# Consolidate
-active_dfs = [df for df in [a15m, a30m, a1h, a4h, a1d, a4d] if not df.empty]
-combined_active = pd.concat(active_dfs).sort_values(by='_sort_key', ascending=False) if active_dfs else pd.DataFrame()
+    # Consolidate
+    active_dfs = [df for df in [a15m, a30m, a1h, a4h, a1d, a4d] if not df.empty]
+    combined_active = pd.concat(active_dfs).sort_values(by='_sort_key', ascending=False) if active_dfs else pd.DataFrame()
+    
+    all_history = h15m + h30m + h1h + h4h + h1d + h4d
+    hist_df = pd.DataFrame(all_history)
+    if not hist_df.empty:
+        hist_df.sort_values(by='_sort_key', ascending=False, inplace=True)
+        
+    # Save to Session State
+    st.session_state['combined_active_df'] = combined_active
+    st.session_state['hist_df'] = hist_df
 
-all_history = h15m + h30m + h1h + h4h + h1d + h4d
-hist_df = pd.DataFrame(all_history)
-if not hist_df.empty:
-    hist_df.sort_values(by='_sort_key', ascending=False, inplace=True)
+else:
+    # Load from Session State
+    combined_active = st.session_state['combined_active_df']
+    hist_df = st.session_state['hist_df']
     
     # --- Equity Curve Calculation ---
     # Filter for trades with PnL data (simulated ones)
@@ -484,15 +495,192 @@ with tab_dash:
         show_take_only = st.checkbox("Show only ✅ TAKE signals", value=True)
     
     if not combined_active.empty:
+        # Filter Logic
         df_display = combined_active.copy()
-        
         if show_take_only:
              df_display = df_display[df_display['Action'].str.contains("TAKE")]
         
-        cols = ["Confidence", "Timeframe", "Asset", "Type", "Entry Time", "Entry Price", "Take Profit", "Stop Loss", "PnL (%)", "Action"]
-        st.dataframe(df_display[cols].reset_index(drop=True).style.apply(highlight_confidence, axis=1), use_container_width=False)
+        # --- CSS for Runic Theme ---
+        st.markdown("""
+            <style>
+            @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Lato:wght@400;700&display=swap');
+
+            .runic-container {
+                background-color: #0b0c15;
+                border: 2px solid #c5a059;
+                border-radius: 10px;
+                padding: 15px;
+                box-shadow: 0 0 15px rgba(197, 160, 89, 0.3);
+                font-family: 'Cinzel', serif;
+                color: #d4d4d4;
+                /* max-width set to auto to fill column */
+                width: 100%;
+            }
+
+            .runic-header {
+                text-align: center;
+                color: #c5a059;
+                font-size: 1.2rem;
+                font-weight: bold;
+                border-bottom: 1px solid #4a3b22;
+                padding-bottom: 10px;
+                margin-bottom: 15px;
+                text-shadow: 0 0 5px #c5a059;
+            }
+
+            .runic-item {
+                display: flex;
+                align-items: center;
+                background: linear-gradient(90deg, rgba(20, 20, 30, 0.8) 0%, rgba(35, 35, 50, 0.8) 100%);
+                border: 1px solid #4a4a60;
+                border-left: 4px solid #444;
+                margin-bottom: 10px;
+                padding: 10px;
+                border-radius: 5px;
+                transition: all 0.3s ease;
+            }
+
+            .runic-item:hover {
+                box-shadow: 0 0 10px rgba(197, 160, 89, 0.2);
+                border-color: #c5a059;
+            }
+
+            .runic-icon {
+                font-size: 24px;
+                margin-right: 15px;
+                width: 30px;
+                text-align: center;
+            }
+
+            .runic-content {
+                flex-grow: 1;
+            }
+
+            .runic-title {
+                font-family: 'Lato', sans-serif;
+                font-weight: bold;
+                font-size: 0.95rem;
+                color: #e0e0e0;
+                margin: 0;
+            }
+
+            .runic-subtitle {
+                font-family: 'Lato', sans-serif;
+                font-size: 0.8rem;
+                color: #888;
+                margin: 2px 0 0 0;
+            }
+
+            .bullish { border-left-color: #00ff88; }
+            .bearish { border-left-color: #ff3344; }
+            
+            .bullish .runic-icon { color: #00ff88; text-shadow: 0 0 8px rgba(0, 255, 136, 0.5); }
+            .bearish .runic-icon { color: #ff3344; text-shadow: 0 0 8px rgba(255, 51, 68, 0.5); }
+            </style>
+        """, unsafe_allow_html=True)
+
+        # Pagination Logic
+        ITEMS_PER_PAGE = 5
+        if 'page_number' not in st.session_state:
+            st.session_state.page_number = 0
+            
+        total_pages = max(1, (len(df_display) - 1) // ITEMS_PER_PAGE + 1)
+        
+        # Ensure page number is valid
+        if st.session_state.page_number >= total_pages:
+            st.session_state.page_number = total_pages - 1
+        if st.session_state.page_number < 0:
+            st.session_state.page_number = 0
+            
+        start_idx = st.session_state.page_number * ITEMS_PER_PAGE
+        end_idx = start_idx + ITEMS_PER_PAGE
+        
+        current_batch = df_display.iloc[start_idx:end_idx]
+        
+        # Layout: Center for Runic Box
+        # col_box, col_details = st.columns([1, 2])
+        
+        # with col_box:
+        # Build HTML
+        html_content = '<div class="runic-container"><div class="runic-header">RUNIC TRADE ALERTS</div>'
+        
+        for index, row in current_batch.iterrows():
+            is_long = "LONG" in row['Type']
+            direction_class = "bullish" if is_long else "bearish"
+            
+            # Icon Logic
+            asset_name = row['Asset']
+            
+            # SVG Bolt for reliable coloring
+            icon_bolt = """<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" stroke="none" style="display: block; margin: 0 auto;"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>"""
+            
+            icon = icon_bolt
+            if "BTC" in asset_name: icon = "₿"
+            elif "ETH" in asset_name: icon = "Ξ"
+            elif "SOL" in asset_name: icon = "◎"
+            elif "Short" in row['Type']: icon = "⬇"
+            elif "Long" in row['Type']: icon = "⬆"
+            
+            action_text = "BULLISH" if is_long else "BEARISH"
+            signal_desc = f"{asset_name}: {action_text}"
+            
+            # Data Points
+            conf = row['Confidence']
+            entry_time = row['Entry Time']
+            entry_price = row['Entry Price']
+            sl_price = row['Stop Loss']
+            tp_price = row['Take Profit']
+            pnl_val = row['PnL (%)']
+            action_val = row['Action']
+            tf = row['Timeframe']
+
+            # Color for PnL
+            pnl_color = "#00ff88" if not pnl_val.startswith("-") else "#ff3344"
+            
+            html_content += f"""
+<div class="runic-item {direction_class}">
+<div class="runic-icon">{icon}</div>
+<div class="runic-content">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div class="runic-title">{signal_desc}</div>
+        <div style="font-weight: bold; color: {pnl_color};">{pnl_val}</div>
+    </div>
+    <div class="runic-subtitle" style="color: #e0e0e0; margin-top: 4px;">
+        {action_val} | Conf: {conf} | {tf}
+    </div>
+    <div class="runic-subtitle" style="margin-top: 2px;">
+        Entry: {entry_price} | TP: {tp_price} | SL: {sl_price}
+    </div>
+    <div class="runic-subtitle" style="font-size: 0.75rem; color: #666; margin-top: 2px;">
+        Time: {entry_time}
+    </div>
+</div>
+</div>
+"""
+        html_content += "</div>"
+        st.markdown(html_content, unsafe_allow_html=True)
+        
+        # Pagination Controls
+        c_prev, c_info, c_next = st.columns([1, 2, 1])
+        with c_prev:
+            if st.button("◀", key="prev_page"):
+                if st.session_state.page_number > 0:
+                    st.session_state.page_number -= 1
+                    st.rerun()
+        with c_info:
+            st.markdown(f"<div style='text-align: center; color: #888; padding-top: 5px;'>Page {st.session_state.page_number + 1}/{total_pages}</div>", unsafe_allow_html=True)
+        with c_next:
+            if st.button("▶", key="next_page"):
+                if st.session_state.page_number < total_pages - 1:
+                    st.session_state.page_number += 1
+                    st.rerun()
+
+        # with col_details:
+        #      cols = ["Confidence", "Timeframe", "Asset", "Type", "Entry Time", "Entry Price", "Take Profit", "Stop Loss", "PnL (%)", "Action"]
+        #      st.dataframe(df_display[cols].reset_index(drop=True).style.apply(highlight_confidence, axis=1), use_container_width=True)
+
     else:
-        st.info("No active signals found on 4H/1D.")
+        st.info("No active signals found.")
 
 # with tab_history:
 #     st.subheader("📜 Recent Signal History & Probabilities")
@@ -505,4 +693,9 @@ with tab_dash:
 
 # Manual Refresh
 if st.button("Refresh Analysis"):
+    # Clear Cache
+    if 'combined_active_df' in st.session_state:
+        del st.session_state['combined_active_df']
+    if 'hist_df' in st.session_state:
+        del st.session_state['hist_df']
     st.rerun()
