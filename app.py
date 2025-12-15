@@ -1005,15 +1005,7 @@ with col_left:
             </style>
         """, unsafe_allow_html=True)
 
-        # Adjusted columns to fit -100
-        cols = st.columns([1, 1, 1, 1, 1, 1.3, 0.8], gap="small")
-        if cols[0].button("-1", key="m_1", use_container_width=True): st.session_state.mana = max(0, st.session_state.mana - 1)
-        if cols[1].button("-5", key="m_5", use_container_width=True): st.session_state.mana = max(0, st.session_state.mana - 5)
-        if cols[2].button("-10", key="m_10", use_container_width=True): st.session_state.mana = max(0, st.session_state.mana - 10)
-        if cols[3].button("-20", key="m_20", use_container_width=True): st.session_state.mana = max(0, st.session_state.mana - 20)
-        if cols[4].button("-50", key="m_50", use_container_width=True): st.session_state.mana = max(0, st.session_state.mana - 50)
-        if cols[5].button("-100", key="m_100", use_container_width=True): st.session_state.mana = max(0, st.session_state.mana - 100)
-        if cols[6].button("↺", key="m_rst", help="Reset", use_container_width=True): st.session_state.mana = 500
+
 
     # 2. Spells Left & Reset Logic
     # Check Resets
