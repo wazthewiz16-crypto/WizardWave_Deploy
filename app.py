@@ -542,7 +542,7 @@ def show_runic_alerts():
             r4d, a4d, h4d = analyze_timeframe("4 Days")
         
             # Clear status
-            status_msg.empty()
+
         
             # Consolidate
             active_dfs = [df for df in [a15m, a30m, a1h, a4h, a1d, a4d] if df is not None and not df.empty]
