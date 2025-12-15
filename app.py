@@ -90,6 +90,36 @@ def load_ml_model():
         print(f"Error loading model: {e}")
         return None
 
+# --- Utility: TradingView Symbol Mapping ---
+def get_tv_symbol(asset_entry):
+    """Maps internal symbol to TradingView symbol"""
+    s = asset_entry.get('symbol', '')
+    
+    # Crypto (Binance is a safe default for USDT pairs)
+    if "USDT" in s:
+        clean = s.replace("/", "")
+        return f"BINANCE:{clean}"
+    
+    # Forex
+    if "=X" in s:
+        clean = s.replace("=X", "")
+        return f"FX:{clean}"
+    
+    # Futures / Indices (Heuristics)
+    if s == "^NDX": return "NASDAQ:NDX"
+    if s == "^GSPC": return "SP:SPX"
+    if s == "^AXJO": return "ASX:XJO"
+    if s == "DX-Y.NYB": return "TVC:DXY"
+    if s == "GC=F": return "COMEX:GC1!"
+    if s == "CL=F": return "NYMEX:CL1!"
+    if s == "SI=F": return "COMEX:SI1!"
+    
+    return f"COINBASE:BTCUSD" # Fallback
+
+# Initialize Active Symbol State
+if 'active_tv_symbol' not in st.session_state:
+    st.session_state.active_tv_symbol = "COINBASE:BTCUSD"
+
 def calculate_ml_features(df):
     """
     Calculates features for ML (Must match pipeline.py logic)
@@ -230,6 +260,7 @@ def analyze_timeframe(timeframe_label):
                 active_trade_data = {
                     "_sort_key": sort_ts,
                     "Asset": asset['name'],
+                    "Symbol": asset['symbol'], # Store raw symbol
                     "Type": type_display,
                     "Timeframe": timeframe_label,
                     "Entry_Time": ts_str,
@@ -626,76 +657,74 @@ def show_runic_alerts():
                 
                 current_batch = df_display.iloc[start_idx:end_idx]
                 
-                # Build HTML for Items
-                html_content = ""
-                
                 for index, row in current_batch.iterrows():
-                    is_long = "LONG" in row.get('Type', '')
-                    direction_class = "bullish" if is_long else "bearish"
-                    
-                    # Icon Logic
-                    asset_name = row['Asset']
-                    
-                    # SVG Bolt for reliable coloring
-                    icon_bolt = """<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" stroke="none" style="display: block; margin: 0 auto;"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>"""
-                    
-                    icon = icon_bolt
-                    if "BTC" in asset_name: icon = "₿"
-                    elif "ETH" in asset_name: icon = "Ξ"
-                    elif "SOL" in asset_name: icon = "◎"
-                    elif "Short" in row.get('Type', ''): icon = "⬇"
-                    elif "Long" in row.get('Type', ''): icon = "⬆"
-                    
-                    action_text = "BULL" if is_long else "BEAR"
-                    signal_desc = f"{asset_name}: {action_text}"
-                    
-                    # Data Points
-                    conf = row.get('Confidence', 'N/A')
-                    entry_time = row.get('Entry_Time', row.get('Entry Time', 'N/A'))
-                    tf = row.get('Timeframe', 'N/A')
-                    action_val = row.get('Action', 'TAKE') # Usually '✅ TAKE'
-
-                    pnl_val = row.get('PnL (%)', '0.00%')
-                    pnl_color = "#00ff88" if not str(pnl_val).startswith("-") else "#ff3344"
-
-                    # Price Logic
-                    entry_p = row.get('Entry_Price', 'N/A')
-                    tp_p = row.get('Take_Profit', 'N/A')
-                    sl_p = row.get('Stop_Loss', 'N/A')
-                    
-                    # Try to get Current Price (if available in DF, else Placeholder)
-                    current_p = row.get('Current_Price', row.get('Close', None))
-                    current_html = ""
-                    if current_p is not None:
-                         current_html = f"<span style='color: #ffd700; margin-right: 8px;'>Now: {current_p}</span>"
-                    else:
-                         # Fallback/Placeholder
-                         current_html = "<span style='color: #666; margin-right: 8px; font-size: 0.8em;'>(Live Pending)</span>"
-
-                    # Format Entry/TP/SL
-                    details = f"Entry: {entry_p} | TP: {tp_p} | SL: {sl_p}"
-                    
-                    html_content += f"""
-<div class="runic-item {direction_class}" style="padding: 8px;">
-<div class="runic-icon" style="font-size: 20px; margin-right: 10px;">{icon}</div>
-<div class="runic-content">
-<div style="display: flex; justify-content: space-between; align-items: center;">
-<div class="runic-title" style="font-size: 0.85rem;">{signal_desc}</div>
-<div style="font-weight: bold; color: {pnl_color}; font-size: 0.85rem;">{pnl_val}</div>
-</div>
-<div style="font-size: 0.75rem; color: #e0e0e0; margin-top: 2px;">
-{current_html} {action_val} | Conf: {conf} | {tf}
-</div>
-<div style="font-size: 0.7rem; color: #aaa; margin-top: 2px;">
-{details}
-</div>
-<div style="font-size: 0.65rem; color: #666; margin-top: 2px;">
-Time: {entry_time}
-</div>
-</div>
-</div>
-"""
-                st.markdown(html_content, unsafe_allow_html=True)
+                    # --- Card Container for "Inside" Look ---
+                    # We use a container with a border to group Content + Button
+                    with st.container(border=True):
+                        
+                        # Layout: [Content (0.8) | Button (0.2)]
+                        c_content, c_btn = st.columns([0.75, 0.25])
+                        
+                        # --- 1. Content Section ---
+                        with c_content:
+                            is_long = "LONG" in row.get('Type', '')
+                            direction_color = "#00ff88" if is_long else "#ff3344"
+                            
+                            # Icon Logic
+                            asset_name = row['Asset']
+                            asset_symbol = row.get('Symbol', '')
+                            if not asset_symbol:
+                                 for a in ASSETS:
+                                     if a['name'] == asset_name:
+                                         asset_symbol = a['symbol']
+                                         break
+                            
+                            icon_char = "⚡"
+                            if "BTC" in asset_name: icon_char = "₿"
+                            elif "ETH" in asset_name: icon_char = "Ξ"
+                            elif "SOL" in asset_name: icon_char = "◎"
+                            
+                            action_text = "BULL" if is_long else "BEAR"
+                            pnl_val = row.get('PnL (%)', '0.00%')
+                            pnl_color = "#00ff88" if not str(pnl_val).startswith("-") else "#ff3344"
+                            
+                            # Compact HTML representation
+                            st.markdown(f"""
+                                <div style="display: flex; align-items: flex-start;">
+                                    <div style="color: {direction_color}; font-size: 1.2rem; margin-right: 8px; margin-top: -2px;">{icon_char}</div>
+                                    <div style="flex-grow: 1;">
+                                        <div style="font-weight: bold; font-size: 0.9rem; color: #e0e0e0; display: flex; justify-content: space-between;">
+                                            <span>{asset_name} <span style="color:{direction_color}; font-size: 0.8rem;">{action_text}</span></span>
+                                            <span style="color: {pnl_color};">{pnl_val}</span>
+                                        </div>
+                                        <div style="font-size: 0.75rem; color: #aaa; margin-top: 2px;">
+                                            {row.get('Action')} | Conf: {row.get('Confidence')} | {row.get('Timeframe')}
+                                        </div>
+                                        <div style="font-size: 0.7rem; color: #666;">
+                                            Entry: {row.get('Entry_Price')} | Now: <span style="color: #ffd700;">{row.get('Current_Price', 'N/A')}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            """, unsafe_allow_html=True)
+                            
+                        # --- 2. Button Section (Inside the Card) ---
+                        with c_btn:
+                            # Center the button vertically relative to content
+                            st.markdown('<div style="height: 5px;"></div>', unsafe_allow_html=True)
+                            
+                            # Unique Key
+                            unique_id = f"{row['Asset']}_{row.get('Timeframe','')}_{row.get('Entry_Time','')}"
+                            unique_id = "".join(c for c in unique_id if c.isalnum() or c in ['_','-'])
+                            
+                            # Visual "View" Button
+                            if st.button("VIEW", key=f"btn_view_{unique_id}", use_container_width=True):
+                                # 1. Resolve Trading View Symbol
+                                tv_sym = get_tv_symbol({'symbol': asset_symbol, 'name': asset_name})
+                                # 2. Update Session State
+                                st.session_state.active_tv_symbol = tv_sym
+                                # 3. Trigger Main App Rerun (Critical for Chart Update)
+                                st.rerun()
+                            
                 
                 # --- Compact Numbered Pagination ---
                 p1, p2, p3 = st.columns([0.2, 0.6, 0.2])
@@ -988,17 +1017,20 @@ with col_center:
         
         elif st.session_state.active_tab == 'PORTAL':
             # TradingView Widget
-            tv_widget_code = """
+            # Use Active Symbol or Fallback
+            tv_sym = st.session_state.get('active_tv_symbol', 'COINBASE:BTCUSD')
+            
+            tv_widget_code = f"""
             <div class="tradingview-widget-container" style="height:100%;width:100%">
               <div id="tradingview_chart" style="height:calc(100% - 32px);width:100%"></div>
               <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
               <script type="text/javascript">
               new TradingView.widget(
-              {
+              {{
               "width": "100%",
               "height": "550", 
               "autosize": false,
-              "symbol": "COINBASE:BTCUSD",
+              "symbol": "{tv_sym}",
               "interval": "60",
               "timezone": "America/New_York",
               "theme": "dark",
@@ -1015,7 +1047,7 @@ with col_center:
               "studies": [
                 "MASimple@tv-basicstudies"
               ]
-            }
+            }}
               );
               </script>
             </div>
