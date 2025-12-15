@@ -8,6 +8,67 @@ import joblib
 from data_fetcher import fetch_data
 from strategy import WizardWaveStrategy
 import streamlit.components.v1 as components
+import json
+import os
+from datetime import datetime, date
+
+# --- Persistence Logic ---
+STATE_FILE = "user_grimoire.json"
+
+def load_grimoire():
+    today = date.today()
+    current_week = today.isocalendar()[1]
+    
+    # Defaults
+    default_state = {
+        'mana': 500,
+        'spells_day': 2,
+        'spells_week': 5,
+        'last_date': str(today),
+        'last_week': current_week
+    }
+    
+    if os.path.exists(STATE_FILE):
+        try:
+            with open(STATE_FILE, 'r') as f:
+                saved_data = json.load(f)
+                
+            # Check Daily Reset
+            last_date_str = saved_data.get('last_date', '')
+            last_week_saved = saved_data.get('last_week', current_week)
+            
+            today_str = str(today)
+            
+            # 1. Daily Reset Check
+            if last_date_str != today_str:
+                saved_data['mana'] = 500 # Daily Reset
+                saved_data['spells_day'] = 2 # Daily Reset
+                saved_data['last_date'] = today_str
+                
+            # 2. Weekly Reset Check (New Week)
+            if last_week_saved != current_week:
+                saved_data['spells_week'] = 5 # Weekly Reset
+                saved_data['last_week'] = current_week
+                
+            # Save if any resets happened
+            if last_date_str != today_str or last_week_saved != current_week:
+                save_grimoire(saved_data)
+                
+            return saved_data
+        except Exception as e:
+            print(f"Error loading grimoire: {e}")
+            return default_state
+            
+    return default_state
+
+def save_grimoire(data):
+    try:
+        data['last_date'] = str(date.today())
+        data['last_week'] = date.today().isocalendar()[1]
+        with open(STATE_FILE, 'w') as f:
+            json.dump(data, f)
+    except Exception as e:
+        print(f"Error saving grimoire: {e}")
 
 # Page Config
 st.set_page_config(
@@ -70,14 +131,11 @@ if 'processed_signals' not in st.session_state:
 
 # Arcane Portal State
 if 'mana' not in st.session_state:
-    st.session_state['mana'] = 500
-if 'spells_day' not in st.session_state:
-    st.session_state['spells_day'] = 2
-if 'spells_week' not in st.session_state:
-    st.session_state['spells_week'] = 5
-if 'last_reset_day' not in st.session_state:
-    st.session_state['last_reset_day'] =  pd.Timestamp.now().floor('D')
-if 'last_reset_week' not in st.session_state:
+    # Load from persistent storage
+    grimoire = load_grimoire()
+    st.session_state['mana'] = grimoire.get('mana', 500)
+    st.session_state['spells_day'] = grimoire.get('spells_day', 2)
+    st.session_state['spells_week'] = grimoire.get('spells_week', 5)
     st.session_state['last_reset_week'] = pd.Timestamp.now().to_period('W').start_time
 
 # --- ML Model Integration ---
@@ -1097,12 +1155,78 @@ with col_center:
             
             st.markdown("<br>", unsafe_allow_html=True) # Spacer
             
-            # Invoke Button
+            # Invoke Button Logic
+            
+            @st.dialog("🔮 Cast Spell")
+            def cast_spell_dialog():
+                st.markdown("### Invocation Ritual")
+                
+                # Resources
+                mana = st.session_state.mana
+                s_day = st.session_state.spells_day
+                s_week = st.session_state.spells_week
+                
+                c1, c2, c3 = st.columns(3)
+                c1.metric("Mana Pool", mana)
+                c2.metric("Spells (Day)", s_day)
+                c3.metric("Spells (Week)", s_week)
+                
+                st.markdown("---")
+                
+                # Inputs
+                risk = st.number_input("Trade Risk (Mana Cost)", min_value=1, max_value=500, value=50, step=10)
+                
+                st.write("Confirmations:")
+                check1 = st.checkbox("Trend Aligned?")
+                check2 = st.checkbox("Zone Valid?")
+                check3 = st.checkbox("Risk/Reward > 2.0?")
+                
+                st.markdown("---")
+                
+                # Validation
+                can_cast = True
+                error_msg = ""
+                
+                if risk > mana:
+                    can_cast = False
+                    error_msg = "❌ Insufficient Mana!"
+                elif s_day <= 0:
+                    can_cast = False
+                    error_msg = "❌ Daily Limit Reached!"
+                elif s_week <= 0:
+                    can_cast = False
+                    error_msg = "❌ Weekly Limit Reached!"
+                elif not (check1 and check2 and check3):
+                    can_cast = False
+                    error_msg = "❌ Complete Ritual Checklist"
+                
+                if not can_cast and error_msg:
+                    st.error(error_msg)
+                
+                if st.button("CAST SPELL ⚡", type="primary", use_container_width=True, disabled=not can_cast):
+                    # Deduced Resources
+                    st.session_state.mana -= risk
+                    st.session_state.spells_day -= 1
+                    st.session_state.spells_week -= 1
+                    
+                    # Save State
+                    new_state = {
+                        'mana': st.session_state.mana,
+                        'spells_day': st.session_state.spells_day,
+                        'spells_week': st.session_state.spells_week
+                    }
+                    save_grimoire(new_state)
+                    
+                    st.toast(f"Spell Cast! -{risk} Mana", icon="⚡")
+                    st.rerun()
+
             _, c_inv, _ = st.columns([0.3, 0.4, 0.3])
             with c_inv:
-                if st.button("INVOKE", use_container_width=True, type="primary"):
-                    st.toast("🔮 Invocation Ritual Started... (Modal Placeholder)")
-                    # In a real app, this would open a st.dialog or st.expander with the checklist
+                # Check Global Disable Conditions
+                global_can_cast = (st.session_state.mana > 0) and (st.session_state.spells_day > 0) and (st.session_state.spells_week > 0)
+                
+                if st.button("INVOKE", use_container_width=True, type="primary", disabled=not global_can_cast):
+                    cast_spell_dialog()
 
 
 # --- RIGHT COLUMN: STATS, ORACLE, WIZARD ---
