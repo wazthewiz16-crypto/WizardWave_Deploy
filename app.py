@@ -499,85 +499,218 @@ def render_prop_risk():
 # Tabs removed for cleaner UI
 # [tab_dash] = st.tabs(["⚡ Active Signals Dashboard"])
 
-# We collect data first (Aggregate 4 Timeframes)
-# NOTE: To save time for this specific request, checking only 1D and 4H would be faster,
-# but the user might want all. I'll stick to running all but optimizing.
-# Actually, let's run them all.
+# --- Main Dashboard Logic ---
+show_take_only = True 
 
-# Check Session State for Data
-if 'combined_active_df' not in st.session_state:
-    status_msg = st.empty()
-    status_msg.info("Running Analysis on 15m, 30m, 1H, 4H, 1D, 4D...")
-
-    # Run All Timeframes
-    r15m, a15m, h15m = analyze_timeframe("15 Minutes")
-    r30m, a30m, h30m = analyze_timeframe("30 Minutes")
-    r1h, a1h, h1h = analyze_timeframe("1 Hour")
-    r4h, a4h, h4h = analyze_timeframe("4 Hours")
-    r1d, a1d, h1d = analyze_timeframe("1 Day")
-    r4d, a4d, h4d = analyze_timeframe("4 Days")
-
-    # Clear the status message
-    status_msg.empty()
-
-    # Consolidate
-    active_dfs = [df for df in [a15m, a30m, a1h, a4h, a1d, a4d] if not df.empty]
-    combined_active = pd.concat(active_dfs).sort_values(by='_sort_key', ascending=False) if active_dfs else pd.DataFrame()
-    
-    all_history = h15m + h30m + h1h + h4h + h1d + h4d
-    hist_df = pd.DataFrame(all_history)
-    if not hist_df.empty:
-        hist_df.sort_values(by='_sort_key', ascending=False, inplace=True)
-        
-    # Save to Session State
-    st.session_state['combined_active_df'] = combined_active
-    st.session_state['hist_df'] = hist_df
-
-else:
-    # Load from Session State
-    combined_active = st.session_state['combined_active_df']
-    hist_df = st.session_state['hist_df']
-    
-    # --- Equity Curve Calculation ---
-    # Filter for trades with PnL data (simulated ones)
-    if 'Return_Pct' in hist_df.columns:
-        pass
-        # # Sort Ascending for Curve Calculation
-        # curve_df = hist_df.dropna(subset=['Return_Pct']).sort_values(by='_sort_key', ascending=True)
-        
-        # # Limit to last 200 trades
-        # curve_df = curve_df.tail(200).copy()
-        
-        # initial_balance = 50000
-        # balance = initial_balance
-        # balances = [initial_balance]
-        # dates = [] # Unused for x-axis now
-        
-        # for idx, row in curve_df.iterrows():
-        #     # 1% Risk Strategy
-        #     # Risk Amount = 1% of Current Balance (Compounding)
-        #     risk_amount = balance * 0.01
-        #     sl_pct = row['SL_Pct']
-        #     return_pct = row['Return_Pct']
+# --- Runic Alerts Fragment ---
+@st.fragment(run_every=60)
+def show_runic_alerts():
+    # Header Row with Refresh Button
+    with st.container(border=False):
+        c_title, c_btn, c_rest = st.columns([0.45, 0.15, 0.4], gap="small")
+        with c_title:
+             st.markdown('<div class="runic-header" style="font-size: 1rem; border: none !important; margin-bottom: 0; padding: 5px 0; background: transparent; text-align: left;">RUNIC ALERTS</div>', unsafe_allow_html=True)
+        with c_btn:
+            refresh_click = st.button("↻", key="refresh_top", help="Refresh", use_container_width=True)
             
-        #     # PnL = (Return / SL_Dist) * Risk_Amount
-        #     if sl_pct > 0:
-        #        pnl = (return_pct / sl_pct) * risk_amount
-        #     else:
-        #        pnl = 0
-               
-        #     balance += pnl
-        #     balances.append(balance)
-        #     dates.append(row['_sort_key'])
-            
-        # # Create Curve DF for Chart
-        # # X-Axis: Trade Count (Implicit Index)
-        # # Y-Axis: Equity
-        # eq_df = pd.DataFrame({'Equity': balances})
+        # --- Data Fetching Logic ---
+        # Determine if we need to fetch data
+        now = time.time()
+        should_fetch = False
         
-        # st.markdown("### 📈 Simulated Equity Curve ($50k Start, 1% Risk)")
-        # st.markdown(f"**Current Simulated Balance: ${balance:,.2f} (Trades: {len(curve_df)})**")
-        # st.area_chart(eq_df, color="#00FF00")
+        if refresh_click:
+            should_fetch = True
+        elif 'last_runic_fetch' not in st.session_state:
+            should_fetch = True
+        elif now - st.session_state.get('last_runic_fetch', 0) > 55:
+            should_fetch = True
+            
+        # Initialize Data Container
+        if 'combined_active_df' not in st.session_state:
+             st.session_state.combined_active_df = pd.DataFrame()
+
+        if should_fetch:
+
+        
+            # Run All Timeframes
+            # Note: analyze_timeframe uses st.progress which will display here
+            r15m, a15m, h15m = analyze_timeframe("15 Minutes")
+            r30m, a30m, h30m = analyze_timeframe("30 Minutes")
+            r1h, a1h, h1h = analyze_timeframe("1 Hour")
+            r4h, a4h, h4h = analyze_timeframe("4 Hours")
+            r1d, a1d, h1d = analyze_timeframe("1 Day")
+            r4d, a4d, h4d = analyze_timeframe("4 Days")
+        
+            # Clear status
+            status_msg.empty()
+        
+            # Consolidate
+            active_dfs = [df for df in [a15m, a30m, a1h, a4h, a1d, a4d] if df is not None and not df.empty]
+            
+            if active_dfs:
+                combined_active = pd.concat(active_dfs).sort_values(by='_sort_key', ascending=False)
+            else:
+                combined_active = pd.DataFrame()
+            
+            # Save to Session State
+            st.session_state['combined_active_df'] = combined_active
+            st.session_state['last_runic_fetch'] = now
+            
+        # Get Data for Display
+        combined_active = st.session_state.get('combined_active_df', pd.DataFrame())
+        
+        # --- Timeframe Filter (Inside Box) ---
+        if not combined_active.empty:
+            # Get unique timeframes and sort chronologically
+            tf_order = {
+                "15 Minutes": 0, "30 Minutes": 1, 
+                "1 Hour": 2, "4 Hours": 3, 
+                "1 Day": 4, "4 Days": 5
+            }
+            
+            # Mapping to Compact format
+            tf_map = {
+                "15 Minutes": "15m", "30 Minutes": "30m", 
+                "1 Hour": "1H", "4 Hours": "4H", 
+                "1 Day": "1D", "4 Days": "4D"
+            }
+            tf_map_rev = {v: k for k, v in tf_map.items()}
+
+            unique_tfs = combined_active['Timeframe'].unique().tolist()
+            # Sort first based on original order
+            sorted_tfs = sorted(unique_tfs, key=lambda x: tf_order.get(x, 99))
+            
+            # Convert to display options
+            display_opts = [tf_map.get(x, x) for x in sorted_tfs]
+            
+            # Compact Multiselect
+            selected_short = st.multiselect("Timeframes", options=display_opts, default=display_opts, label_visibility="collapsed")
+            
+            # Map back for filtering
+            selected_tfs = [tf_map_rev.get(x, x) for x in selected_short]
+            
+            # --- Filter Data ---
+            df_display = combined_active.copy()
+            
+            # Use global show_take_only variable (default True)
+            if show_take_only:
+                 if 'Action' in df_display.columns:
+                    df_display = df_display[df_display['Action'].str.contains("TAKE")]
+            
+            if selected_tfs:
+                df_display = df_display[df_display['Timeframe'].isin(selected_tfs)]
+            else:
+                st.warning("Select Timeframe")
+                df_display = pd.DataFrame(columns=df_display.columns) # Empty
+
+            # --- Render ---
+            if df_display.empty:
+                st.info("No active signals.")
+            else:
+                # Pagination Logic (Reduced per page for standard height)
+                ITEMS_PER_PAGE = 5 
+                if 'page_number' not in st.session_state:
+                    st.session_state.page_number = 0
+                    
+                total_pages = max(1, (len(df_display) - 1) // ITEMS_PER_PAGE + 1)
+                
+                # Ensure page number is valid
+                if st.session_state.page_number >= total_pages:
+                    st.session_state.page_number = total_pages - 1
+                if st.session_state.page_number < 0:
+                    st.session_state.page_number = 0
+                    
+                start_idx = st.session_state.page_number * ITEMS_PER_PAGE
+                end_idx = start_idx + ITEMS_PER_PAGE
+                
+                current_batch = df_display.iloc[start_idx:end_idx]
+                
+                # Build HTML for Items
+                html_content = ""
+                
+                for index, row in current_batch.iterrows():
+                    is_long = "LONG" in row.get('Type', '')
+                    direction_class = "bullish" if is_long else "bearish"
+                    
+                    # Icon Logic
+                    asset_name = row['Asset']
+                    
+                    # SVG Bolt for reliable coloring
+                    icon_bolt = """<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" stroke="none" style="display: block; margin: 0 auto;"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>"""
+                    
+                    icon = icon_bolt
+                    if "BTC" in asset_name: icon = "₿"
+                    elif "ETH" in asset_name: icon = "Ξ"
+                    elif "SOL" in asset_name: icon = "◎"
+                    elif "Short" in row.get('Type', ''): icon = "⬇"
+                    elif "Long" in row.get('Type', ''): icon = "⬆"
+                    
+                    action_text = "BULL" if is_long else "BEAR"
+                    signal_desc = f"{asset_name}: {action_text}"
+                    
+                    # Data Points
+                    conf = row.get('Confidence', 'N/A')
+                    entry_time = row.get('Entry_Time', row.get('Entry Time', 'N/A'))
+                    tf = row.get('Timeframe', 'N/A')
+                    action_val = row.get('Action', 'TAKE') # Usually '✅ TAKE'
+
+                    pnl_val = row.get('PnL (%)', '0.00%')
+                    pnl_color = "#00ff88" if not str(pnl_val).startswith("-") else "#ff3344"
+
+                    # Price Logic
+                    entry_p = row.get('Entry_Price', 'N/A')
+                    tp_p = row.get('Take_Profit', 'N/A')
+                    sl_p = row.get('Stop_Loss', 'N/A')
+                    
+                    # Try to get Current Price (if available in DF, else Placeholder)
+                    current_p = row.get('Current_Price', row.get('Close', None))
+                    current_html = ""
+                    if current_p is not None:
+                         current_html = f"<span style='color: #ffd700; margin-right: 8px;'>Now: {current_p}</span>"
+                    else:
+                         # Fallback/Placeholder
+                         current_html = "<span style='color: #666; margin-right: 8px; font-size: 0.8em;'>(Live Pending)</span>"
+
+                    # Format Entry/TP/SL
+                    details = f"Entry: {entry_p} | TP: {tp_p} | SL: {sl_p}"
+                    
+                    html_content += f"""
+<div class="runic-item {direction_class}" style="padding: 8px;">
+<div class="runic-icon" style="font-size: 20px; margin-right: 10px;">{icon}</div>
+<div class="runic-content">
+<div style="display: flex; justify-content: space-between; align-items: center;">
+<div class="runic-title" style="font-size: 0.85rem;">{signal_desc}</div>
+<div style="font-weight: bold; color: {pnl_color}; font-size: 0.85rem;">{pnl_val}</div>
+</div>
+<div style="font-size: 0.75rem; color: #e0e0e0; margin-top: 2px;">
+{current_html} {action_val} | Conf: {conf} | {tf}
+</div>
+<div style="font-size: 0.7rem; color: #aaa; margin-top: 2px;">
+{details}
+</div>
+<div style="font-size: 0.65rem; color: #666; margin-top: 2px;">
+Time: {entry_time}
+</div>
+</div>
+</div>
+"""
+                st.markdown(html_content, unsafe_allow_html=True)
+                
+                # --- Compact Numbered Pagination ---
+                p1, p2, p3 = st.columns([0.2, 0.6, 0.2])
+                with p1:
+                    if st.button("◀", key="prev_main", disabled=(st.session_state.page_number == 0)):
+                        st.session_state.page_number -= 1
+                        st.rerun()
+                with p3:
+                    if st.button("▶", key="next_main", disabled=(st.session_state.page_number >= total_pages - 1)):
+                        st.session_state.page_number += 1
+                        st.rerun()
+                with p2:
+                    st.markdown(f"<div style='text-align: center; color: #888; font-size: 0.8rem; padding-top: 5px;'>Page {st.session_state.page_number + 1}/{total_pages}</div>", unsafe_allow_html=True)
+
+        else:
+            st.info("No active signals.")
 
 # --- Main Dashboard Logic (Simplified) ---
 show_take_only = True # Default behavior
@@ -1045,182 +1178,9 @@ with col_left:
         """, unsafe_allow_html=True)
     
     # 3. Runic Trade Alerts
-    with st.container(border=False):
-        # Header Row with Refresh Button
-        c_title, c_btn, c_rest = st.columns([0.45, 0.15, 0.4], gap="small")
-        with c_title:
-             st.markdown('<div class="runic-header" style="font-size: 1rem; border: none !important; margin-bottom: 0; padding: 5px 0; background: transparent; text-align: left;">RUNIC ALERTS</div>', unsafe_allow_html=True)
-        with c_btn:
-            if st.button("↻", key="refresh_top", help="Refresh", use_container_width=True):
-                 # Clear Cache
-                if 'combined_active_df' in st.session_state:
-                    del st.session_state['combined_active_df']
-                if 'hist_df' in st.session_state:
-                    del st.session_state['hist_df']
-                st.rerun()
-        
-        # --- Timeframe Filter (Inside Box) ---
-        if not combined_active.empty:
-            # Get unique timeframes and sort chronologically
-            tf_order = {
-                "15 Minutes": 0, "30 Minutes": 1, 
-                "1 Hour": 2, "4 Hours": 3, 
-                "1 Day": 4, "4 Days": 5
-            }
-            
-            # Mapping to Compact format
-            tf_map = {
-                "15 Minutes": "15m", "30 Minutes": "30m", 
-                "1 Hour": "1H", "4 Hours": "4H", 
-                "1 Day": "1D", "4 Days": "4D"
-            }
-            tf_map_rev = {v: k for k, v in tf_map.items()}
-
-            unique_tfs = combined_active['Timeframe'].unique().tolist()
-            # Sort first based on original order
-            sorted_tfs = sorted(unique_tfs, key=lambda x: tf_order.get(x, 99))
-            
-            # Convert to display options
-            display_opts = [tf_map.get(x, x) for x in sorted_tfs]
-            
-            # Compact Multiselect
-            selected_short = st.multiselect("Timeframes", options=display_opts, default=display_opts, label_visibility="collapsed")
-            
-            # Map back for filtering
-            selected_tfs = [tf_map_rev.get(x, x) for x in selected_short]
-            
-            # --- Filter Data ---
-            df_display = combined_active.copy()
-            
-            if show_take_only:
-                 df_display = df_display[df_display['Action'].str.contains("TAKE")]
-            
-            if selected_tfs:
-                df_display = df_display[df_display['Timeframe'].isin(selected_tfs)]
-            else:
-                st.warning("Select Timeframe")
-                df_display = pd.DataFrame(columns=df_display.columns) # Empty
-
-            # --- Render ---
-            if df_display.empty:
-                st.info("No active signals.")
-            else:
-                # Pagination Logic (Reduced per page for standard height)
-                ITEMS_PER_PAGE = 5 
-                if 'page_number' not in st.session_state:
-                    st.session_state.page_number = 0
-                    
-                total_pages = max(1, (len(df_display) - 1) // ITEMS_PER_PAGE + 1)
-                
-                # Ensure page number is valid
-                if st.session_state.page_number >= total_pages:
-                    st.session_state.page_number = total_pages - 1
-                if st.session_state.page_number < 0:
-                    st.session_state.page_number = 0
-                    
-                start_idx = st.session_state.page_number * ITEMS_PER_PAGE
-                end_idx = start_idx + ITEMS_PER_PAGE
-                
-                current_batch = df_display.iloc[start_idx:end_idx]
-                
-                # Build HTML for Items
-                html_content = ""
-                
-                for index, row in current_batch.iterrows():
-                    is_long = "LONG" in row['Type']
-                    direction_class = "bullish" if is_long else "bearish"
-                    
-                    # Icon Logic
-                    asset_name = row['Asset']
-                    
-                    # SVG Bolt for reliable coloring
-                    icon_bolt = """<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" stroke="none" style="display: block; margin: 0 auto;"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>"""
-                    
-                    icon = icon_bolt
-                    if "BTC" in asset_name: icon = "₿"
-                    elif "ETH" in asset_name: icon = "Ξ"
-                    elif "SOL" in asset_name: icon = "◎"
-                    elif "Short" in row['Type']: icon = "⬇"
-                    elif "Long" in row['Type']: icon = "⬆"
-                    
-                    action_text = "BULL" if is_long else "BEAR"
-                    signal_desc = f"{asset_name}: {action_text}"
-                    
-                    # Data Points
-                    # Data Points
-                    conf = row.get('Confidence', 'N/A')
-                    entry_time = row.get('Entry_Time', row.get('Entry Time', 'N/A'))
-                    tf = row.get('Timeframe', 'N/A')
-                    action_val = row.get('Action', 'TAKE') # Usually '✅ TAKE'
-
-                    pnl_val = row['PnL (%)']
-                    pnl_color = "#00ff88" if not str(pnl_val).startswith("-") else "#ff3344"
-
-                    # Price Logic
-                    entry_p = row.get('Entry_Price', 'N/A')
-                    tp_p = row.get('Take_Profit', 'N/A')
-                    sl_p = row.get('Stop_Loss', 'N/A')
-                    
-                    # Try to get Current Price (if available in DF, else Placeholder)
-                    current_p = row.get('Current_Price', row.get('Close', None))
-                    current_html = ""
-                    if current_p is not None:
-                         current_html = f"<span style='color: #ffd700; margin-right: 8px;'>Now: {current_p}</span>"
-                    else:
-                         # Fallback/Placeholder
-                         current_html = "<span style='color: #666; margin-right: 8px; font-size: 0.8em;'>(Live Pending)</span>"
-
-                    # Format Entry/TP/SL
-                    details = f"Entry: {entry_p} | TP: {tp_p} | SL: {sl_p}"
-                    
-                    # Determine action icon based on action_val
-                    action_icon = "✅" if "TAKE" in action_val else "➡️" # Default to arrow if not TAKE
-
-                    html_content += f"""
-<div class="runic-item {direction_class}" style="padding: 8px;">
-<div class="runic-icon" style="font-size: 20px; margin-right: 10px;">{icon}</div>
-<div class="runic-content">
-<div style="display: flex; justify-content: space-between; align-items: center;">
-<div class="runic-title" style="font-size: 0.85rem;">{signal_desc}</div>
-<div style="font-weight: bold; color: {pnl_color}; font-size: 0.85rem;">{pnl_val}</div>
-</div>
-<div style="font-size: 0.75rem; color: #e0e0e0; margin-top: 2px;">
-{current_html} {action_val} | Conf: {conf} | {tf}
-</div>
-<div style="font-size: 0.7rem; color: #aaa; margin-top: 2px;">
-{details}
-</div>
-<div style="font-size: 0.65rem; color: #666; margin-top: 2px;">
-Time: {entry_time}
-</div>
-</div>
-</div>
-"""
-                st.markdown(html_content, unsafe_allow_html=True)
-                
-                # --- Compact Numbered Pagination ---
-                p1, p2, p3 = st.columns([0.2, 0.6, 0.2])
-                with p1:
-                    if st.button("◀", key="prev_main", disabled=(st.session_state.page_number == 0)):
-                        st.session_state.page_number -= 1
-                        st.rerun()
-                with p3:
-                    if st.button("▶", key="next_main", disabled=(st.session_state.page_number >= total_pages - 1)):
-                        st.session_state.page_number += 1
-                        st.rerun()
-                with p2:
-                    st.markdown(f"<div style='text-align: center; color: #888; font-size: 0.8rem; padding-top: 5px;'>Page {st.session_state.page_number + 1}/{total_pages}</div>", unsafe_allow_html=True)
-
-        else:
-            st.info("No active signals.")
+    show_runic_alerts()
 
 
 
 # --- Auto Refresh Logic ---
-# Force Refetch every 60 seconds
-time.sleep(60)
-if 'combined_active_df' in st.session_state:
-    del st.session_state['combined_active_df']
-if 'hist_df' in st.session_state:
-    del st.session_state['hist_df']
-st.rerun()
+
