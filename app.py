@@ -232,13 +232,16 @@ def analyze_timeframe(timeframe_label):
                     "Asset": asset['name'],
                     "Type": type_display,
                     "Timeframe": timeframe_label,
-                    "Entry Time": ts_str,
-                    "Entry Price": f"{ep:.2f}",
-                    "Take Profit": f"{tp_price:.2f}",
-                    "Stop Loss": f"{sl_price:.2f}",
+                    "Entry_Time": ts_str,
+                    "Signal_Time": ts_str, # Redundant but safe
+                    "Entry_Price": f"{ep:.2f}",
+                    "Take_Profit": f"{tp_price:.2f}",
+                    "Stop_Loss": f"{sl_price:.2f}",
+                    "Current_Price": f"{df_strat.iloc[-1]['close']:.2f}",
                     "PnL (%)": f"{trade['PnL (%)']:.2f}%",
                     "Confidence": f"{entry_conf:.0%}",
-                    "Action": rec_action
+                    "Action": rec_action,
+                    "Signal": trade['Position'] # Map Position to Signal column for frontend
                 }
 
             # --- Latest Candle Status ---
@@ -412,6 +415,84 @@ def highlight_confidence(row):
             return [''] * len(row)
     except:
         return [''] * len(row)
+
+# --- Render UI ---
+
+# --- PROP RISK LOGIC (Ported from React) ---
+PROP_FIRM_CONFIGS = {
+    "APEX": {"type": "Futures", "maxDrawdown": 0.045, "dailyDrawdown": 0.025, "profitTarget": 0.06},
+    "TOPSTEP": {"type": "Futures", "maxDrawdown": 0.04, "dailyDrawdown": 0.02, "profitTarget": 0.06},
+    "FTMO": {"type": "Forex", "maxDrawdown": 0.10, "dailyDrawdown": 0.05, "profitTarget": 0.10}
+}
+
+def init_prop_accounts():
+    if 'user_accounts' not in st.session_state:
+        st.session_state.user_accounts = [
+            {"id": 1, "name": "Apex 50k - #1", "firm": "APEX", "size": 50000, "currentBalance": 50000, "startOfDayBalance": 50000},
+            {"id": 2, "name": "Topstep 50k", "firm": "TOPSTEP", "size": 50000, "currentBalance": 50000, "startOfDayBalance": 50000}
+        ]
+
+def render_prop_risk():
+    st.markdown("### 🛡️ Prop Firm Manager")
+    init_prop_accounts()
+    
+    # Grid Layout
+    cols = st.columns(2)
+    
+    for i, account in enumerate(st.session_state.user_accounts):
+        config = PROP_FIRM_CONFIGS[account['firm']]
+        size = account['size']
+        
+        # Use col 0 or 1
+        with cols[i % 2]:
+            with st.container(border=True):
+                # Header
+                st.markdown(f"**{account['name']}** <span style='color:#888'>({account['firm']})</span>", unsafe_allow_html=True)
+                st.markdown(f"Size: **${size:,}**")
+                
+                # Inputs (Balance Updates)
+                c_bal, c_sod = st.columns(2)
+                cur_bal = c_bal.number_input("Current Balance", value=float(account['currentBalance']), step=100.0, key=f"bal_{account['id']}")
+                sod_bal = c_sod.number_input("Start Day", value=float(account['startOfDayBalance']), step=100.0, key=f"sod_{account['id']}")
+                
+                # Update State
+                account['currentBalance'] = cur_bal
+                account['startOfDayBalance'] = sod_bal
+                
+                # Calculations
+                target_bal = size * (1 + config['profitTarget'])
+                max_dd_amount = size * config['maxDrawdown']
+                max_dd_level = size - max_dd_amount
+                
+                daily_dd_amount = size * config['dailyDrawdown'] 
+                daily_dd_level = sod_bal - daily_dd_amount
+                
+                dist_target = target_bal - cur_bal
+                dist_max_dd = cur_bal - max_dd_level
+                dist_daily_dd = cur_bal - daily_dd_level
+                
+                max_loss = min(dist_max_dd, dist_daily_dd)
+                
+                # Progress to Target
+                st.markdown("---")
+                tgt_pct = max(0.0, min(1.0, (cur_bal - size) / (target_bal - size))) if target_bal > size else 0
+                st.caption(f"Target: ${target_bal:,.0f}")
+                st.progress(tgt_pct)
+                if dist_target <= 0:
+                    st.success("✅ PASSED")
+                else:
+                    st.caption(f"To Go: ${dist_target:,.0f}")
+                
+                # Drawdown Risk
+                st.markdown(f"**Max Loss Available: :red[${max_loss:,.2f}]**")
+                
+                # Risk Calculator
+                st.markdown("#### ⚖️ Position Sizing")
+                r1, r2 = st.columns(2)
+                risk_1pct = cur_bal * 0.01
+                rec_lots = risk_1pct / 500
+                r1.metric("1% Risk", f"${risk_1pct:.0f}")
+                r2.metric("Rec. Lots", f"{rec_lots:.2f}")
 
 # --- Render UI ---
 
@@ -728,29 +809,68 @@ col_left, col_center, col_right = st.columns([0.25, 0.5, 0.25], gap="medium")
 # --- CENTER COLUMN: MAIN PORTAL ---
 with col_center:
     with st.container(border=True):
-        # Custom Navbar
-        st.markdown("""
-            <div style="display: flex; justify-content: space-around; border-bottom: 2px solid #4a3b22; padding-bottom: 10px; margin-bottom: 20px;">
-                <div style="color: #00eaff; font-weight: bold; text-shadow: 0 0 10px #00eaff; cursor: pointer;">PORTAL</div>
-                <div style="color: #888; cursor: pointer;">PROP RISK</div>
-                <div style="color: #888; cursor: pointer;">RULES</div>
-                <div style="color: #888; cursor: pointer;">SPELLBOOK</div>
+        # Interactive Navbar
+        if 'active_tab' not in st.session_state: st.session_state.active_tab = 'PORTAL'
+        
+        def set_tab(t):
+            st.session_state.active_tab = t
+            
+        c1, c2, c3, c4 = st.columns(4)
+        c1.button("PORTAL", use_container_width=True, type="primary" if st.session_state.active_tab=='PORTAL' else "secondary", on_click=set_tab, args=('PORTAL',))
+        
+        c2.button("PROP RISK", use_container_width=True, type="primary" if st.session_state.active_tab=='RISK' else "secondary", on_click=set_tab, args=('RISK',))
+        
+        # Placeholders
+        c3.button("RULES", use_container_width=True, disabled=True)
+        c4.button("SPELLBOOK", use_container_width=True, disabled=True)
+        
+        st.markdown("---")
+        
+        if st.session_state.active_tab == 'RISK':
+            render_prop_risk()
+        
+        elif st.session_state.active_tab == 'PORTAL':
+            # TradingView Widget
+            tv_widget_code = """
+            <div class="tradingview-widget-container" style="height:100%;width:100%">
+              <div id="tradingview_chart" style="height:calc(100% - 32px);width:100%"></div>
+              <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+              <script type="text/javascript">
+              new TradingView.widget(
+              {
+              "width": "100%",
+              "height": "100%",
+              "symbol": "COINBASE:BTCUSD",
+              "interval": "60",
+              "timezone": "America/New_York",
+              "theme": "dark",
+              "style": "1",
+              "locale": "en",
+              "toolbar_bg": "#f1f3f6",
+              "enable_publishing": false,
+              "allow_symbol_change": true,
+              "container_id": "tradingview_chart",
+              "hide_side_toolbar": false,
+              "details": false,
+              "hotlist": false,
+              "calendar": true,
+              "studies": [
+                "RSI@tv-basicstudies",
+                "MASimple@tv-basicstudies"
+              ]
+            }
+              );
+              </script>
             </div>
-        """, unsafe_allow_html=True)
-        
-        # TradingView Widget
-        # Using a reliable HTML embed
-        # TradingView Widget - REMOVED PER USER REQUEST
-        # tv_widget_code = ...
-        # components.html(...)
-        st.info("Chart module disabled for maintenance.")
-        
-        st.markdown("<br>", unsafe_allow_html=True) # Spacer
-        
-        # Invoke Button
-        if st.button("INVOKE SPELL", use_container_width=True, type="primary"):
-            st.toast("🔮 Invocation Ritual Started... (Modal Placeholder)")
-            # In a real app, this would open a st.dialog or st.expander with the checklist
+            """
+            components.html(tv_widget_code, height=800, scrolling=False)
+            
+            st.markdown("<br>", unsafe_allow_html=True) # Spacer
+            
+            # Invoke Button
+            if st.button("INVOKE SPELL", use_container_width=True, type="primary"):
+                st.toast("🔮 Invocation Ritual Started... (Modal Placeholder)")
+                # In a real app, this would open a st.dialog or st.expander with the checklist
 
 
 # --- RIGHT COLUMN: STATS, ORACLE, WIZARD ---
@@ -1011,14 +1131,10 @@ with col_left:
                     signal_desc = f"{asset_name}: {action_text}"
                     
                     # Data Points
-                    conf = row['Confidence']
-                    entry_time = row['Entry Time']
-                    tf = row['Timeframe']
-                    
-                    # Extra Data for Detail View
-                    entry_price = row.get('Entry Price', 'N/A')
-                    tp_price = row.get('Take Profit', 'N/A')
-                    sl_price = row.get('Stop Loss', 'N/A')
+                    # Data Points
+                    conf = row.get('Confidence', 'N/A')
+                    entry_time = row.get('Entry_Time', row.get('Entry Time', 'N/A'))
+                    tf = row.get('Timeframe', 'N/A')
                     action_val = row.get('Action', 'TAKE') # Usually '✅ TAKE'
 
                     pnl_val = row['PnL (%)']
@@ -1053,10 +1169,10 @@ with col_left:
 <div style="font-weight: bold; color: {pnl_color}; font-size: 0.85rem;">{pnl_val}</div>
 </div>
 <div style="font-size: 0.75rem; color: #e0e0e0; margin-top: 2px;">
-{action_val} | Conf: {conf} | {tf}
+{current_html} {action_val} | Conf: {conf} | {tf}
 </div>
 <div style="font-size: 0.7rem; color: #aaa; margin-top: 2px;">
-Entry: {entry_price} | TP: {tp_price} | SL: {sl_price}
+{details}
 </div>
 <div style="font-size: 0.65rem; color: #666; margin-top: 2px;">
 Time: {entry_time}
