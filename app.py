@@ -36,8 +36,8 @@ sensitivity = 1.06
 cloud_spread = 0.64
 zone_pad = 1.5
 
-st.sidebar.subheader("App Settings")
-auto_refresh = st.sidebar.checkbox("Auto Refresh (60s)", value=True)
+# Auto Refresh Enabled by Default
+# auto_refresh = True
 
 # Assets List
 ASSETS = [
@@ -736,3 +736,12 @@ Time: {entry_time}
         st.info("No active signals found.")
 
 
+
+# --- Auto Refresh Logic ---
+# Force Refetch every 60 seconds
+time.sleep(60)
+if 'combined_active_df' in st.session_state:
+    del st.session_state['combined_active_df']
+if 'hist_df' in st.session_state:
+    del st.session_state['hist_df']
+st.rerun()
