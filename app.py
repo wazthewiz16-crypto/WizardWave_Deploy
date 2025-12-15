@@ -1203,6 +1203,32 @@ with col_center:
                 if not can_cast and error_msg:
                     st.error(error_msg)
                 
+                # Magical Button CSS
+                st.markdown("""
+                <style>
+                div[data-testid="stDialog"] button[kind="primary"] {
+                    background: linear-gradient(90deg, #6a11cb 0%, #2575fc 50%, #6a11cb 100%);
+                    background-size: 200% auto;
+                    color: white;
+                    border: none;
+                    border-radius: 5px;
+                    box-shadow: 0 0 15px rgba(100, 100, 255, 0.5);
+                    animation: glowing 3s linear infinite;
+                    transition: all 0.3s ease-in-out;
+                }
+                div[data-testid="stDialog"] button[kind="primary"]:hover {
+                    background-position: right center;
+                    transform: scale(1.02);
+                    box-shadow: 0 0 25px rgba(100, 200, 255, 0.8);
+                }
+                @keyframes glowing {
+                    0% { background-position: 0 0; }
+                    50% { background-position: 100% 0; }
+                    100% { background-position: 0 0; }
+                }
+                </style>
+                """, unsafe_allow_html=True)
+                
                 if st.button("CAST SPELL ⚡", type="primary", use_container_width=True, disabled=not can_cast):
                     # Deduced Resources
                     st.session_state.mana -= risk
@@ -1217,7 +1243,42 @@ with col_center:
                     }
                     save_grimoire(new_state)
                     
-                    st.toast(f"Spell Cast! -{risk} Mana", icon="⚡")
+                    # Spectacular Animation - Custom CSS Overlay
+                    # potential fix for "showing from right":
+                    # Since st.dialog likely uses transforms, 'fixed' becomes relative to the dialog.
+                    # We center it on the dialog (which is centered on screen) using 50%/50% + translate.
+                    st.markdown("""
+                    <div id="spell-overlay" style="
+                        position: fixed;
+                        top: 50%; left: 50%;
+                        transform: translate(-50%, -50%);
+                        width: 150vw; height: 150vh;
+                        background: rgba(0,0,0,0.1); 
+                        z-index: 999999;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        pointer-events: none;
+                        backdrop-filter: blur(2px);
+                    ">
+                        <div style="
+                            width: 10px; height: 10px;
+                            border-radius: 50%;
+                            background: radial-gradient(circle, #ffffff 0%, #00ffff 20%, #00ff88 40%, transparent 70%);
+                            box-shadow: 0 0 50px #00ffff, 0 0 100px #00ff88;
+                            animation: shockwave 1.2s cubic-bezier(0, 0, 0.2, 1) forwards;
+                        "></div>
+                    </div>
+                    <style>
+                        @keyframes shockwave {
+                            0% { transform: scale(0.1); opacity: 1; }
+                            40% { opacity: 0.9; }
+                            100% { transform: scale(150); opacity: 0; }
+                        }
+                    </style>
+                    """, unsafe_allow_html=True)
+                    
+                    time.sleep(1.3) # Allow animation to play
                     st.rerun()
 
             _, c_inv, _ = st.columns([0.3, 0.4, 0.3])
