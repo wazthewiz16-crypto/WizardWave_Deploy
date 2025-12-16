@@ -1365,9 +1365,10 @@ with col_center:
                 risk = st.number_input("Trade Risk (Mana Cost)", min_value=1, max_value=500, value=50, step=10)
                 
                 st.write("Confirmations:")
-                check1 = st.checkbox("Trend Aligned?")
-                check2 = st.checkbox("Zone Valid?")
+                check1 = st.checkbox("Two timeframe alignment?")
+                check2 = st.checkbox("Within Bid Zone?")
                 check3 = st.checkbox("Risk/Reward > 2.0?")
+                check4 = st.checkbox("Mental State Neutral?")
                 
                 st.markdown("---")
                 
@@ -1384,7 +1385,7 @@ with col_center:
                 elif s_week <= 0:
                     can_cast = False
                     error_msg = "❌ Weekly Limit Reached!"
-                elif not (check1 and check2 and check3):
+                elif not (check1 and check2 and check3 and check4):
                     can_cast = False
                     error_msg = "❌ Complete Ritual Checklist"
                 
