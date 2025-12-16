@@ -374,6 +374,23 @@ def analyze_timeframe(timeframe_label):
                 
                 type_display = f"⬆️ {trade['Position']}" if trade['Position'] == 'LONG' else f"⬇️ {trade['Position']}"
                 
+                # Determine Decimal Precision
+                decimals = 2
+                s_lower = asset['symbol'].lower()
+                n_lower = asset['name'].lower()
+                
+                # High Precision Assets
+                high_prec_keywords = ['doge', 'ada', 'xrp', 'link', 'arb', 'algo', 'matic', 'ftm']
+                if any(k in s_lower or k in n_lower for k in high_prec_keywords):
+                    decimals = 4
+                
+                # Forex 
+                if '=x' in s_lower:
+                    if 'jpy' in s_lower:
+                        decimals = 2
+                    else:
+                        decimals = 5
+                        
                 # Calculate TP/SL Prices
                 pt_pct = 0.03 if is_trad else 0.08
                 sl_pct = 0.04 if is_trad else 0.05
@@ -394,10 +411,10 @@ def analyze_timeframe(timeframe_label):
                     "Timeframe": timeframe_label,
                     "Entry_Time": ts_str,
                     "Signal_Time": ts_str, # Redundant but safe
-                    "Entry_Price": f"{ep:.2f}",
-                    "Take_Profit": f"{tp_price:.2f}",
-                    "Stop_Loss": f"{sl_price:.2f}",
-                    "Current_Price": f"{df_strat.iloc[-1]['close']:.2f}",
+                    "Entry_Price": f"{ep:.{decimals}f}",
+                    "Take_Profit": f"{tp_price:.{decimals}f}",
+                    "Stop_Loss": f"{sl_price:.{decimals}f}",
+                    "Current_Price": f"{df_strat.iloc[-1]['close']:.{decimals}f}",
                     "PnL (%)": f"{trade['PnL (%)']:.2f}%",
                     "Confidence": f"{entry_conf:.0%}",
                     "Action": rec_action,
