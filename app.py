@@ -1238,14 +1238,51 @@ with col_center:
         
         c2.button("SHIELD", use_container_width=True, type="primary" if st.session_state.active_tab=='RISK' else "secondary", on_click=set_tab, args=('RISK',))
         
-        # Placeholders
-        c3.button("RULES", use_container_width=True, disabled=True)
-        c4.button("SPELLBOOK", use_container_width=True, disabled=True)
+        # Enable RULES and STATS
+        c3.button("RULES", use_container_width=True, type="primary" if st.session_state.active_tab=='RULES' else "secondary", on_click=set_tab, args=('RULES',))
+        c4.button("STATS", use_container_width=True, type="primary" if st.session_state.active_tab=='STATS' else "secondary", on_click=set_tab, args=('STATS',))
         
         st.markdown("---")
         
         if st.session_state.active_tab == 'RISK':
             render_prop_risk()
+            
+        elif st.session_state.active_tab == 'RULES':
+            st.markdown("""
+            ### 📜 The Code of the Wizard
+            
+            **Goal**: To consistently get funded payouts.
+            
+            **My Identity**: "I am a risk manager. My edge is my patience. I don’t gamble; I execute a system. I accept the outcome of any single trade because I am focused on the long-term survival of my capital. If the setup is not perfect, I do not chase."
+            <br>*Passion = Emotion | Commitment = Discipline*
+            
+            ---
+            
+            #### 🧠 Mental Frameworks
+            
+            **1. Systematic/Rule Based - Identity**: 
+            You are a robot executing code. You don’t “feel” or “hope” the market will move a certain way. You see an If/Then statement. If A happens, Then I do B. If A does not happen, I do nothing. Your ego wants to be a genius who predicts the future. A system makes you a data entry clerk. You have to surrender your need to be "right" & replace it with "compliance.”
+            
+            **2. Emotionally Neutral - Identity**: 
+            You are the House, not the Gambler. Professionals don’t cheer when they win, & they don't cry when they lose. They know the math plays out over 1,000 trades. You are biologically wired to feel pain when you lose money. Neutrality isn't the absence of emotion; it's the refusal to act on it. If your heart races when you enter a trade, - position size is too big. Before you click enter, visualize the trade hitting your stop loss immediately. Accept that loss mentally. If you can't accept the loss beforehand, you can’t take the trade.
+            
+            **3. Selective - Identity**: 
+            You are a sniper with 2 bullets. You are not a machine gunner spraying. You reject "good" trades to wait for "great" trades. You are looking for reasons not to trade. Overtrading is the #1 account killer. It stems from the fear that "this is the last opportunity ever." Give yourself a hard cap on trades per day - "I have 2 bullets today". This forces you to treat every trade like a precious resource.
+            
+            **4. Focused on Survival First - Identity**: 
+            You are a risk manager, not a profit generator. Your job is to protect your capital. Profit is just a byproduct of good survival skills. Amateur traders ask, "How much can I make?" Professional traders ask, "How much can I lose?" Defense-First Thinking. You survive to trade another day.
+            
+            ---
+            
+            #### ⏳ Timeframes Protocol
+            
+            *   **Primary Analysis (Swing) — 1D** → You think in daily structure, trends, levels, and bias.
+            *   **Execution Timeframe — 4H** → You execute when conditions align with the daily trend. *(No forcing. No guessing. No noise.)*
+            *   **Optional Day Trades — 15m** → Only when your higher timeframe bias + system criteria + mental state align. *(Not a default mode — a rare, intentional opportunity.)*
+            """, unsafe_allow_html=True)
+            
+        elif st.session_state.active_tab == 'STATS':
+            render_stats_studio()
         
         elif st.session_state.active_tab == 'PORTAL':
             # TradingView Widget
