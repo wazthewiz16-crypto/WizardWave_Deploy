@@ -959,16 +959,25 @@ def show_runic_alerts():
                             
                 
                 # --- Compact Numbered Pagination ---
-                p1, p2, p3 = st.columns([0.2, 0.6, 0.2])
-                with p1:
+                # Layout: [First] [Prev] [Page Text] [Next]
+                p_first, p_prev, p_text, p_next = st.columns([0.15, 0.15, 0.55, 0.15])
+                
+                with p_first:
+                    if st.button("⏪", key="first_main", disabled=(st.session_state.page_number == 0), help="First Page"):
+                        st.session_state.page_number = 0
+                        st.rerun()
+                        
+                with p_prev:
                     if st.button("◀", key="prev_main", disabled=(st.session_state.page_number == 0)):
                         st.session_state.page_number -= 1
                         st.rerun()
-                with p3:
+                        
+                with p_next:
                     if st.button("▶", key="next_main", disabled=(st.session_state.page_number >= total_pages - 1)):
                         st.session_state.page_number += 1
                         st.rerun()
-                with p2:
+                        
+                with p_text:
                     st.markdown(f"<div style='text-align: center; color: #888; font-size: 0.8rem; padding-top: 5px;'>Page {st.session_state.page_number + 1}/{total_pages}</div>", unsafe_allow_html=True)
 
         else:
