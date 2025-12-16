@@ -596,80 +596,145 @@ def highlight_confidence(row):
 # --- Render UI ---
 
 # --- PROP RISK LOGIC (Ported from React) ---
+# --- PROP RISK LOGIC ---
 PROP_FIRM_CONFIGS = {
-    "APEX": {"type": "Futures", "maxDrawdown": 0.045, "dailyDrawdown": 0.025, "profitTarget": 0.06},
-    "TOPSTEP": {"type": "Futures", "maxDrawdown": 0.04, "dailyDrawdown": 0.02, "profitTarget": 0.06},
-    "FTMO": {"type": "Forex", "maxDrawdown": 0.10, "dailyDrawdown": 0.05, "profitTarget": 0.10}
+    # Configurations are now embedded in the account objects for flexibility
 }
 
 def init_prop_accounts():
     if 'user_accounts' not in st.session_state:
-        st.session_state.user_accounts = [
-            {"id": 1, "name": "Apex 50k - #1", "firm": "APEX", "size": 50000, "currentBalance": 50000, "startOfDayBalance": 50000},
-            {"id": 2, "name": "Topstep 50k", "firm": "TOPSTEP", "size": 50000, "currentBalance": 50000, "startOfDayBalance": 50000}
-        ]
+        # Load from Grimoire first
+        grimoire = load_grimoire()
+        saved_accounts = grimoire.get('prop_accounts', [])
+        
+        if saved_accounts:
+             st.session_state.user_accounts = saved_accounts
+        else:
+            # Initial State based on User Request
+            st.session_state.user_accounts = [
+                {
+                    "id": 1, 
+                    "name": "Hyrotrader Swing 1 step 50K", 
+                    "size": 50000, 
+                    "profit_target_amt": 7317, 
+                    "drawdown_limit_amt": 2000,
+                    "currentBalance": 50000.0, 
+                },
+                {
+                    "id": 2, 
+                    "name": "MCF 2 step 50K", 
+                    "size": 50000, 
+                    "profit_target_amt": 4000, 
+                    "drawdown_limit_amt": 5000,
+                    "currentBalance": 48788.18, 
+                },
+                {
+                    "id": 3, 
+                    "name": "Hyrotrader Swing 1 step 25K", 
+                    "size": 25000, 
+                    "profit_target_amt": 4000, 
+                    "drawdown_limit_amt": 1000,
+                    "currentBalance": 24875.0, 
+                },
+                 {
+                    "id": 4, 
+                    "name": "MCF 2 step 25K", 
+                    "size": 25000, 
+                    "profit_target_amt": 2000, 
+                    "drawdown_limit_amt": 2500,
+                    "currentBalance": 24554.26, 
+                },
+                {
+                    "id": 5, 
+                    "name": "Breakout 1 step 10K", 
+                    "size": 10000, 
+                    "profit_target_amt": 1000, 
+                    "drawdown_limit_amt": 600,
+                    "currentBalance": 9716.24, 
+                }
+            ]
 
 def render_prop_risk():
-    st.markdown("### 🛡️ Prop Firm Manager")
     init_prop_accounts()
     
     # Grid Layout
     cols = st.columns(2)
     
+    accounts_changed = False
+    
     for i, account in enumerate(st.session_state.user_accounts):
-        config = PROP_FIRM_CONFIGS[account['firm']]
         size = account['size']
+        pt_amt = account['profit_target_amt']
+        dd_limit_amt = account['drawdown_limit_amt']
+        
+        # Balance Target / Limit Levels
+        target_bal = size + pt_amt
+        min_bal = size - dd_limit_amt
         
         # Use col 0 or 1
         with cols[i % 2]:
             with st.container(border=True):
                 # Header
-                st.markdown(f"**{account['name']}** <span style='color:#888'>({account['firm']})</span>", unsafe_allow_html=True)
-                st.markdown(f"Size: **${size:,}**")
+                st.markdown(f"**{account['name']}**")
                 
-                # Inputs (Balance Updates)
-                c_bal, c_sod = st.columns(2)
-                cur_bal = c_bal.number_input("Current Balance", value=float(account['currentBalance']), step=100.0, key=f"bal_{account['id']}")
-                sod_bal = c_sod.number_input("Start Day", value=float(account['startOfDayBalance']), step=100.0, key=f"sod_{account['id']}")
+                # Input: Current Balance (Editable)
+                # Use a callback or check for change manually
+                cur_bal = st.number_input(
+                    "Equity", 
+                    value=float(account['currentBalance']), 
+                    step=10.0, 
+                    key=f"bal_{account['id']}"
+                )
                 
-                # Update State
-                account['currentBalance'] = cur_bal
-                account['startOfDayBalance'] = sod_bal
+                if cur_bal != account['currentBalance']:
+                    account['currentBalance'] = cur_bal
+                    accounts_changed = True
                 
-                # Calculations
-                target_bal = size * (1 + config['profitTarget'])
-                max_dd_amount = size * config['maxDrawdown']
-                max_dd_level = size - max_dd_amount
+                # --- Progress Bars ---
                 
-                daily_dd_amount = size * config['dailyDrawdown'] 
-                daily_dd_level = sod_bal - daily_dd_amount
-                
-                dist_target = target_bal - cur_bal
-                dist_max_dd = cur_bal - max_dd_level
-                dist_daily_dd = cur_bal - daily_dd_level
-                
-                max_loss = min(dist_max_dd, dist_daily_dd)
-                
-                # Progress to Target
-                st.markdown("---")
-                tgt_pct = max(0.0, min(1.0, (cur_bal - size) / (target_bal - size))) if target_bal > size else 0
-                st.caption(f"Target: ${target_bal:,.0f}")
-                st.progress(tgt_pct)
-                if dist_target <= 0:
-                    st.success("✅ PASSED")
+                # 1. Profit Target Progress
+                if cur_bal >= size:
+                    pt_progress = min(1.0, (cur_bal - size) / pt_amt)
+                    pt_progress = max(0.0, pt_progress)
                 else:
-                    st.caption(f"To Go: ${dist_target:,.0f}")
+                    pt_progress = 0.0
                 
-                # Drawdown Risk
-                st.markdown(f"**Max Loss Available: :red[${max_loss:,.2f}]**")
+                st.caption(f"Profit Target (${target_bal:,.0f})")
+                st.progress(pt_progress)
+                if cur_bal >= target_bal:
+                    st.success("🎉 TARGET HIT")
                 
-                # Risk Calculator
-                st.markdown("#### ⚖️ Position Sizing")
-                r1, r2 = st.columns(2)
-                risk_1pct = cur_bal * 0.01
-                rec_lots = risk_1pct / 500
-                r1.metric("1% Risk", f"${risk_1pct:.0f}")
-                r2.metric("Rec. Lots", f"{rec_lots:.2f}")
+                # 2. Drawdown Proximity
+                dist_fail = cur_bal - min_bal
+                health_pct = min(1.0, dist_fail / dd_limit_amt)
+                health_pct = max(0.0, health_pct)
+                
+                st.caption(f"Drawdown Limit (${min_bal:,.0f}) - Health: {health_pct:.0%}")
+                st.progress(health_pct)
+                
+                if dist_fail <= 0:
+                    st.error("💀 ACCOUNT BREACHED")
+                else:
+                    st.markdown(f"**Risk Available: :red[${dist_fail:,.2f}]**")
+
+                # --- Risk Calculator ---
+                st.markdown("---")
+                st.markdown("**Position Sizing (Risk Amount)**")
+                c_r1, c_r2, c_r3 = st.columns(3)
+                
+                risk_1 = cur_bal * 0.01
+                risk_05 = cur_bal * 0.005
+                risk_025 = cur_bal * 0.0025
+                
+                c_r1.metric("1.0%", f"${risk_1:.0f}")
+                c_r2.metric("0.5%", f"${risk_05:.0f}")
+                c_r3.metric("0.25%", f"${risk_025:.0f}")
+
+    if accounts_changed:
+        # Load valid existing state (preserve mana/spells)
+        current_state = load_grimoire()
+        current_state['prop_accounts'] = st.session_state.user_accounts
+        save_grimoire(current_state)
 
 # --- Render UI ---
 
