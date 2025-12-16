@@ -11,6 +11,9 @@ import streamlit.components.v1 as components
 import json
 import os
 from datetime import datetime, date
+import google.generativeai as genai
+from PIL import Image
+import io
 
 # --- Persistence Logic ---
 STATE_FILE = "user_grimoire.json"
@@ -743,6 +746,110 @@ def render_prop_risk():
 
 # --- Main Dashboard Logic ---
 show_take_only = True 
+
+# --- Stats Studio (Psychology) ---
+def analyze_trade_stats(images, profile_context, api_key):
+    try:
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        prompt = f"""
+        You are the Great Wizard Trading Coach. 
+        Analyze these trading stats screenshots/PDF extracts.
+        
+        Context regarding this trader:
+        {json.dumps(profile_context, indent=2)}
+        
+        Provide:
+        1. 📊 **Key Metrics Extraction**: Identify Win Rate, PnL, Profit Factor, Max Drawdown.
+        2. 🧠 **Psychological Analysis**: Based on the stats (e.g. streaks, avg hold time), identify potential emotions (greed, fear, tilt).
+        3. 🔮 **Wizard's Advice**: actionable advice to improve.
+        4. 📈 **Evolution**: If past data exists in context, comment on improvement or regression.
+        
+        Format output using Markdown with bolding, lists, and emojis fitting the Wizard theme.
+        """
+        
+        content = [prompt]
+        for img in images:
+            content.append(img)
+            
+        response = model.generate_content(content)
+        return response.text
+    except Exception as e:
+        return f"Error casting Vision spell: {str(e)}"
+
+def load_trader_profile():
+    if os.path.exists("trader_profile.json"):
+        try:
+            with open("trader_profile.json", 'r') as f:
+                return json.load(f)
+        except:
+            return {}
+    return {}
+
+def save_trader_profile(data):
+    try:
+        with open("trader_profile.json", 'w') as f:
+            json.dump(data, f)
+    except Exception as e:
+        print(f"Error saving profile: {e}")
+
+def render_stats_studio():
+    st.markdown("### 🧠 Wizard's Psychology Studio")
+    
+    # API Key Handling (Password Input)
+    if 'gemini_key' not in st.session_state:
+        st.session_state.gemini_key = ""
+        
+    api_key = st.text_input("Enter Gemini API Key (for Vision)", type="password", value=st.session_state.gemini_key)
+    if api_key:
+        st.session_state.gemini_key = api_key
+    
+    # Layout
+    c_upload, c_result = st.columns([0.4, 0.6])
+    
+    with c_upload:
+        st.info("Upload screenshots of your Dashboard / PnL / Trade Log to receive Wizard's Guidance.")
+        uploaded_files = st.file_uploader("Upload Stats", accept_multiple_files=True, type=['png', 'jpg', 'jpeg'])
+        
+        if uploaded_files and api_key:
+            if st.button("🔮 Analyze & Consult Wizard"):
+                with st.spinner("The Wizard is pondering your fate..."):
+                    # Process Images
+                    images = []
+                    for uploaded_file in uploaded_files:
+                        image_data = uploaded_file.getvalue()
+                        image = Image.open(io.BytesIO(image_data))
+                        images.append(image)
+                    
+                    # Load Context
+                    profile = load_trader_profile()
+                    
+                    # Analyze
+                    analysis = analyze_trade_stats(images, profile, api_key)
+                    
+                    # Display Result
+                    st.session_state['latest_analysis'] = analysis
+                    
+                    # Save to Profile (Append summary or full text)
+                    if 'history' not in profile: profile['history'] = []
+                    profile['history'].append({
+                        'date': str(date.today()), 
+                        'analysis': analysis[:500] + "..." # Store preview or Summary
+                    })
+                    save_trader_profile(profile)
+                    
+    with c_result:
+        if 'latest_analysis' in st.session_state:
+            st.markdown(st.session_state['latest_analysis'])
+        else:
+            # Show history or placeholder
+            st.markdown("*The scroll is blank. Upload stats to reveal your destiny.*")
+            profile = load_trader_profile()
+            if 'history' in profile and profile['history']:
+                 st.markdown("---")
+                 st.markdown("**Previous entry:**")
+                 st.markdown(profile['history'][-1]['analysis'])
 
 # --- Runic Alerts Fragment ---
 @st.fragment(run_every=60)
