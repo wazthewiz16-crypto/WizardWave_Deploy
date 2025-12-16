@@ -73,7 +73,7 @@ def save_grimoire(data):
 
 # Page Config
 st.set_page_config(
-    page_title="Wizard Wave V9 ML Dashboard",
+    page_title="Arcane Portal",
     page_icon="🧙‍♂️",
     layout="wide",
     initial_sidebar_state="collapsed"
