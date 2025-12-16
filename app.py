@@ -1301,6 +1301,12 @@ with col_center:
             tv_sym = st.session_state.get('active_tv_symbol', 'COINBASE:BTCUSD')
             tv_int = st.session_state.get('active_tv_interval', '60')
             
+            # Helper to generate TV URL
+            clean_sym = tv_sym.replace("BINANCE:", "").replace("COINBASE:", "").replace("OANDA:", "")
+            tv_url = f"https://www.tradingview.com/chart?symbol={tv_sym}"
+            
+            st.caption(f"**active:** {tv_sym} ({tv_int}m) | [Open in TradingView ↗]({tv_url})")
+            
             tv_widget_code = f"""
             <div class="tradingview-widget-container" style="height:100%;width:100%">
               <div id="tradingview_chart" style="height:calc(100% - 32px);width:100%"></div>
