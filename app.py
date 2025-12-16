@@ -130,13 +130,65 @@ if 'processed_signals' not in st.session_state:
     st.session_state['processed_signals'] = set()
 
 # Arcane Portal State
+# Arcane Portal State
 if 'mana' not in st.session_state:
     # Load from persistent storage
     grimoire = load_grimoire()
     st.session_state['mana'] = grimoire.get('mana', 500)
     st.session_state['spells_day'] = grimoire.get('spells_day', 2)
     st.session_state['spells_week'] = grimoire.get('spells_week', 5)
+    st.session_state['last_date'] = grimoire.get('last_date', str(date.today()))
+    st.session_state['last_week'] = grimoire.get('last_week', date.today().isocalendar()[1])
     st.session_state['last_reset_week'] = pd.Timestamp.now().to_period('W').start_time
+
+# --- Live Reset Check (For active sessions crossing midnight) ---
+today = date.today()
+today_str = str(today)
+current_week = today.isocalendar()[1]
+state_needs_update = False
+
+# Ensure keys exist (migration for existing sessions)
+if 'last_date' not in st.session_state:
+    st.session_state['last_date'] = today_str
+if 'last_week' not in st.session_state:
+    st.session_state['last_week'] = current_week
+
+# Check Day
+if st.session_state['last_date'] != today_str:
+    st.session_state['mana'] = 500
+    st.session_state['spells_day'] = 2
+    st.session_state['last_date'] = today_str
+    state_needs_update = True
+
+# Check Week
+if st.session_state['last_week'] != current_week:
+    st.session_state['spells_week'] = 5
+    st.session_state['last_week'] = current_week
+    state_needs_update = True
+
+if state_needs_update:
+    # Load current file content to preserve other keys if any
+    save_data = {}
+    if os.path.exists(STATE_FILE):
+        try:
+            with open(STATE_FILE, 'r') as f:
+                save_data = json.load(f)
+        except:
+             pass
+             
+    # Update with new values
+    save_data.update({
+        'mana': st.session_state['mana'],
+        'spells_day': st.session_state['spells_day'],
+        'spells_week': st.session_state['spells_week']
+    })
+    
+    save_grimoire(save_data)
+    
+    try:
+        st.rerun()
+    except AttributeError:
+        st.experimental_rerun()
 
 # --- ML Model Integration ---
 @st.cache_resource

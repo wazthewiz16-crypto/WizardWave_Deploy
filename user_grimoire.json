@@ -1,1 +1,7 @@
-{"mana": 500, "spells_day": 2, "spells_week": 5, "last_date": "2025-12-15", "last_week": 51}
+{
+    "mana": 500,
+    "spells_day": 2,
+    "spells_week": 5,
+    "last_date": "2025-12-16",
+    "last_week": 51
+}
