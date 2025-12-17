@@ -1741,14 +1741,14 @@ with col_right:
             # [Name  Time]  [Bar area]
             
             session_html += f"""
-            <div class="realm-row" title="{status_text}" style="margin-bottom: 8px; position: relative; height: 30px; display: flex; align-items: center;">
-                <div style="width: 70px; font-size: 0.75rem; font-weight: bold; color: {text_color if not is_active else '#fff'}; text-align: right; margin-right: 10px;">{sess['name']}</div>
-                <div style="flex-grow: 1; position: relative; height: 100%; background: #1a1a2e; border-radius: 4px; overflow: hidden;">
-                    {bars_svg}
-                    <div style="position: absolute; top:0; left:5px; font-size: 0.7rem; color: {text_color if is_active else '#888'}; line-height: 30px; font-weight: bold; z-index: 2;">{status_text if is_active else ''}</div>
-                </div>
-            </div>
-            """
+<div class="realm-row" title="{status_text}" style="margin-bottom: 8px; position: relative; height: 30px; display: flex; align-items: center;">
+    <div style="width: 70px; font-size: 0.75rem; font-weight: bold; color: {text_color if not is_active else '#fff'}; text-align: right; margin-right: 10px;">{sess['name']}</div>
+    <div style="flex-grow: 1; position: relative; height: 100%; background: #1a1a2e; border-radius: 4px; overflow: hidden;">
+        {bars_svg}
+        <div style="position: absolute; top:0; left:5px; font-size: 0.7rem; color: {text_color if is_active else '#888'}; line-height: 30px; font-weight: bold; z-index: 2;">{status_text if is_active else ''}</div>
+    </div>
+</div>
+"""
             
 
         st.markdown(f"""
