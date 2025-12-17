@@ -1379,7 +1379,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Layout Columns
-col_left, col_center, col_right = st.columns([0.25, 0.5, 0.25], gap="medium")
+col_left, col_center, col_right = st.columns([0.25, 0.5, 0.25], gap="small")
 
 # --- CENTER COLUMN: MAIN PORTAL ---
 with col_center:
@@ -1962,12 +1962,12 @@ pointer-events: none;
                 text-align: center; 
                 font-style: italic; 
                 line-height: 1.6; 
-                min-height: 260px; 
+                min-height: 200px; 
                 display: flex; 
                 align-items: center; 
                 justify-content: center;
-                padding: 30px;
-                margin-top: 15px;
+                padding: 20px;
+                margin-top: 10px;
                 margin-bottom: 5px;
                 border-radius: 8px;
                 text-shadow: 0 2px 4px rgba(0,0,0,0.9);
