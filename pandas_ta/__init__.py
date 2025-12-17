@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
-from importlib.metadata import version
-version = version("pandas-ta")
+version = "0.4.71b0"
 
 from pandas_ta.maps import EXCHANGE_TZ, RATE, Category, Imports
 from pandas_ta.utils import *
