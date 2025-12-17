@@ -23,7 +23,7 @@ def load_grimoire():
     
     # Defaults
     default_state = {
-        'mana': 500,
+        'mana': 425,
         'spells_day': 2,
         'spells_week': 5,
         'last_date': str(today),
@@ -43,7 +43,7 @@ def load_grimoire():
             
             # 1. Daily Reset Check
             if last_date_str != today_str:
-                saved_data['mana'] = 500 # Daily Reset
+                saved_data['mana'] = 425 # Daily Reset
                 saved_data['spells_day'] = 2 # Daily Reset
                 saved_data['last_date'] = today_str
                 
@@ -136,7 +136,7 @@ if 'processed_signals' not in st.session_state:
 if 'mana' not in st.session_state:
     # Load from persistent storage
     grimoire = load_grimoire()
-    st.session_state['mana'] = grimoire.get('mana', 500)
+    st.session_state['mana'] = grimoire.get('mana', 425)
     st.session_state['spells_day'] = grimoire.get('spells_day', 2)
     st.session_state['spells_week'] = grimoire.get('spells_week', 5)
     st.session_state['last_date'] = grimoire.get('last_date', str(date.today()))
@@ -157,7 +157,7 @@ if 'last_week' not in st.session_state:
 
 # Check Day
 if st.session_state['last_date'] != today_str:
-    st.session_state['mana'] = 500
+    st.session_state['mana'] = 425
     st.session_state['spells_day'] = 2
     st.session_state['last_date'] = today_str
     state_needs_update = True
