@@ -1397,13 +1397,21 @@ with col_center:
         
         # Enable RULES and STATS - Removed STATS
         c3.button("RULES", use_container_width=True, type="primary" if st.session_state.active_tab=='RULES' else "secondary", on_click=set_tab, args=('RULES',))
-        c4.button("SPELLBOOK", use_container_width=True, disabled=True)
+        c4.button("SPELLBOOK", use_container_width=True, type="primary" if st.session_state.active_tab=='SPELLBOOK' else "secondary", on_click=set_tab, args=('SPELLBOOK',))
         
         st.markdown("---")
         
         if st.session_state.active_tab == 'RISK':
             render_prop_risk()
             
+        elif st.session_state.active_tab == 'SPELLBOOK':
+             st.markdown("### 📘 Grimoire of Knowledge")
+             st.markdown("Upload your trade screenshots here for NLP analysis and feedback.")
+             st.file_uploader("Analyze Rune (Upload)", type=['png', 'jpg'], label_visibility="collapsed")
+             
+             # Placeholder for future "Spellbook" features (Journal, logs, etc)
+             st.info("The Grimoire is open. Future enchantments pending.")
+
         elif st.session_state.active_tab == 'RULES':
             st.markdown("""
             ### 📜 The Code of the Wizard
@@ -1626,11 +1634,153 @@ with col_center:
 
 # --- RIGHT COLUMN: STATS, ORACLE, WIZARD ---
 with col_right:
-    # 1. Trade Stats
+    # 1. Realms (Market Sessions)
     with st.container(border=True):
-        st.markdown('<div class="runic-header">TRADE STATS</div>', unsafe_allow_html=True)
-        st.file_uploader("Analyzre Rune (Upload)", type=['png', 'jpg'], label_visibility="collapsed")
-        st.markdown("<div style='text-align: center; color: #666; font-size: 0.8rem;'>Upload screenshot for NLP feedback</div>", unsafe_allow_html=True)
+        st.markdown('<div class="runic-header">REALMS</div>', unsafe_allow_html=True)
+        
+        # Current Time EST
+        now_est = pd.Timestamp.now(tz='America/New_York')
+        curr_hour = now_est.hour
+        curr_min = now_est.minute
+        
+        # Sessions (Start Hour, End Hour, Name). Using 0-24 scale.
+        # Sydney: 5pm - 2am (17 - 2)
+        # Tokyo: 7pm - 4am (19 - 4)
+        # London: 3am - 12pm (3 - 12)
+        # New York: 8am - 5pm (8 - 17)
+        
+        sessions = [
+            {"name": "Sydney", "start": 17, "end": 26}, # 26 = 2am next day
+            {"name": "Tokyo", "start": 19, "end": 28}, # 28 = 4am next day
+            {"name": "London", "start": 3, "end": 12},
+            {"name": "New York", "start": 8, "end": 17}
+        ]
+        
+        # HTML Gen
+        session_html = ""
+        current_time_pct = ((curr_hour + curr_min/60) / 24) * 100
+        
+        for sess in sessions:
+            # Normalize for timeline 0-24
+            # Handle wrapping: if start > end (e.g. 17 - 2), we treat it as 17 to 26 for calc, but display might need split?
+            # Easiest: Canvas is 0-24. 
+            # Sydney (17-26) -> 17-24 (Part 1) AND 0-2 (Part 2)
+            
+            s_real = sess['start']
+            e_real = sess['end']
+            
+            # Check Active
+            # Convert current hour to 'extended' if needed? 
+            # Simpler: Check interval
+            is_active = False
+            
+            # Adjusted current for check
+            # if 17 <= curr < 24 OR 0 <= curr < 2
+            
+            # Logic for wrapping check
+            s_mod = s_real % 24
+            e_mod = e_real % 24
+            if s_mod > e_mod: # Wraps midnight
+                if curr_hour >= s_mod or curr_hour < e_mod: is_active = True
+            else:
+                if s_mod <= curr_hour < e_mod: is_active = True
+            
+            # Text Logic
+            status_text = ""
+            if is_active:
+                # Calc time left
+                # Target is End
+                # handle wrap
+                target_h = e_mod
+                if target_h < curr_hour: target_h += 24
+                
+                diff_h = target_h - curr_hour
+                diff_m = 0 - curr_min
+                total_min = diff_h * 60 + diff_m
+                h_left = total_min // 60
+                m_left = total_min % 60
+                status_text = f"Ends in {h_left}hr {m_left}min"
+                bar_color = "#00ff88" # Green
+                text_color = "#000"
+            else:
+                # Calc time to start
+                target_h = s_mod
+                if target_h < curr_hour: target_h += 24 # Begins tomorrow
+                
+                diff_h = target_h - curr_hour
+                diff_m = 0 - curr_min
+                total_min = diff_h * 60 + diff_m
+                h_left = total_min // 60
+                m_left = total_min % 60
+                
+                status_text = f"Begins in {h_left}hr {m_left}min"
+                bar_color = "#4a4a60" # Grey
+                text_color = "#aaa"
+                
+            # Render Bars (Handles wrapping by drawing two if needed)
+            bars_svg = ""
+            
+            # Helper to draw rect
+            def draw_rect(s, e, col):
+                width = (e - s) / 24 * 100
+                left = (s / 24) * 100
+                return f'<div style="position: absolute; left: {left}%; top: 5px; height: 20px; width: {width}%; background-color: {col}; border-radius: 4px; display: flex; align-items: center; padding-left: 5px; white-space: nowrap; overflow: hidden;"></div>'
+            
+            if s_real >= 24: # Should not happen with initial definition
+                pass
+            elif e_real > 24:
+                # Split: Start->24 using green/grey
+                bars_svg += draw_rect(s_real, 24, bar_color)
+                # Split: 0->End-24
+                bars_svg += draw_rect(0, e_real-24, bar_color)
+            else:
+                bars_svg += draw_rect(s_real, e_real, bar_color)
+                
+            # Text Overlay (Centered relative to container or explicit?)
+            # Just use a row layout similar to Forex Factory
+            # [Name  Time]  [Bar area]
+            
+            session_html += f"""
+            <div class="realm-row" title="{status_text}" style="margin-bottom: 8px; position: relative; height: 30px; display: flex; align-items: center;">
+                <div style="width: 70px; font-size: 0.75rem; font-weight: bold; color: {text_color if not is_active else '#fff'}; text-align: right; margin-right: 10px;">{sess['name']}</div>
+                <div style="flex-grow: 1; position: relative; height: 100%; background: #1a1a2e; border-radius: 4px; overflow: hidden;">
+                    {bars_svg}
+                    <div style="position: absolute; top:0; left:5px; font-size: 0.7rem; color: {text_color if is_active else '#888'}; line-height: 30px; font-weight: bold; z-index: 2;">{status_text if is_active else ''}</div>
+                </div>
+            </div>
+            """
+            
+        st.markdown(f"""
+            <div style="padding: 10px 0;">
+                <!-- Timeline Header 0 - 24 -->
+                <div style="display: flex; margin-left: 80px; font-size: 0.6rem; color: #666; margin-bottom: 5px; justify-content: space-between;">
+                    <span>0h</span><span>4h</span><span>8h</span><span>12h</span><span>16h</span><span>20h</span><span>24h</span>
+                </div>
+                
+                {session_html}
+                
+                <div style="text-align: center; font-size: 0.7rem; color: #666; margin-top: 5px;">
+                    Current Time: {now_est.strftime('%H:%M')} EST
+                </div>
+                
+                <!-- Vertical Current Time Line Overlay -->
+                <style>
+                .realm-overlay {{
+                    position: absolute;
+                    left: calc(80px + (100% - 80px) * ({current_time_pct}/100));
+                    top: 40px; 
+                    bottom: 25px;
+                    width: 2px;
+                    background-color: #ffd700;
+                    box-shadow: 0 0 5px #ffd700;
+                    z-index: 10;
+                    pointer-events: none;
+                }}
+                </style>
+                <div class="realm-overlay"></div>
+            </div>
+        """, unsafe_allow_html=True)
+
     
     # 2. Oracle (Countdown to next Economic Event)
     with st.container(border=True):
