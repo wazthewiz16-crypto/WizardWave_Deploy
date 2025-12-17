@@ -1460,7 +1460,7 @@ with col_center:
               new TradingView.widget(
               {{
               "width": "100%",
-              "height": "800", 
+              "height": "600", 
               "autosize": false,
               "symbol": "{tv_sym}",
               "interval": "{tv_int}",
@@ -1702,7 +1702,7 @@ with col_right:
                 text-align: center; 
                 font-style: italic; 
                 line-height: 1.6; 
-                min-height: 480px; 
+                min-height: 380px; 
                 display: flex; 
                 align-items: center; 
                 justify-content: center;
