@@ -1673,13 +1673,13 @@ with col_right:
             "Do not chase the dragon; let it come to you.",
             "Patience is the wizard's greatest spell.",
             "Risk is the mana you pay for the reward you seek.",
-            "A calm mind sees the trend; a chaotic mind sees only noise."
-            "I am a risk manager. My edge is my patience. I don’t gamble; I execute a system."
-            "I accept the outcome of any single trade because I am focused on the long-term survival of my capital."
-            "Passion = Emotion | Commitment = Discipline"
-            "Reminder: You don’t have to trade everyday!"
-            "You are a robot executing code. You don’t “feel” or “hope” the market will move a certain way."
-            "You are a sniper with 2 bullets. You are not a machine gunner spraying. You reject "good" trades to wait for "great" trades."
+            "A calm mind sees the trend; a chaotic mind sees only noise.",
+            "I am a risk manager. My edge is my patience. I don’t gamble; I execute a system.",
+            "I accept the outcome of any single trade because I am focused on the long-term survival of my capital.",
+            "Passion = Emotion | Commitment = Discipline",
+            "Reminder: You don’t have to trade everyday!",
+            "You are a robot executing code. You don’t “feel” or “hope” the market will move a certain way.",
+            "You are a sniper with 2 bullets. You are not a machine gunner spraying. You reject "good" trades to wait for "great" trades.",
             "You are a risk manager, not a profit generator. Your job is to protect your capital. Profit is just a byproduct of good survival skills"
         ]
         import random
