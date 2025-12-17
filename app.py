@@ -753,28 +753,54 @@ show_take_only = True
 def send_discord_alert(webhook_url, signal_data):
     """Sends a formatted trade signal to Discord."""
     try:
-        # Determine Color: Green for Long, Red for Short
+        # 1. Parse Data (Handle Strings)
+        def parse_float(val):
+            try:
+                if isinstance(val, str):
+                    return float(val.replace(',', '').replace('%', ''))
+                return float(val)
+            except:
+                return 0.0
+
         action = str(signal_data.get('Action','')).upper()
-        color = 65280 if "BULL" in action or "LONG" in action or "BUY" in action else 16711680
+        asset = str(signal_data.get('Asset', 'Unknown'))
+        timeframe = str(signal_data.get('Timeframe', 'N/A'))
         
+        # Determine Color: Green for Long/Buy/Bull, Red for Short/Sell/Bear
+        color = 65280 if any(x in action for x in ["BULL", "LONG", "BUY", "TAKE"]) else 16711680
+        
+        entry_price = parse_float(signal_data.get('Entry_Price', 0))
+        take_profit = parse_float(signal_data.get('Take_Profit', 0))
+        stop_loss = parse_float(signal_data.get('Stop_Loss', 0))
+        confidence = signal_data.get('Confidence_Score', 0) 
+        if confidence == 0 and 'Confidence' in signal_data:
+             confidence = parse_float(signal_data['Confidence'])
+             if confidence < 1.0: confidence *= 100 # Convert decimal to pct if needed
+
+
         # Calculate R:R
+        rr_str = "N/A"
         try:
-            rr_ratio = abs(signal_data['Take_Profit'] - signal_data['Close']) / abs(signal_data['Close'] - signal_data['Stop_Loss'])
-            rr_str = f"{rr_ratio:.2f}R"
+            if entry_price > 0:
+                risk = abs(entry_price - stop_loss)
+                reward = abs(take_profit - entry_price)
+                if risk > 0:
+                    rr_ratio = reward / risk
+                    rr_str = f"{rr_ratio:.2f}R"
         except:
-            rr_str = "N/A"
+            pass
 
         embed = {
-            "title": f"🔮 ORACLE SIGNAL: {signal_data['Asset']}",
-            "description": f"**Action:** {signal_data['Action']}\n**Timeframe:** {signal_data['Timeframe']}",
+            "title": f"🔮 ORACLE SIGNAL: {asset}",
+            "description": f"**Action:** {action}\n**Timeframe:** {timeframe}",
             "color": color,
             "fields": [
-                {"name": "Entry Price", "value": f"{signal_data['Close']:.5f}", "inline": True},
-                {"name": "Take Profit", "value": f"{signal_data['Take_Profit']:.5f}", "inline": True},
-                {"name": "Stop Loss", "value": f"{signal_data['Stop_Loss']:.5f}", "inline": True},
-                {"name": "Confidence", "value": f"{signal_data['Confidence_Score']:.1f}%", "inline": True},
+                {"name": "Entry Price", "value": f"{entry_price}", "inline": True},
+                {"name": "Take Profit", "value": f"{take_profit}", "inline": True},
+                {"name": "Stop Loss", "value": f"{stop_loss}", "inline": True},
+                {"name": "Confidence", "value": f"{confidence:.1f}%", "inline": True},
                 {"name": "R:R", "value": rr_str, "inline": True},
-                {"name": "Entry Time", "value": f"{signal_data['Entry_Time']}", "inline": False}
+                {"name": "Entry Time", "value": f"{signal_data.get('Entry_Time', 'N/A')}", "inline": False}
             ],
             "footer": {"text": "WizardWave v1.0 • Automated Signal"}
         }
@@ -786,9 +812,11 @@ def send_discord_alert(webhook_url, signal_data):
 
         headers = {'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'}
         req = urllib.request.Request(webhook_url, data=json.dumps(data).encode('utf-8'), headers=headers)
-        with urllib.request.urlopen(req) as response:
+        
+        # Add Timeout
+        with urllib.request.urlopen(req, timeout=3) as response:
             if response.status not in [200, 204]:
-                print(f"Failed to send Discord alert: {response.status}")
+                pass # Silent fail
                 
     except Exception as e:
         print(f"Error sending Discord alert: {e}")
@@ -809,34 +837,49 @@ def process_discord_alerts(df):
 
         # Load Processed IDs
         processed_file = 'processed_signals.json'
+        processed_ids = set()
+        
         if os.path.exists(processed_file):
             try:
                 with open(processed_file, 'r') as f:
-                    processed_ids = set(json.load(f))
+                    content = json.load(f)
+                    if isinstance(content, list):
+                        processed_ids = set(content)
             except:
-                processed_ids = set()
-        else:
-            processed_ids = set()
+                processed_ids = set() # Reset if corrupt
 
         new_alerts_sent = False
         
         # Iterate and Check
         for _, row in df.iterrows():
-            # Create Unique ID (Asset + Timeframe + EntryTime)
-            sig_id = f"{row['Asset']}_{row['Timeframe']}_{row['Entry_Time']}"
-            
-            # Check if it is a TAKE signal
-            is_take = "TAKE" in str(row.get('Action', '')).upper()
-            
-            if is_take and sig_id not in processed_ids:
-                send_discord_alert(webhook_url, row)
-                processed_ids.add(sig_id)
-                new_alerts_sent = True
+            try:
+                # Create Unique ID (Asset + Timeframe + EntryTime)
+                # Use Entry_Time as primary differentiator
+                entry_time = str(row.get('Entry_Time', ''))
+                asset = str(row.get('Asset', ''))
+                tf = str(row.get('Timeframe', ''))
+                
+                sig_id = f"{asset}_{tf}_{entry_time}"
+                
+                # Check if it is a TAKE signal
+                action_str = str(row.get('Action', '')).upper()
+                is_take = "TAKE" in action_str or "✅" in action_str
+                
+                if is_take and sig_id not in processed_ids and sig_id != "__":
+                    send_discord_alert(webhook_url, row)
+                    processed_ids.add(sig_id)
+                    new_alerts_sent = True
+            except Exception as inner_e:
+                print(f"Skipping alert row: {inner_e}")
+                continue
         
         # Save updated IDs
         if new_alerts_sent:
-            with open(processed_file, 'w') as f:
-                json.dump(list(processed_ids), f)
+            try:
+                with open(processed_file, 'w') as f:
+                    json.dump(list(processed_ids), f)
+            except Exception as e:
+                print(f"Error saving processed IDs: {e}")
                 
     except Exception as e:
         print(f"Error processing Discord alerts: {e}")
