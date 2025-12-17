@@ -1484,7 +1484,7 @@ with col_center:
               </script>
             </div>
             """
-            components.html(tv_widget_code, height=650, scrolling=False)
+            components.html(tv_widget_code, height=610, scrolling=False)
             
             # st.markdown("<br>", unsafe_allow_html=True) # Spacer removed for tighter alignment
             
@@ -1702,7 +1702,7 @@ with col_right:
                 text-align: center; 
                 font-style: italic; 
                 line-height: 1.6; 
-                min-height: 300px; 
+                min-height: 350px; 
                 display: flex; 
                 align-items: center; 
                 justify-content: center;
