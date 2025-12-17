@@ -1637,13 +1637,79 @@ with col_right:
         st.markdown('<div class="runic-header">ORACLE</div>', unsafe_allow_html=True)
         
         # Economic Calendar (Hardcoded for 2025/2026)
+        # Note: Dates are best estimates based on standard schedules (CPI ~13th, NFP ~1st Friday, FOMC ~Wed)
         economic_events = [
+            # late 2025
             {"event": "PCE Price Index", "datetime": "2025-12-23 08:30:00"},
+            
+            # Jan 2026
             {"event": "Non-Farm Payrolls", "datetime": "2026-01-09 08:30:00"},
             {"event": "CPI Inflation Data", "datetime": "2026-01-13 08:30:00"},
             {"event": "PPI Inflation Data", "datetime": "2026-01-14 08:30:00"},
             {"event": "FOMC Rate Decision", "datetime": "2026-01-28 14:00:00"},
-            {"event": "PCE Price Index", "datetime": "2026-01-29 08:30:00"},
+            {"event": "PCE Price Index", "datetime": "2026-01-30 08:30:00"},
+            
+            # Feb 2026
+            {"event": "Non-Farm Payrolls", "datetime": "2026-02-06 08:30:00"},
+            {"event": "CPI Inflation Data", "datetime": "2026-02-11 08:30:00"}, # Estimated
+            {"event": "PCE Price Index", "datetime": "2026-02-27 08:30:00"},
+
+            # Mar 2026
+            {"event": "Non-Farm Payrolls", "datetime": "2026-03-06 08:30:00"},
+            {"event": "CPI Inflation Data", "datetime": "2026-03-12 08:30:00"},
+            {"event": "FOMC Rate Decision", "datetime": "2026-03-18 14:00:00"},
+            {"event": "PCE Price Index", "datetime": "2026-03-27 08:30:00"},
+
+            # Apr 2026
+            {"event": "Non-Farm Payrolls", "datetime": "2026-04-03 08:30:00"},
+            {"event": "CPI Inflation Data", "datetime": "2026-04-14 08:30:00"},
+            {"event": "FOMC Rate Decision", "datetime": "2026-04-29 14:00:00"},
+            {"event": "PCE Price Index", "datetime": "2026-04-24 08:30:00"},
+
+            # May 2026
+            {"event": "Non-Farm Payrolls", "datetime": "2026-05-08 08:30:00"},
+            {"event": "CPI Inflation Data", "datetime": "2026-05-13 08:30:00"},
+            {"event": "PCE Price Index", "datetime": "2026-05-29 08:30:00"},
+
+            # Jun 2026
+            {"event": "Non-Farm Payrolls", "datetime": "2026-06-05 08:30:00"},
+            {"event": "CPI Inflation Data", "datetime": "2026-06-12 08:30:00"},
+            {"event": "FOMC Rate Decision", "datetime": "2026-06-17 14:00:00"},
+            {"event": "PCE Price Index", "datetime": "2026-06-26 08:30:00"},
+            
+            # Jul 2026
+            {"event": "Non-Farm Payrolls", "datetime": "2026-07-03 08:30:00"},
+            {"event": "CPI Inflation Data", "datetime": "2026-07-14 08:30:00"},
+            {"event": "FOMC Rate Decision", "datetime": "2026-07-29 14:00:00"},
+            {"event": "PCE Price Index", "datetime": "2026-07-31 08:30:00"},
+
+            # Aug 2026
+            {"event": "Non-Farm Payrolls", "datetime": "2026-08-07 08:30:00"},
+            {"event": "CPI Inflation Data", "datetime": "2026-08-13 08:30:00"},
+            {"event": "PCE Price Index", "datetime": "2026-08-28 08:30:00"},
+
+            # Sep 2026
+            {"event": "Non-Farm Payrolls", "datetime": "2026-09-04 08:30:00"},
+            {"event": "CPI Inflation Data", "datetime": "2026-09-15 08:30:00"},
+            {"event": "FOMC Rate Decision", "datetime": "2026-09-16 14:00:00"},
+            {"event": "PCE Price Index", "datetime": "2026-09-25 08:30:00"},
+
+            # Oct 2026
+            {"event": "Non-Farm Payrolls", "datetime": "2026-10-02 08:30:00"},
+            {"event": "CPI Inflation Data", "datetime": "2026-10-13 08:30:00"},
+            {"event": "FOMC Rate Decision", "datetime": "2026-10-28 14:00:00"},
+            {"event": "PCE Price Index", "datetime": "2026-10-30 08:30:00"},
+            
+            # Nov 2026
+            {"event": "Non-Farm Payrolls", "datetime": "2026-11-06 08:30:00"},
+            {"event": "CPI Inflation Data", "datetime": "2026-11-13 08:30:00"},
+            {"event": "PCE Price Index", "datetime": "2026-11-25 08:30:00"},
+            
+            # Dec 2026
+            {"event": "Non-Farm Payrolls", "datetime": "2026-12-04 08:30:00"},
+            {"event": "CPI Inflation Data", "datetime": "2026-12-11 08:30:00"},
+            {"event": "FOMC Rate Decision", "datetime": "2026-12-09 14:00:00"},
+            {"event": "PCE Price Index", "datetime": "2026-12-23 08:30:00"},
         ]
         
         # Find Next Event
