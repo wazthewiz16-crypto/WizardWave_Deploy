@@ -1897,11 +1897,12 @@ pointer-events: none;
             st.markdown(f"""
                 <div style="
                     text-align: center; 
-                    min-height: 270px; 
+                    min-height: 220px; 
                     display: flex; 
                     flex-direction: column; 
                     justify-content: flex-start;
-                    padding-top: 20px;
+                    padding-top: 15px;
+                    margin-bottom: 5px;
                     border-radius: 8px;
                     {oracle_bg}
                 ">
