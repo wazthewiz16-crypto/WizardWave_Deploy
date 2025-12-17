@@ -1897,7 +1897,7 @@ pointer-events: none;
             st.markdown(f"""
                 <div style="
                     text-align: center; 
-                    min-height: 220px; 
+                    min-height: 230px; 
                     display: flex; 
                     flex-direction: column; 
                     justify-content: flex-start;
@@ -1963,7 +1963,7 @@ pointer-events: none;
                 text-align: center; 
                 font-style: italic; 
                 line-height: 1.6; 
-                min-height: 200px; 
+                min-height: 205px; 
                 display: flex; 
                 align-items: center; 
                 justify-content: center;
