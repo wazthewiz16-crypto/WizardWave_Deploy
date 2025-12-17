@@ -1750,14 +1750,7 @@ with col_right:
             </div>
             """
             
-        st.markdown(f"""
-            <div style="padding: 10px 0;">
-                <!-- Timeline Header 0 - 24 -->
-                <div style="display: flex; margin-left: 80px; font-size: 0.6rem; color: #666; margin-bottom: 5px; justify-content: space-between;">
-                    <span>0h</span><span>4h</span><span>8h</span><span>12h</span><span>16h</span><span>20h</span><span>24h</span>
-                </div>
-                
-        st.markdown(f"""
+
 <div style="padding: 10px 0;">
     <!-- Timeline Header 0 - 24 -->
     <div style="display: flex; margin-left: 80px; font-size: 0.6rem; color: #666; margin-bottom: 5px; justify-content: space-between;">
