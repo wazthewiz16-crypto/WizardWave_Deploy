@@ -1663,8 +1663,9 @@ with col_right:
         """, unsafe_allow_html=True)
     
     # 3. Great Wizard
+    # 3. Great Sorcerer
     with st.container(border=True):
-        st.markdown('<div class="runic-header">GREAT WIZARD</div>', unsafe_allow_html=True)
+        st.markdown('<div class="runic-header">GREAT SORCERER</div>', unsafe_allow_html=True)
         
         quotes = [
             "The market is a mirror of the mind.",
@@ -1673,13 +1674,46 @@ with col_right:
             "Patience is the wizard's greatest spell.",
             "Risk is the mana you pay for the reward you seek.",
             "A calm mind sees the trend; a chaotic mind sees only noise."
+            "I am a risk manager. My edge is my patience. I don’t gamble; I execute a system."
+            "I accept the outcome of any single trade because I am focused on the long-term survival of my capital."
+            "Passion = Emotion | Commitment = Discipline"
+            "Reminder: You don’t have to trade everyday!"
+            "You are a robot executing code. You don’t “feel” or “hope” the market will move a certain way."
+            "You are a sniper with 2 bullets. You are not a machine gunner spraying. You reject "good" trades to wait for "great" trades."
+            "You are a risk manager, not a profit generator. Your job is to protect your capital. Profit is just a byproduct of good survival skills"
         ]
         import random
         selected_quote = random.choice(quotes)
         
+        # Load Background Image
+        bg_style = ""
+        try:
+            import base64
+            with open("great_sorcerer.png", "rb") as img_file:
+                b64_str = base64.b64encode(img_file.read()).decode()
+            bg_style = f"background-image: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.8)), url('data:image/png;base64,{b64_str}'); background-size: cover; background-position: center;"
+        except Exception as e:
+            pass # Fallback to default dark theme
+            
         st.markdown(f"""
-            <div style="font-family: 'Cinzel', serif; color: #ffd700; text-align: center; font-style: italic; line-height: 1.6; min-height: 215px; display: flex; align-items: center; justify-content: center;">
-                "{selected_quote}"
+            <div style="
+                font-family: 'Cinzel', serif; 
+                color: #f0e6d2; 
+                text-align: center; 
+                font-style: italic; 
+                line-height: 1.6; 
+                min-height: 350px; 
+                display: flex; 
+                align-items: center; 
+                justify-content: center;
+                padding: 30px;
+                border-radius: 8px;
+                text-shadow: 0 2px 4px rgba(0,0,0,0.9);
+                {bg_style}
+            ">
+                <div style="background: rgba(11, 12, 21, 0.7); padding: 20px; border: 1px solid #c5a059; border-radius: 2px; box-shadow: 0 0 20px rgba(0,0,0,0.8);">
+                    "{selected_quote}"
+                </div>
             </div>
         """, unsafe_allow_html=True)
 
