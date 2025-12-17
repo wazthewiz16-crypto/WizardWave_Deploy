@@ -1623,12 +1623,12 @@ with col_center:
                     time.sleep(1.3) # Allow animation to play
                     st.rerun()
 
-            _, c_inv, _ = st.columns([0.3, 0.4, 0.3])
+            _, c_inv, _ = st.columns([0.38, 0.24, 0.38])
             with c_inv:
                 # Check Global Disable Conditions
                 global_can_cast = (st.session_state.mana > 0) and (st.session_state.spells_day > 0) and (st.session_state.spells_week > 0)
                 
-                if st.button("INVOKE", use_container_width=True, type="primary", disabled=not global_can_cast):
+                if st.button("\nINVOKE\n", use_container_width=True, type="primary", disabled=not global_can_cast):
                     cast_spell_dialog()
 
 
@@ -1963,7 +1963,7 @@ pointer-events: none;
                 text-align: center; 
                 font-style: italic; 
                 line-height: 1.6; 
-                min-height: 205px; 
+                min-height: 210px; 
                 display: flex; 
                 align-items: center; 
                 justify-content: center;
