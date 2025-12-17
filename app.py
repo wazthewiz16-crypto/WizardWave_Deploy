@@ -1738,18 +1738,39 @@ with col_right:
             time_color = "white"
             if days < 1: time_color = "#ff3344"
             
+            # Load Background Image for Oracle
+            oracle_bg = ""
+            try:
+                import base64
+                with open("Crystall Ball.png", "rb") as img_file:
+                    b64_ball = base64.b64encode(img_file.read()).decode()
+                oracle_bg = f"background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.6)), url('data:image/png;base64,{b64_ball}'); background-size: cover; background-position: center;"
+            except Exception as e:
+                pass
+
             st.markdown(f"""
-                <div style="text-align: center; min-height: 215px; display: flex; flex-direction: column; justify-content: center;">
-                    <div style="font-size: 0.8rem; color: #a0c5e8; margin-bottom: 5px;">NEXT EVENT: <span style="color: #ffd700;">{event_name}</span></div>
-                    <div style="font-size: 0.9rem; color: #888; margin-bottom: 10px;">{date_str}</div>
-                    <div style="font-size: 2.2rem; font-weight: bold; color: {time_color}; text-shadow: 0 0 10px {time_color};">
-                        {days}d {hours}h {minutes}m
+                <div style="
+                    text-align: center; 
+                    min-height: 250px; 
+                    display: flex; 
+                    flex-direction: column; 
+                    justify-content: flex-start;
+                    padding-top: 20px;
+                    border-radius: 8px;
+                    {oracle_bg}
+                ">
+                    <div style="background: rgba(11, 12, 21, 0.85); padding: 15px; border-radius: 6px; border: 1px solid #4a4a60; margin: 0 15px; box-shadow: 0 0 15px rgba(0,0,0,0.8);">
+                        <div style="font-size: 0.8rem; color: #a0c5e8; margin-bottom: 5px;">NEXT EVENT: <span style="color: #ffd700;">{event_name}</span></div>
+                        <div style="font-size: 0.9rem; color: #ccc; margin-bottom: 5px;">{date_str}</div>
+                        <div style="font-size: 2.2rem; font-weight: bold; color: {time_color}; text-shadow: 0 0 10px {time_color};">
+                            {days}d {hours}h {minutes}m
+                        </div>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
         else:
             st.markdown(f"""
-                <div style="text-align: center; min-height: 215px; display: flex; flex-direction: column; justify-content: center;">
+                <div style="text-align: center; min-height: 250px; display: flex; flex-direction: column; justify-content: center;">
                     <div style="font-size: 0.8rem; color: #a0c5e8;">NO UPCOMING EVENTS</div>
                     <div style="font-size: 2.5rem; font-weight: bold; color: white; text-shadow: 0 0 10px #a0c5e8;">--:--:--</div>
                 </div>
