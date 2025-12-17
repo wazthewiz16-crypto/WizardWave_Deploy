@@ -1632,7 +1632,7 @@ with col_right:
         st.file_uploader("Analyzre Rune (Upload)", type=['png', 'jpg'], label_visibility="collapsed")
         st.markdown("<div style='text-align: center; color: #666; font-size: 0.8rem;'>Upload screenshot for NLP feedback</div>", unsafe_allow_html=True)
     
-    # 2. Oracle (Countdown to next 4H candle)
+    # 2. Oracle (Countdown to next Economic Event)
     with st.container(border=True):
         st.markdown('<div class="runic-header">ORACLE</div>', unsafe_allow_html=True)
         
@@ -1751,7 +1751,7 @@ with col_right:
             st.markdown(f"""
                 <div style="
                     text-align: center; 
-                    min-height: 250px; 
+                    min-height: 270px; 
                     display: flex; 
                     flex-direction: column; 
                     justify-content: flex-start;
@@ -1816,7 +1816,7 @@ with col_right:
                 text-align: center; 
                 font-style: italic; 
                 line-height: 1.6; 
-                min-height: 345px; 
+                min-height: 300px; 
                 display: flex; 
                 align-items: center; 
                 justify-content: center;
