@@ -1484,7 +1484,7 @@ with col_center:
               </script>
             </div>
             """
-            components.html(tv_widget_code, height=610, scrolling=False)
+            components.html(tv_widget_code, height=600, scrolling=False)
             
             # st.markdown("<br>", unsafe_allow_html=True) # Spacer removed for tighter alignment
             
@@ -1708,7 +1708,7 @@ with col_right:
                 justify-content: center;
                 padding: 30px;
                 margin-top: 15px;
-                margin-bottom: 5px
+                margin-bottom: 5px;
                 border-radius: 8px;
                 text-shadow: 0 2px 4px rgba(0,0,0,0.9);
                 {bg_style}
