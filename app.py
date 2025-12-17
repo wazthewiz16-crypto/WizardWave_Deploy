@@ -1460,7 +1460,7 @@ with col_center:
               new TradingView.widget(
               {{
               "width": "100%",
-              "height": "550", 
+              "height": "800", 
               "autosize": false,
               "symbol": "{tv_sym}",
               "interval": "{tv_int}",
@@ -1484,7 +1484,7 @@ with col_center:
               </script>
             </div>
             """
-            components.html(tv_widget_code, height=570, scrolling=False)
+            components.html(tv_widget_code, height=820, scrolling=False)
             
             st.markdown("<br>", unsafe_allow_html=True) # Spacer
             
@@ -1702,12 +1702,12 @@ with col_right:
                 text-align: center; 
                 font-style: italic; 
                 line-height: 1.6; 
-                min-height: 300px; 
+                min-height: 480px; 
                 display: flex; 
                 align-items: center; 
                 justify-content: center;
                 padding: 30px;
-                margin-top: 5px;
+                margin-top: 15px;
                 border-radius: 8px;
                 text-shadow: 0 2px 4px rgba(0,0,0,0.9);
                 {bg_style}
