@@ -766,8 +766,13 @@ def send_discord_alert(webhook_url, signal_data):
         asset = str(signal_data.get('Asset', 'Unknown'))
         timeframe = str(signal_data.get('Timeframe', 'N/A'))
         
-        # Determine Color: Green for Long/Buy/Bull, Red for Short/Sell/Bear
-        color = 65280 if any(x in action for x in ["BULL", "LONG", "BUY", "TAKE"]) else 16711680
+        # Determine Direction and Color
+        raw_type = str(signal_data.get('Type', '')).upper()
+        raw_signal = str(signal_data.get('Signal', '')).upper()
+        
+        is_long = "LONG" in raw_type or "LONG" in raw_signal or "BULL" in raw_type
+        direction_str = "🟢 LONG" if is_long else "🔴 SHORT"
+        color = 65280 if is_long else 16711680 # Green or Red
         
         entry_price = parse_float(signal_data.get('Entry_Price', 0))
         take_profit = parse_float(signal_data.get('Take_Profit', 0))
@@ -789,10 +794,10 @@ def send_discord_alert(webhook_url, signal_data):
                     rr_str = f"{rr_ratio:.2f}R"
         except:
             pass
-
+        
         embed = {
-            "title": f"🔮 ORACLE SIGNAL: {asset}",
-            "description": f"**Action:** {action}\n**Timeframe:** {timeframe}",
+            "title": f"🔮 WIZARD PROPHECY: {asset} {direction_str}",
+            "description": f"**Direction:** {direction_str}\n**Timeframe:** {timeframe}\n**Action:** {action}",
             "color": color,
             "fields": [
                 {"name": "Entry Price", "value": f"{entry_price}", "inline": True},
