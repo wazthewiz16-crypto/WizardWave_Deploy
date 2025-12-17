@@ -1748,8 +1748,7 @@ with col_right:
         <div style="position: absolute; top:0; left:5px; font-size: 0.7rem; color: {text_color if is_active else '#888'}; line-height: 30px; font-weight: bold; z-index: 2;">{status_text if is_active else ''}</div>
     </div>
 </div>
-"""
-            
+            """
 
         st.markdown(f"""
 <div style="padding: 10px 0;">
@@ -1766,7 +1765,7 @@ Current Time: {now_est.strftime('%H:%M')} EST
 <style>
 .realm-overlay {{
 position: absolute;
-left: calc(80px + (100% - 80px) * ({current_time_pct}/100));
+left: calc(80px + (100% - 80px) * ({current_time_pct:.2f}/100));
 top: 40px; 
 bottom: 25px;
 width: 2px;
@@ -1776,7 +1775,7 @@ z-index: 10;
 pointer-events: none;
 }}
 </style>
-""", unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 
     
     # 2. Oracle (Countdown to next Economic Event)
@@ -1963,7 +1962,7 @@ pointer-events: none;
                 text-align: center; 
                 font-style: italic; 
                 line-height: 1.6; 
-                min-height: 300px; 
+                min-height: 260px; 
                 display: flex; 
                 align-items: center; 
                 justify-content: center;
