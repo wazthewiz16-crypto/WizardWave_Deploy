@@ -1679,7 +1679,7 @@ with col_right:
             "Passion = Emotion | Commitment = Discipline",
             "Reminder: You don’t have to trade everyday!",
             "You are a robot executing code. You don’t “feel” or “hope” the market will move a certain way.",
-            "You are a sniper with 2 bullets. You are not a machine gunner spraying. You reject "good" trades to wait for "great" trades.",
+            "You are a sniper with 2 bullets. You are not a machine gunner spraying. You reject good trades to wait for great trades.",
             "You are a risk manager, not a profit generator. Your job is to protect your capital. Profit is just a byproduct of good survival skills"
         ]
         import random
