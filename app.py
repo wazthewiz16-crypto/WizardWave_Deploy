@@ -9,6 +9,7 @@ from data_fetcher import fetch_data
 from strategy import WizardWaveStrategy
 import streamlit.components.v1 as components
 import json
+import urllib.request
 import os
 from datetime import datetime, date
 
@@ -748,6 +749,98 @@ show_take_only = True
 
 
 # --- Runic Alerts Fragment ---
+# --- Discord Alerting Logic ---
+def send_discord_alert(webhook_url, signal_data):
+    """Sends a formatted trade signal to Discord."""
+    try:
+        # Determine Color: Green for Long, Red for Short
+        action = str(signal_data.get('Action','')).upper()
+        color = 65280 if "BULL" in action or "LONG" in action or "BUY" in action else 16711680
+        
+        # Calculate R:R
+        try:
+            rr_ratio = abs(signal_data['Take_Profit'] - signal_data['Close']) / abs(signal_data['Close'] - signal_data['Stop_Loss'])
+            rr_str = f"{rr_ratio:.2f}R"
+        except:
+            rr_str = "N/A"
+
+        embed = {
+            "title": f"🔮 ORACLE SIGNAL: {signal_data['Asset']}",
+            "description": f"**Action:** {signal_data['Action']}\n**Timeframe:** {signal_data['Timeframe']}",
+            "color": color,
+            "fields": [
+                {"name": "Entry Price", "value": f"{signal_data['Close']:.5f}", "inline": True},
+                {"name": "Take Profit", "value": f"{signal_data['Take_Profit']:.5f}", "inline": True},
+                {"name": "Stop Loss", "value": f"{signal_data['Stop_Loss']:.5f}", "inline": True},
+                {"name": "Confidence", "value": f"{signal_data['Confidence_Score']:.1f}%", "inline": True},
+                {"name": "R:R", "value": rr_str, "inline": True},
+                {"name": "Entry Time", "value": f"{signal_data['Entry_Time']}", "inline": False}
+            ],
+            "footer": {"text": "WizardWave v1.0 • Automated Signal"}
+        }
+
+        data = {
+            "username": "WizardWave Oracle",
+            "embeds": [embed]
+        }
+
+        headers = {'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'}
+        req = urllib.request.Request(webhook_url, data=json.dumps(data).encode('utf-8'), headers=headers)
+        with urllib.request.urlopen(req) as response:
+            if response.status not in [200, 204]:
+                print(f"Failed to send Discord alert: {response.status}")
+                
+    except Exception as e:
+        print(f"Error sending Discord alert: {e}")
+
+def process_discord_alerts(df):
+    """Checks for new signals and sends Discord alerts."""
+    try:
+        # Load Config
+        if not os.path.exists('discord_config.json'):
+            return
+            
+        with open('discord_config.json', 'r') as f:
+            config = json.load(f)
+            webhook_url = config.get('webhook_url')
+            
+        if not webhook_url:
+            return
+
+        # Load Processed IDs
+        processed_file = 'processed_signals.json'
+        if os.path.exists(processed_file):
+            try:
+                with open(processed_file, 'r') as f:
+                    processed_ids = set(json.load(f))
+            except:
+                processed_ids = set()
+        else:
+            processed_ids = set()
+
+        new_alerts_sent = False
+        
+        # Iterate and Check
+        for _, row in df.iterrows():
+            # Create Unique ID (Asset + Timeframe + EntryTime)
+            sig_id = f"{row['Asset']}_{row['Timeframe']}_{row['Entry_Time']}"
+            
+            # Check if it is a TAKE signal
+            is_take = "TAKE" in str(row.get('Action', '')).upper()
+            
+            if is_take and sig_id not in processed_ids:
+                send_discord_alert(webhook_url, row)
+                processed_ids.add(sig_id)
+                new_alerts_sent = True
+        
+        # Save updated IDs
+        if new_alerts_sent:
+            with open(processed_file, 'w') as f:
+                json.dump(list(processed_ids), f)
+                
+    except Exception as e:
+        print(f"Error processing Discord alerts: {e}")
+
 @st.fragment(run_every=60)
 def show_runic_alerts():
     # Header Row with Refresh Button
@@ -797,6 +890,10 @@ def show_runic_alerts():
             else:
                 combined_active = pd.DataFrame()
             
+            # --- PROCESS DISCORD ALERTS ---
+            if not combined_active.empty:
+                process_discord_alerts(combined_active)
+
             # Save to Session State
             st.session_state['combined_active_df'] = combined_active
             st.session_state['last_runic_fetch'] = now
