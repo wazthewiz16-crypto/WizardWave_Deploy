@@ -1702,11 +1702,12 @@ with col_right:
                 text-align: center; 
                 font-style: italic; 
                 line-height: 1.6; 
-                min-height: 350px; 
+                min-height: 300px; 
                 display: flex; 
                 align-items: center; 
                 justify-content: center;
                 padding: 30px;
+                margin-top: 5px;
                 border-radius: 8px;
                 text-shadow: 0 2px 4px rgba(0,0,0,0.9);
                 {bg_style}
