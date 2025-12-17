@@ -1636,31 +1636,58 @@ with col_right:
     with st.container(border=True):
         st.markdown('<div class="runic-header">ORACLE</div>', unsafe_allow_html=True)
         
-        # Calculate time to next 4H candle (00, 04, 08, 12, 16, 20 UTC)
-        now_utc = pd.Timestamp.now('UTC')
-        current_hour = now_utc.hour
-        next_hour = ((current_hour // 4) + 1) * 4
-        if next_hour >= 24: next_hour = 0
+        # Economic Calendar (Hardcoded for 2025/2026)
+        economic_events = [
+            {"event": "PCE Price Index", "datetime": "2025-12-23 08:30:00"},
+            {"event": "Non-Farm Payrolls", "datetime": "2026-01-09 08:30:00"},
+            {"event": "CPI Inflation Data", "datetime": "2026-01-13 08:30:00"},
+            {"event": "PPI Inflation Data", "datetime": "2026-01-14 08:30:00"},
+            {"event": "FOMC Rate Decision", "datetime": "2026-01-28 14:00:00"},
+            {"event": "PCE Price Index", "datetime": "2026-01-29 08:30:00"},
+        ]
         
-        # Target time
-        if next_hour == 0:
-            target = (now_utc + pd.Timedelta(days=1)).normalize()
-        else:
-            target = now_utc.normalize() + pd.Timedelta(hours=next_hour)
+        # Find Next Event
+        now_est = pd.Timestamp.now(tz='America/New_York')
+        next_event = None
+        
+        for e in economic_events:
+            dt = pd.Timestamp(e['datetime']).tz_localize('America/New_York')
+            if dt > now_est:
+                next_event = e
+                target_dt = dt
+                break
+        
+        if next_event:
+            # Calculate Countdown
+            diff = target_dt - now_est
+            days = diff.days
+            hours = diff.seconds // 3600
+            minutes = (diff.seconds % 3600) // 60
             
-        remaining = target - now_utc
-        hours = remaining.seconds // 3600
-        minutes = (remaining.seconds % 3600) // 60
-        seconds = remaining.seconds % 60
-        
-        time_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
-        
-        st.markdown(f"""
-            <div style="text-align: center; min-height: 215px; display: flex; flex-direction: column; justify-content: center;">
-                <div style="font-size: 0.8rem; color: #a0c5e8;">NEXT CAST IN</div>
-                <div style="font-size: 2.5rem; font-weight: bold; color: white; text-shadow: 0 0 10px #a0c5e8;">{time_str}</div>
-            </div>
-        """, unsafe_allow_html=True)
+            # Format Date
+            date_str = target_dt.strftime("%b %d, %H:%M EST")
+            event_name = next_event['event'].upper()
+            
+            # Color Logic (Red for very close)
+            time_color = "white"
+            if days < 1: time_color = "#ff3344"
+            
+            st.markdown(f"""
+                <div style="text-align: center; min-height: 215px; display: flex; flex-direction: column; justify-content: center;">
+                    <div style="font-size: 0.8rem; color: #a0c5e8; margin-bottom: 5px;">NEXT EVENT: <span style="color: #ffd700;">{event_name}</span></div>
+                    <div style="font-size: 0.9rem; color: #888; margin-bottom: 10px;">{date_str}</div>
+                    <div style="font-size: 2.2rem; font-weight: bold; color: {time_color}; text-shadow: 0 0 10px {time_color};">
+                        {days}d {hours}h {minutes}m
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown(f"""
+                <div style="text-align: center; min-height: 215px; display: flex; flex-direction: column; justify-content: center;">
+                    <div style="font-size: 0.8rem; color: #a0c5e8;">NO UPCOMING EVENTS</div>
+                    <div style="font-size: 2.5rem; font-weight: bold; color: white; text-shadow: 0 0 10px #a0c5e8;">--:--:--</div>
+                </div>
+            """, unsafe_allow_html=True)
     
     # 3. Great Wizard
     # 3. Great Sorcerer
