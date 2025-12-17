@@ -1702,7 +1702,7 @@ with col_right:
                 text-align: center; 
                 font-style: italic; 
                 line-height: 1.6; 
-                min-height: 350px; 
+                min-height: 345px; 
                 display: flex; 
                 align-items: center; 
                 justify-content: center;
