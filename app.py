@@ -1459,7 +1459,7 @@ with col_center:
                 st.markdown("---")
                 
                 # Inputs
-                risk = st.number_input("Trade Risk (Mana Cost)", min_value=1, max_value=500, value=50, step=10)
+                risk = st.number_input("Trade Risk (Mana Cost)", min_value=1, max_value=425, value=50, step=10)
                 
                 st.write("Confirmations:")
                 check1 = st.checkbox("Two timeframe alignment?")
@@ -1642,7 +1642,7 @@ with col_left:
         st.markdown('<div class="runic-header">MANA POOL</div>', unsafe_allow_html=True)
         
         # Calculate Percentage
-        mana_pct = max(0, min(100, (st.session_state.mana / 500) * 100))
+        mana_pct = max(0, min(100, (st.session_state.mana / 425) * 100))
         
         st.markdown(f"""
             <div style="background-color: #0b0c15; border: 1px solid #444; border-radius: 6px; height: 22px; margin-bottom: 2px; position: relative; box-shadow: inset 0 0 10px #000;">
@@ -1655,7 +1655,7 @@ with col_left:
                     transition: width 0.5s ease-out;
                 "></div>
                 <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; text-shadow: 0 1px 4px black; letter-spacing: 1px;">
-                    {st.session_state.mana} / 500
+                    {st.session_state.mana} / 425
                 </div>
             </div>
         """, unsafe_allow_html=True)
