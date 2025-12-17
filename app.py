@@ -1763,8 +1763,9 @@ with col_right:
                     Current Time: {now_est.strftime('%H:%M')} EST
                 </div>
                 
-                <!-- Vertical Current Time Line Overlay -->
-                <style>
+                <div class="realm-overlay"></div>
+            </div>
+            <style>
                 .realm-overlay {{
                     position: absolute;
                     left: calc(80px + (100% - 80px) * ({current_time_pct}/100));
@@ -1776,9 +1777,7 @@ with col_right:
                     z-index: 10;
                     pointer-events: none;
                 }}
-                </style>
-                <div class="realm-overlay"></div>
-            </div>
+            </style>
         """, unsafe_allow_html=True)
 
     
