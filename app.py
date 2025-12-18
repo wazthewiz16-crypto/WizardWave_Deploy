@@ -1379,7 +1379,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Layout Columns
-col_left, col_center, col_right = st.columns([0.25, 0.5, 0.25], gap="medium")
+col_left, col_center, col_right = st.columns([0.25, 0.5, 0.25], gap="small")
 
 # --- CENTER COLUMN: MAIN PORTAL ---
 with col_center:
@@ -1628,7 +1628,7 @@ with col_center:
                 # Check Global Disable Conditions
                 global_can_cast = (st.session_state.mana > 0) and (st.session_state.spells_day > 0) and (st.session_state.spells_week > 0)
                 
-                if st.button("INVOKE", use_container_width=True, type="primary", disabled=not global_can_cast):
+                if st.button("\nINVOKE\n", use_container_width=True, type="primary", disabled=not global_can_cast):
                     cast_spell_dialog()
 
 
@@ -1748,8 +1748,7 @@ with col_right:
         <div style="position: absolute; top:0; left:5px; font-size: 0.7rem; color: {text_color if is_active else '#888'}; line-height: 30px; font-weight: bold; z-index: 2;">{status_text if is_active else ''}</div>
     </div>
 </div>
-"""
-            
+            """
 
         st.markdown(f"""
 <div style="padding: 10px 0;">
@@ -1766,7 +1765,7 @@ Current Time: {now_est.strftime('%H:%M')} EST
 <style>
 .realm-overlay {{
 position: absolute;
-left: calc(80px + (100% - 80px) * ({current_time_pct}/100));
+left: calc(80px + (100% - 80px) * ({current_time_pct:.2f}/100));
 top: 40px; 
 bottom: 25px;
 width: 2px;
@@ -1776,7 +1775,7 @@ z-index: 10;
 pointer-events: none;
 }}
 </style>
-""", unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 
     
     # 2. Oracle (Countdown to next Economic Event)
@@ -1898,11 +1897,15 @@ pointer-events: none;
             st.markdown(f"""
                 <div style="
                     text-align: center; 
-                    min-height: 270px; 
+                    min-height: 230px; 
                     display: flex; 
                     flex-direction: column; 
                     justify-content: flex-start;
+<<<<<<< HEAD
                     padding-top: 20px;
+=======
+                    padding-top: 15px;
+>>>>>>> 8728f79f0d3206a10b58e49e4781a95a6f91dfe0
                     margin-bottom: 5px;
                     border-radius: 8px;
                     {oracle_bg}
@@ -1964,12 +1967,16 @@ pointer-events: none;
                 text-align: center; 
                 font-style: italic; 
                 line-height: 1.6; 
+<<<<<<< HEAD
                 min-height: 250px; 
+=======
+                min-height: 210px; 
+>>>>>>> 8728f79f0d3206a10b58e49e4781a95a6f91dfe0
                 display: flex; 
                 align-items: center; 
                 justify-content: center;
-                padding: 30px;
-                margin-top: 15px;
+                padding: 20px;
+                margin-top: 10px;
                 margin-bottom: 5px;
                 border-radius: 8px;
                 text-shadow: 0 2px 4px rgba(0,0,0,0.9);
