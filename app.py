@@ -1310,7 +1310,7 @@ st.markdown("""
         text-align: center;
         margin-bottom: 5px;
         position: relative;
-        padding: 10px 0;
+        padding: 5px 0;
         background: radial-gradient(circle at center, rgba(11, 12, 21, 0) 0%, rgba(11, 12, 21, 0.8) 100%);
         border-bottom: 2px solid transparent; 
         border-image: linear-gradient(90deg, transparent, #c5a059, transparent) 1;
@@ -1377,6 +1377,84 @@ st.markdown("""
         <div class="arcane-decoration"></div>
     </div>
 """, unsafe_allow_html=True)
+
+# --- MARKET TICKER TAPE ---
+st.components.v1.html("""
+<div class="tradingview-widget-container">
+  <div class="tradingview-widget-container__widget"></div>
+  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js" async>
+  {
+  "symbols": [
+    {
+      "proName": "BINANCE:BTCUSDT",
+      "title": "Bitcoin"
+    },
+    {
+      "proName": "BINANCE:ETHUSDT",
+      "title": "Ethereum"
+    },
+    {
+      "proName": "BINANCE:SOLUSDT",
+      "title": "Solana"
+    },
+    {
+      "proName": "BINANCE:DOGEUSDT",
+      "title": "Dogecoin"
+    },
+    {
+      "proName": "BINANCE:ARBUSDT",
+      "title": "Arbitrum"
+    },
+    {
+      "proName": "BINANCE:AVAXUSDT",
+      "title": "Avalanche"
+    },
+    {
+      "proName": "BINANCE:LINKUSDT",
+      "title": "Chainlink"
+    },
+    {
+      "proName": "CAPITALCOM:DXY",
+      "title": "DXY"
+    },
+    {
+      "proName": "OANDA:SPX500USD",
+      "title": "S&P 500"
+    },
+    {
+      "proName": "OANDA:XAUUSD",
+      "title": "Gold"
+    },
+    {
+      "proName": "OANDA:XAGUSD",
+      "title": "Silver"
+    },
+    {
+      "proName": "TVC:USOIL",
+      "title": "US Oil"
+    },
+    {
+      "proName": "BINANCE:BNBUSDT",
+      "title": "BNB"
+    },
+    {
+      "proName": "FX:EURUSD",
+      "title": "EUR/USD"
+    },
+    {
+      "proName": "FX:AUDUSD",
+      "title": "AUD/USD"
+    }
+  ],
+  "showSymbolLogo": true,
+  "colorTheme": "dark",
+  "isTransparent": true,
+  "displayMode": "adaptive",
+  "locale": "en"
+}
+  </script>
+</div>
+""", height=40)
 
 # Layout Columns
 col_left, col_center, col_right = st.columns([0.25, 0.5, 0.25], gap="small")
