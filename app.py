@@ -318,8 +318,8 @@ def analyze_timeframe(timeframe_label):
     def process_asset(asset):
         try:
             # Dynamic Limit for performance
-            # 15m is often slow due to volume/parsing, reduced history is acceptable for live monitoring
-            current_limit = 200 if tf_code == '15m' else 600
+            # Increase limits to ensure ample history is captured
+            current_limit = 1000  # Default to 1000 bars for all timeframes
             
             # Fetch Data
             df = fetch_data(asset['symbol'], asset['type'], timeframe=tf_code, limit=current_limit)
@@ -348,6 +348,11 @@ def analyze_timeframe(timeframe_label):
                     df_strat.loc[df_clean.index, 'model_prob'] = all_probs
                 else:
                     df_strat['model_prob'] = 0.0
+                
+                # Explicitly set probability for the last row (calculated separately above)
+                # This ensures the active forming candle is included in history simulation
+                if not df_strat.empty:
+                     df_strat.loc[df_strat.index[-1], 'model_prob'] = prob
             else:
                 prob = 0.0
                 df_strat['model_prob'] = 0.0
@@ -453,6 +458,7 @@ def analyze_timeframe(timeframe_label):
                
                # Iterate through all bars
                # Assumes df is sorted by time
+               print(f"DEBUGGING HIST: {asset['name']} - {len(df)} rows. Last: {df.index[-1]}")
                for idx, row in df.iterrows():
                    close = row['close']
                    high = row['high']
@@ -509,12 +515,13 @@ def analyze_timeframe(timeframe_label):
                                 "Asset": asset['name'],
                                 "Timeframe": timeframe_label,
                                 "Time": format_time(entry_time),
-                                "Type": "SHORT_ZONE",
+                                "Type": "SHORT 🔴",
                                 "Price": entry_price,
                                 "Confidence": "N/A",
                                 "Model": "✅",
                                 "Return_Pct": pnl, 
-                                "SL_Pct": sl_pct
+                                "SL_Pct": sl_pct,
+                                "Status": "HIT TP 🟢"
                            })
                            position = None
                        # Check SL
@@ -525,12 +532,13 @@ def analyze_timeframe(timeframe_label):
                                 "Asset": asset['name'],
                                 "Timeframe": timeframe_label,
                                 "Time": format_time(entry_time),
-                                "Type": "SHORT_ZONE",
+                                "Type": "SHORT 🔴",
                                 "Price": entry_price,
                                 "Confidence": "N/A",
                                 "Model": "✅",
                                 "Return_Pct": pnl, 
-                                "SL_Pct": sl_pct
+                                "SL_Pct": sl_pct,
+                                "Status": "HIT SL 🔴"
                            })
                            position = None
 
@@ -540,6 +548,10 @@ def analyze_timeframe(timeframe_label):
                         if model_prob > 0.40:
                             if 'LONG' in signal:
                                 position = 'LONG'
+                                entry_price = close
+                                entry_time = idx
+                            elif 'SHORT' in signal:
+                                position = 'SHORT'
                                 entry_price = close
                                 entry_time = idx
                                 
@@ -557,7 +569,7 @@ def analyze_timeframe(timeframe_label):
                         "Asset": asset['name'],
                         "Timeframe": timeframe_label,
                         "Time": format_time(entry_time),
-                        "Type": f"{position}_ZONE",
+                        "Type": f"{position} {'🟢' if position == 'LONG' else '🔴'}",
                         "Price": entry_price,
                         "Confidence": "N/A",
                         "Model": "✅",
@@ -574,7 +586,9 @@ def analyze_timeframe(timeframe_label):
             return result_data, active_trade_data, asset_history
             
         except Exception as e:
-            # print(f"Error {asset['symbol']}: {e}")
+            print(f"DEBUG: Error processing {asset['symbol']}: {e}")
+            import traceback
+            traceback.print_exc()
             return None, None, None
 
     # Parallel Execution
@@ -726,7 +740,6 @@ def init_prop_accounts():
                 {
                     "id": 2, 
                     "name": "MCF 2 step 50K", 
-                    "size": 50000, 
                     "profit_target_amt": 4000, 
                     "drawdown_limit_amt": 5000,
                     "currentBalance": 48788.18, 
@@ -993,12 +1006,20 @@ def process_discord_alerts(df):
 @st.fragment(run_every=60)
 def show_runic_alerts():
     # Header Row with Refresh Button
-    # Header Row with Refresh Button
     with st.container(border=True):
-        c_title, c_metric, c_btn = st.columns([0.35, 0.50, 0.15], gap="small")
+        # Adjusted columns: Title | History Btn | Metric | Refresh
+        c_title, c_hist, c_metric, c_btn = st.columns([0.35, 0.15, 0.35, 0.15], gap="small")
+        
         with c_title:
              st.markdown('<div class="runic-header" style="font-size: 1rem; border: none !important; margin-bottom: 0; padding: 0; margin-top: -5px; background: transparent; text-align: left;">RUNIC ALERTS</div>', unsafe_allow_html=True)
         
+        with c_hist:
+            # History Button in Sidebar
+            st.markdown('<div style="margin-top: -5px;"></div>', unsafe_allow_html=True)
+            if st.button("📜", key="hist_side", help="Signal History", use_container_width=True):
+                st.session_state.active_tab = 'HISTORY'
+                st.rerun()
+
         # Display 24H Return (Will be populated after calculation or from state)
         # Use a placeholder for dynamic updates
         return_placeholder = c_metric.empty()
@@ -1008,7 +1029,7 @@ def show_runic_alerts():
             r_sign = "+" if val >= 0 else ""
             return_placeholder.markdown(f"""
                 <div style="text-align: center; margin-top: -5px; white-space: nowrap;">
-                    <span style="font-size: 0.9rem; color: #888; font-weight: bold;">24H Return: </span>
+                    <span style="font-size: 0.9rem; color: #888; font-weight: bold;">24H: </span>
                     <span style="font-size: 0.9rem; font-weight: bold; color: {r_color}; text-shadow: 0 0 10px {r_color}40;">
                         {r_sign}{val:.2%}
                     </span>
@@ -1077,6 +1098,7 @@ def show_runic_alerts():
                        cutoff = pd.Timestamp.now(tz='UTC') - pd.Timedelta(hours=24)
                        
                        recent_sigs = hist_df[hist_df['_sort_key'] >= cutoff]
+                       
                        total_24h_return = recent_sigs['Return_Pct'].sum()
                     except Exception as e:
                         print(f"Error calcing 24h return: {e}")
@@ -1084,6 +1106,11 @@ def show_runic_alerts():
 
             # Update state AND update visual immediately
             st.session_state['runic_24h_return'] = total_24h_return
+            
+            # ALSO store the full history for the Verification Tab
+            if all_history:
+                 st.session_state['runic_history_df'] = pd.DataFrame(all_history)
+            
             render_return_value(total_24h_return)
 
         
@@ -1611,7 +1638,7 @@ st.components.v1.html("""
 }
   </script>
 </div>
-""", height=46, scrolling=False)
+""", height=60, scrolling=False)
 
 # Layout Columns
 col_left, col_center, col_right = st.columns([0.25, 0.5, 0.25], gap="small")
@@ -1625,19 +1652,102 @@ with col_center:
         def set_tab(t):
             st.session_state.active_tab = t
             
-        c1, c2, c3, c4 = st.columns(4)
-        c1.button("PORTAL", use_container_width=True, type="primary" if st.session_state.active_tab=='PORTAL' else "secondary", on_click=set_tab, args=('PORTAL',))
+        # Adjusted columns for remaining tabs (History button removed)
+        c2, c3, c4, c5 = st.columns([1, 1, 1, 1])
         
-        c2.button("SHIELD", use_container_width=True, type="primary" if st.session_state.active_tab=='RISK' else "secondary", on_click=set_tab, args=('RISK',))
+        # History Tab Hidden (Access via Sidebar)
+        # But we still respect the active_tab logic below
         
-        # Enable RULES and STATS - Removed STATS
-        c3.button("RULES", use_container_width=True, type="primary" if st.session_state.active_tab=='RULES' else "secondary", on_click=set_tab, args=('RULES',))
-        c4.button("SPELLBOOK", use_container_width=True, type="primary" if st.session_state.active_tab=='SPELLBOOK' else "secondary", on_click=set_tab, args=('SPELLBOOK',))
+        c2.button("PORTAL", use_container_width=True, type="primary" if st.session_state.active_tab=='PORTAL' else "secondary", on_click=set_tab, args=('PORTAL',))
+        
+        c3.button("SHIELD", use_container_width=True, type="primary" if st.session_state.active_tab=='RISK' else "secondary", on_click=set_tab, args=('RISK',))
+        
+        c4.button("RULES", use_container_width=True, type="primary" if st.session_state.active_tab=='RULES' else "secondary", on_click=set_tab, args=('RULES',))
+        
+        c5.button("SPELLBOOK", use_container_width=True, type="primary" if st.session_state.active_tab=='SPELLBOOK' else "secondary", on_click=set_tab, args=('SPELLBOOK',))
         
         # Remove standard divider and use negative margin wrapper for tighter fit
         st.markdown('<div style="margin-top: -10px; margin-bottom: -10px;"><hr style="margin: 5px 0; border-color: #333;"></div>', unsafe_allow_html=True)
         
-        if st.session_state.active_tab == 'RISK':
+        if st.session_state.active_tab == 'HISTORY':
+             st.markdown("### 📜 Signal History & Verification")
+             
+             hist_df = st.session_state.get('runic_history_df', pd.DataFrame())
+
+             
+             if not hist_df.empty and '_sort_key' in hist_df.columns:
+                 # Standardize
+                 try:
+                    hist_df['_sort_key'] = pd.to_datetime(hist_df['_sort_key'], utc=True)
+                 except: pass
+                 
+                 # Toggle for 24H Only
+                 show_24h_only = st.checkbox("Show last 24 Hours Only", value=True)
+                 
+                 # 1. Filter Time
+                 if show_24h_only:
+                     cutoff = pd.Timestamp.now(tz='UTC') - pd.Timedelta(hours=24)
+                     filtered_df = hist_df[hist_df['_sort_key'] >= cutoff].copy()
+                 else:
+                     filtered_df = hist_df.copy()
+                     
+                 # Sort newest first
+                 # Sort newest first
+                 filtered_df = filtered_df.sort_values(by='_sort_key', ascending=False)
+
+                 # Freshness Check
+                 if not filtered_df.empty:
+                     latest_ts = filtered_df['_sort_key'].max()
+                     # Format if possible
+                     try:
+                         latest_str = latest_ts.tz_convert('America/New_York').strftime('%Y-%m-%d %H:%M:%S EST')
+                     except:
+                         latest_str = str(latest_ts)
+                     st.caption(f"Last Signal: {latest_str}")
+                 
+                 # Summary Stats
+                 total_trades = len(filtered_df)
+                 total_ret = filtered_df['Return_Pct'].sum()
+                 winners = len(filtered_df[filtered_df['Return_Pct'] > 0])
+                 win_rate = winners / total_trades if total_trades > 0 else 0
+                 
+                 # Metrics
+                 m1, m2, m3 = st.columns(3)
+                 m1.metric("PnL Sum (Verify)", f"{total_ret:.2%}")
+                 m2.metric("Trades", total_trades)
+                 m3.metric("Win Rate", f"{win_rate:.0%}")
+                 
+                 st.divider()
+                 
+                 # Display Table
+                 # Simplify cols
+                 if not filtered_df.empty:
+                     display_cols = ['Time', 'Asset', 'Timeframe', 'Type', 'Price', 'Return_Pct', 'Status']
+                     # Fill Status if missing
+                     if 'Status' not in filtered_df.columns:
+                         filtered_df['Status'] = 'CLOSED'
+                         
+                     # Format Return
+                     filtered_df['Return'] = filtered_df['Return_Pct'].apply(lambda x: f"{x:.2%}")
+                     
+                     st.dataframe(
+                         filtered_df[display_cols + ['Return']], 
+                         column_config={
+                             "Return_Pct": None, # Hide raw
+                             "Return": st.column_config.TextColumn("Return"),
+                             "Type": st.column_config.TextColumn("Signal Type"),
+                             "Timeframe": st.column_config.TextColumn("TF"),
+                         },
+                         use_container_width=True,
+                         hide_index=True
+                     )
+                 else:
+                     st.info("No trades in this period.")
+                 
+             else:
+                 st.info("No history available. Please wait for the Runic Alerts to refresh.")
+
+        elif st.session_state.active_tab == 'RISK':
             render_prop_risk()
             
         elif st.session_state.active_tab == 'SPELLBOOK':
