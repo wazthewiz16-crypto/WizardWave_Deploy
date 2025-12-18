@@ -1701,7 +1701,7 @@ with col_right:
                 m_left = total_min % 60
                 status_text = f"Ends in {h_left}hr {m_left}min"
                 bar_color = "#00ff88" # Green
-                text_color = "#000"
+                text_color = "#fff"
             else:
                 # Calc time to start
                 target_h = s_mod
@@ -1745,7 +1745,7 @@ with col_right:
     <div style="width: 70px; font-size: 0.75rem; font-weight: bold; color: {text_color if not is_active else '#fff'}; text-align: right; margin-right: 10px;">{sess['name']}</div>
     <div style="flex-grow: 1; position: relative; height: 100%; background: #1a1a2e; border-radius: 4px; overflow: hidden;">
         {bars_svg}
-        <div style="position: absolute; top:0; left:5px; font-size: 0.7rem; color: {text_color if is_active else '#888'}; line-height: 30px; font-weight: bold; z-index: 2;">{status_text if is_active else ''}</div>
+        <div style="position: absolute; top:0; left:5px; font-size: 0.7rem; color: {text_color if is_active else '#888'}; line-height: 30px; font-weight: bold; z-index: 2; text-shadow: 0 1px 3px rgba(0,0,0,0.9);">{status_text if is_active else ''}</div>
     </div>
 </div>
             """
@@ -1754,7 +1754,7 @@ with col_right:
 <div style="padding: 10px 0;">
 <!-- Timeline Header 0 - 24 -->
 <div style="display: flex; margin-left: 80px; font-size: 0.6rem; color: #666; margin-bottom: 5px; justify-content: space-between;">
-<span>0h</span><span>4h</span><span>8h</span><span>12h</span><span>16h</span><span>20h</span><span>24h</span>
+<span>12AM</span><span>4AM</span><span>8AM</span><span>12PM</span><span>4PM</span><span>8PM</span><span>12AM</span>
 </div>
 {session_html}
 <div style="text-align: center; font-size: 0.7rem; color: #666; margin-top: 5px;">
@@ -1897,11 +1897,11 @@ pointer-events: none;
             st.markdown(f"""
                 <div style="
                     text-align: center; 
-                    min-height: 230px; 
+                    min-height: 223px; 
                     display: flex; 
                     flex-direction: column; 
                     justify-content: flex-start;
-                    padding-top: 20px;
+                    padding-top: 10px;
                     margin-bottom: 5px;
                     border-radius: 8px;
                     {oracle_bg}
@@ -1917,7 +1917,7 @@ pointer-events: none;
             """, unsafe_allow_html=True)
         else:
             st.markdown(f"""
-                <div style="text-align: center; min-height: 250px; display: flex; flex-direction: column; justify-content: center;">
+                <div style="text-align: center; min-height: 230px; display: flex; flex-direction: column; justify-content: center;">
                     <div style="font-size: 0.8rem; color: #a0c5e8;">NO UPCOMING EVENTS</div>
                     <div style="font-size: 2.5rem; font-weight: bold; color: white; text-shadow: 0 0 10px #a0c5e8;">--:--:--</div>
                 </div>
@@ -1963,11 +1963,11 @@ pointer-events: none;
                 text-align: center; 
                 font-style: italic; 
                 line-height: 1.6; 
-                min-height: 250px;
+                min-height: 220px;
                 display: flex; 
                 align-items: center; 
                 justify-content: center;
-                padding: 20px;
+                padding: 15px;
                 margin-top: 10px;
                 margin-bottom: 5px;
                 border-radius: 8px;
