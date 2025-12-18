@@ -438,37 +438,138 @@ def analyze_timeframe(timeframe_label):
             }
             
             # --- Collect Historical Signals & Simulate PnL ---
-            signals_df = df_strat[df_strat['signal_type'] != 'NONE'].tail(20).copy()
-            asset_history = []
+            # --- Collect Historical Signals & Simulate PnL ---
             
-            # Limit history to reasonable amount for display, but simulate all available?
-            # User wants equity curve of "generated in above table". That usually implies recent history. 
-            # But recent 50 might not be enough for a curve. Let's take all fetched signals.
-            
-            for start_time in signals_df.index:
-                row = signals_df.loc[start_time]
-                signal_type = row['signal_type']
-                model_prob = row['model_prob']
-                
-                # Simulation
-                # Only if using ML filter
-                if model_prob > 0.40:
-                    pass
-                    # ret_pct, sl_pct = run_simulation(df_strat, df_strat.index.get_loc(start_time), signal_type, asset['type'], None)
-                    
-                    # # Store Results
-                    # asset_history.append({
-                    #     "_sort_key": start_time,
-                    #     "Asset": asset['name'],
-                    #     "Timeframe": timeframe_label,
-                    #     "Time": format_time(start_time),
-                    #     "Type": signal_type,
-                    #     "Price": row['close'],
-                    #     "Confidence": f"{model_prob:.0%}",
-                    #     "Model": "✅",
-                    #     "Return_Pct": 0, # Placeholder
-                    #     "SL_Pct": 0      # Placeholder
-                    # })
+            # Helper to run stateful simulation on the history
+            def simulate_history_stateful(df, asset_type):
+               trades = []
+               position = None
+               entry_price = 0.0
+               entry_time = None
+               sl_price = 0.0
+               
+               sl_pct = 0.05 if asset_type == 'crypto' else 0.04
+               tp_pct = 0.08 if asset_type == 'crypto' else 0.03
+               
+               # Iterate through all bars
+               # Assumes df is sorted by time
+               for idx, row in df.iterrows():
+                   close = row['close']
+                   high = row['high']
+                   low = row['low']
+                   signal = row['signal_type']
+                   model_prob = row.get('model_prob', 0.0)
+                   
+                   # --- EXIT LOGIC ---
+                   if position == 'LONG':
+                       # Check TP
+                       if high >= entry_price * (1 + tp_pct):
+                           # Hit TP
+                           pnl = tp_pct
+                           trades.append({
+                                "_sort_key": entry_time,
+                                "Asset": asset['name'],
+                                "Timeframe": timeframe_label,
+                                "Time": format_time(entry_time),
+                                "Type": "LONG_ZONE",
+                                "Price": entry_price,
+                                "Confidence": "N/A", # Could store if needed
+                                "Model": "✅",
+                                "Return_Pct": pnl, 
+                                "SL_Pct": sl_pct
+                           })
+                           position = None
+                       # Check SL
+                       elif low <= entry_price * (1 - sl_pct):
+                           # Hit SL
+                           pnl = -sl_pct
+                           trades.append({
+                                "_sort_key": entry_time,
+                                "Asset": asset['name'],
+                                "Timeframe": timeframe_label,
+                                "Time": format_time(entry_time),
+                                "Type": "LONG_ZONE",
+                                "Price": entry_price,
+                                "Confidence": "N/A",
+                                "Model": "✅",
+                                "Return_Pct": pnl, 
+                                "SL_Pct": sl_pct
+                           })
+                           position = None
+                       # Trend Exit (Optional, if you want purely TP/SL, comment this)
+                       # elif row['is_bearish']: # Simple trend flip check
+                       #     pass 
+
+                   elif position == 'SHORT':
+                       # Check TP
+                       if low <= entry_price * (1 - tp_pct):
+                           pnl = tp_pct
+                           trades.append({
+                                "_sort_key": entry_time,
+                                "Asset": asset['name'],
+                                "Timeframe": timeframe_label,
+                                "Time": format_time(entry_time),
+                                "Type": "SHORT_ZONE",
+                                "Price": entry_price,
+                                "Confidence": "N/A",
+                                "Model": "✅",
+                                "Return_Pct": pnl, 
+                                "SL_Pct": sl_pct
+                           })
+                           position = None
+                       # Check SL
+                       elif high >= entry_price * (1 + sl_pct):
+                           pnl = -sl_pct
+                           trades.append({
+                                "_sort_key": entry_time,
+                                "Asset": asset['name'],
+                                "Timeframe": timeframe_label,
+                                "Time": format_time(entry_time),
+                                "Type": "SHORT_ZONE",
+                                "Price": entry_price,
+                                "Confidence": "N/A",
+                                "Model": "✅",
+                                "Return_Pct": pnl, 
+                                "SL_Pct": sl_pct
+                           })
+                           position = None
+
+                   # --- ENTRY LOGIC ---
+                   if position is None:
+                        # Only take filtered signals
+                        if model_prob > 0.40:
+                            if 'LONG' in signal:
+                                position = 'LONG'
+                                entry_price = close
+                                entry_time = idx
+                                
+               # --- END OF LOOP ---
+               # If position is still open, calculate floating PnL
+               if position is not None:
+                    last_price = df.iloc[-1]['close']
+                    if position == 'LONG':
+                        pnl = (last_price - entry_price) / entry_price
+                    else:
+                        pnl = (entry_price - last_price) / entry_price
+                        
+                    trades.append({
+                        "_sort_key": entry_time,
+                        "Asset": asset['name'],
+                        "Timeframe": timeframe_label,
+                        "Time": format_time(entry_time),
+                        "Type": f"{position}_ZONE",
+                        "Price": entry_price,
+                        "Confidence": "N/A",
+                        "Model": "✅",
+                        "Return_Pct": pnl, 
+                        "SL_Pct": sl_pct,
+                        "Status": "OPEN"
+                    })
+
+               return trades
+
+            # Run simulation on FULL fetched history (not just tail)
+            asset_history = simulate_history_stateful(df_strat, asset['type'])
             
             return result_data, active_trade_data, asset_history
             
@@ -892,11 +993,35 @@ def process_discord_alerts(df):
 @st.fragment(run_every=60)
 def show_runic_alerts():
     # Header Row with Refresh Button
+    # Header Row with Refresh Button
     with st.container(border=True):
-        c_title, c_spacer, c_btn = st.columns([0.75, 0.1, 0.15], gap="small")
+        c_title, c_metric, c_btn = st.columns([0.35, 0.50, 0.15], gap="small")
         with c_title:
              st.markdown('<div class="runic-header" style="font-size: 1rem; border: none !important; margin-bottom: 0; padding: 0; margin-top: -5px; background: transparent; text-align: left;">RUNIC ALERTS</div>', unsafe_allow_html=True)
+        
+        # Display 24H Return (Will be populated after calculation or from state)
+        # Use a placeholder for dynamic updates
+        return_placeholder = c_metric.empty()
+        
+        def render_return_value(val):
+            r_color = "#00ff88" if val >= 0 else "#ff3344"
+            r_sign = "+" if val >= 0 else ""
+            return_placeholder.markdown(f"""
+                <div style="text-align: center; margin-top: -5px; white-space: nowrap;">
+                    <span style="font-size: 0.9rem; color: #888; font-weight: bold;">24H Return: </span>
+                    <span style="font-size: 0.9rem; font-weight: bold; color: {r_color}; text-shadow: 0 0 10px {r_color}40;">
+                        {r_sign}{val:.2%}
+                    </span>
+                </div>
+            """, unsafe_allow_html=True)
+            
+        # Initial Render
+        current_return = st.session_state.get('runic_24h_return', 0.0)
+        render_return_value(current_return)
+
         with c_btn:
+            # Shift button up slightly to align
+            st.markdown('<div style="margin-top: -5px;"></div>', unsafe_allow_html=True)
             refresh_click = st.button("↻", key="refresh_top", help="Refresh", use_container_width=True)
             
         # --- Data Fetching Logic ---
@@ -928,6 +1053,38 @@ def show_runic_alerts():
             r4d, a4d, h4d = analyze_timeframe("4 Days")
         
             # Clear status
+            
+            # --- Aggregated History for 24H Return ---
+            # Combine all history
+            all_history = []
+            if h15m: all_history.extend(h15m)
+            if h30m: all_history.extend(h30m)
+            if h1h: all_history.extend(h1h)
+            if h4h: all_history.extend(h4h)
+            if h1d: all_history.extend(h1d)
+            if h4d: all_history.extend(h4d)
+            
+            total_24h_return = 0.0
+            if all_history:
+                hist_df = pd.DataFrame(all_history)
+                # Ensure sort key is datetime and UTC for consistent filtering
+                if not hist_df.empty and '_sort_key' in hist_df.columns:
+                    try:
+                       # Standardize to UTC
+                       hist_df['_sort_key'] = pd.to_datetime(hist_df['_sort_key'], utc=True)
+                       
+                       # Filter for last 24h (Current UTC time - 24h)
+                       cutoff = pd.Timestamp.now(tz='UTC') - pd.Timedelta(hours=24)
+                       
+                       recent_sigs = hist_df[hist_df['_sort_key'] >= cutoff]
+                       total_24h_return = recent_sigs['Return_Pct'].sum()
+                    except Exception as e:
+                        print(f"Error calcing 24h return: {e}")
+                        total_24h_return = 0.0
+
+            # Update state AND update visual immediately
+            st.session_state['runic_24h_return'] = total_24h_return
+            render_return_value(total_24h_return)
 
         
             # Consolidate
