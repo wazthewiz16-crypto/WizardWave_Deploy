@@ -4,8 +4,8 @@
 
 **WizardWave** is a comprehensive, gamified trading dashboard that combines classic technical analysis with modern machine learning to generate, filter, and manage high-probability trading signals. Built with a fantasy-themed "Arcane Portal" interface, it transforms the dry task of monitoring markets into an engaging experience while enforcing strict risk management protocols.
 
-![Dashboard Preview](backtest_result.png)
-*(Note: Replace with an actual screenshot of the app if available)*
+Dashboard Preview
+<img width="2011" height="868" alt="image" src="https://github.com/user-attachments/assets/f01385ba-7cfd-4cc0-b1e4-58a16b91319d" />
 
 ---
 
