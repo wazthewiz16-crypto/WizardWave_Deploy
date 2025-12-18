@@ -1901,11 +1901,7 @@ pointer-events: none;
                     display: flex; 
                     flex-direction: column; 
                     justify-content: flex-start;
-<<<<<<< HEAD
                     padding-top: 20px;
-=======
-                    padding-top: 15px;
->>>>>>> 8728f79f0d3206a10b58e49e4781a95a6f91dfe0
                     margin-bottom: 5px;
                     border-radius: 8px;
                     {oracle_bg}
@@ -1967,11 +1963,7 @@ pointer-events: none;
                 text-align: center; 
                 font-style: italic; 
                 line-height: 1.6; 
-<<<<<<< HEAD
-                min-height: 250px; 
-=======
-                min-height: 210px; 
->>>>>>> 8728f79f0d3206a10b58e49e4781a95a6f91dfe0
+                min-height: 250px;
                 display: flex; 
                 align-items: center; 
                 justify-content: center;
