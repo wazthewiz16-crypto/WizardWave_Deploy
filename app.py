@@ -1623,7 +1623,7 @@ with col_center:
                     time.sleep(1.3) # Allow animation to play
                     st.rerun()
 
-            _, c_inv, _ = st.columns([0.3, 0.4, 0.3])
+            _, c_inv, _ = st.columns([0.35, 0.3, 0.35])
             with c_inv:
                 # Check Global Disable Conditions
                 global_can_cast = (st.session_state.mana > 0) and (st.session_state.spells_day > 0) and (st.session_state.spells_week > 0)
@@ -1903,6 +1903,7 @@ pointer-events: none;
                     flex-direction: column; 
                     justify-content: flex-start;
                     padding-top: 20px;
+                    margin-bottom: 5px;
                     border-radius: 8px;
                     {oracle_bg}
                 ">
@@ -1963,7 +1964,7 @@ pointer-events: none;
                 text-align: center; 
                 font-style: italic; 
                 line-height: 1.6; 
-                min-height: 300px; 
+                min-height: 250px; 
                 display: flex; 
                 align-items: center; 
                 justify-content: center;
