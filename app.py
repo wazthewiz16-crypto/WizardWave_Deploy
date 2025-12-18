@@ -1143,7 +1143,7 @@ st.markdown("""
     /* Grand Portal Styling */
     /* Remove default top padding */
     .block-container {
-        padding-top: 3rem !important;
+        padding-top: 2.5rem !important;
         padding-bottom: 0rem !important;
     }
     
@@ -1154,7 +1154,7 @@ st.markdown("""
         background-color: #0b0c15;
         /* Ultra-Thick Magical Frame */
         border: 2px solid #ffd700 !important;
-        border-radius: 12px !important;
+        border-radius: 8px !important;
         
         /* Maximum Glow Power */
         box-shadow: 
@@ -1162,8 +1162,8 @@ st.markdown("""
             0 0 50px rgba(197, 160, 89, 0.4) !important, /* Distant Haze */
             inset 0 0 30px #000000 !important;          /* Deep Void Inner */
             
-        padding: 20px !important;
-        margin-bottom: 30px !important;
+        padding: 10px !important;
+        margin-bottom: 8px !important;
         position: relative;
         z-index: 1;
     }
@@ -1171,11 +1171,11 @@ st.markdown("""
     /* Epic Invoke Button */
     div.stButton > button[kind="primary"] {
         width: 100%;
-        height: 80px;
+        height: 65px;
         background: linear-gradient(135deg, #c5a059 0%, #8a6e3c 100%);
         color: #000;
         font-family: 'Cinzel', serif;
-        font-size: 2.5rem;
+        font-size: 2.0rem;
         font-weight: bold;
         border: 2px solid #ffd700;
         box-shadow: 0 0 20px rgba(197, 160, 89, 0.6);
@@ -1197,9 +1197,9 @@ st.markdown("""
         font-size: 0.9rem;
         font-weight: bold;
         border-bottom: 1px solid #4a3b22;
-        padding-bottom: 3px;
-        margin-bottom: 5px;
-        margin-top: -4px;
+        padding-bottom: 2px;
+        margin-bottom: 4px;
+        margin-top: -17px;
         text-shadow: 0 0 5px #c5a059;
     }
 
@@ -1209,8 +1209,8 @@ st.markdown("""
         background: linear-gradient(90deg, rgba(20, 20, 30, 0.8) 0%, rgba(35, 35, 50, 0.8) 100%);
         border: 1px solid #4a4a60;
         border-left: 4px solid #444;
-        margin-bottom: 4px;
-        padding: 4px;
+        margin-bottom: 2px;
+        padding: 3px;
         border-radius: 5px;
         transition: all 0.3s ease;
     }
@@ -1221,8 +1221,8 @@ st.markdown("""
     }
 
     .runic-icon {
-        font-size: 24px;
-        margin-right: 15px;
+        font-size: 25px;
+        margin-right: 12px;
         width: 30px;
         text-align: center;
     }
@@ -1234,16 +1234,16 @@ st.markdown("""
     .runic-title {
         font-family: 'Lato', sans-serif;
         font-weight: bold;
-        font-size: 0.95rem;
+        font-size: 1.0rem;
         color: #e0e0e0;
         margin: 0;
     }
 
     .runic-subtitle {
         font-family: 'Lato', sans-serif;
-        font-size: 0.8rem;
+        font-size: 0.85rem;
         color: #888;
-        margin: 2px 0 0 0;
+        margin: 1px 0 0 0;
     }
 
     .bullish { border-left-color: #00ff88; }
@@ -1256,7 +1256,7 @@ st.markdown("""
     /* Spell Cards Styling */
     .spell-card-container {
         display: flex;
-        gap: 8px;
+        gap: 6px;
         justify-content: center;
         margin-bottom: 2px;
     }
@@ -1265,7 +1265,7 @@ st.markdown("""
         background-color: #0b0c15; /* Dark background */
         border: 2px solid; 
         border-radius: 6px; /* Slightly rounded corners */
-        padding: 3px 6px;
+        padding: 2px 4px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1322,7 +1322,7 @@ st.markdown("""
         font-weight: 700;
         color: #f0e6d2; /* Light gold/parchment base */
         text-transform: uppercase;
-        letter-spacing: 8px;
+        letter-spacing: 7px;
         
         /* Metallic Gradient Text */
         background: linear-gradient(to bottom, #fff 0%, #ffd700 50%, #c5a059 51%, #8a6e3c 100%);
@@ -1477,7 +1477,8 @@ with col_center:
         c3.button("RULES", use_container_width=True, type="primary" if st.session_state.active_tab=='RULES' else "secondary", on_click=set_tab, args=('RULES',))
         c4.button("SPELLBOOK", use_container_width=True, type="primary" if st.session_state.active_tab=='SPELLBOOK' else "secondary", on_click=set_tab, args=('SPELLBOOK',))
         
-        st.markdown("---")
+        # Remove standard divider and use negative margin wrapper for tighter fit
+        st.markdown('<div style="margin-top: -10px; margin-bottom: -10px;"><hr style="margin: 5px 0; border-color: #333;"></div>', unsafe_allow_html=True)
         
         if st.session_state.active_tab == 'RISK':
             render_prop_risk()
@@ -1546,7 +1547,7 @@ with col_center:
               new TradingView.widget(
               {{
               "width": "100%",
-              "height": "630", 
+              "height": "600", 
               "autosize": false,
               "symbol": "{tv_sym}",
               "interval": "{tv_int}",
@@ -1570,7 +1571,7 @@ with col_center:
               </script>
             </div>
             """
-            components.html(tv_widget_code, height=600, scrolling=False)
+            components.html(tv_widget_code, height=620, scrolling=False)
             
             # st.markdown("<br>", unsafe_allow_html=True) # Spacer removed for tighter alignment
             
@@ -1975,12 +1976,12 @@ pointer-events: none;
             st.markdown(f"""
                 <div style="
                     text-align: center; 
-                    min-height: 223px; 
+                    min-height: 210px; 
                     display: flex; 
                     flex-direction: column; 
                     justify-content: flex-start;
                     padding-top: 10px;
-                    margin-bottom: 5px;
+                    margin-bottom: 15px;
                     border-radius: 8px;
                     {oracle_bg}
                 ">
@@ -1995,7 +1996,7 @@ pointer-events: none;
             """, unsafe_allow_html=True)
         else:
             st.markdown(f"""
-                <div style="text-align: center; min-height: 230px; display: flex; flex-direction: column; justify-content: center;">
+                <div style="text-align: center; min-height: 180px; display: flex; flex-direction: column; justify-content: center;">
                     <div style="font-size: 0.8rem; color: #a0c5e8;">NO UPCOMING EVENTS</div>
                     <div style="font-size: 2.5rem; font-weight: bold; color: white; text-shadow: 0 0 10px #a0c5e8;">--:--:--</div>
                 </div>
@@ -2041,12 +2042,12 @@ pointer-events: none;
                 text-align: center; 
                 font-style: italic; 
                 line-height: 1.6; 
-                min-height: 220px;
+                min-height: 222px;
                 display: flex; 
                 align-items: center; 
                 justify-content: center;
                 padding: 15px;
-                margin-top: 10px;
+                margin-top: 15px;
                 margin-bottom: 5px;
                 border-radius: 8px;
                 text-shadow: 0 2px 4px rgba(0,0,0,0.9);
