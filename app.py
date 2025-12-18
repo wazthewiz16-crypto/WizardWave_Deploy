@@ -458,7 +458,7 @@ def analyze_timeframe(timeframe_label):
                
                # Iterate through all bars
                # Assumes df is sorted by time
-               print(f"DEBUGGING HIST: {asset['name']} - {len(df)} rows. Last: {df.index[-1]}")
+               # print(f"DEBUGGING HIST: {asset['name']} - {len(df)} rows. Last: {df.index[-1]}")
                for idx, row in df.iterrows():
                    close = row['close']
                    high = row['high']
@@ -467,94 +467,91 @@ def analyze_timeframe(timeframe_label):
                    model_prob = row.get('model_prob', 0.0)
                    
                    # --- EXIT LOGIC ---
+                   exit_trade = False
+                   pnl = 0.0
+                   status = ""
+                   
                    if position == 'LONG':
                        # Check TP
                        if high >= entry_price * (1 + tp_pct):
-                           # Hit TP
                            pnl = tp_pct
-                           trades.append({
-                                "_sort_key": entry_time,
-                                "Asset": asset['name'],
-                                "Timeframe": timeframe_label,
-                                "Time": format_time(entry_time),
-                                "Type": "LONG_ZONE",
-                                "Price": entry_price,
-                                "Confidence": "N/A", # Could store if needed
-                                "Model": "✅",
-                                "Return_Pct": pnl, 
-                                "SL_Pct": sl_pct
-                           })
-                           position = None
+                           status = "HIT TP 🟢"
+                           exit_trade = True
                        # Check SL
                        elif low <= entry_price * (1 - sl_pct):
-                           # Hit SL
                            pnl = -sl_pct
-                           trades.append({
-                                "_sort_key": entry_time,
-                                "Asset": asset['name'],
-                                "Timeframe": timeframe_label,
-                                "Time": format_time(entry_time),
-                                "Type": "LONG_ZONE",
-                                "Price": entry_price,
-                                "Confidence": "N/A",
-                                "Model": "✅",
-                                "Return_Pct": pnl, 
-                                "SL_Pct": sl_pct
-                           })
-                           position = None
-                       # Trend Exit (Optional, if you want purely TP/SL, comment this)
-                       # elif row['is_bearish']: # Simple trend flip check
-                       #     pass 
+                           status = "HIT SL 🔴"
+                           exit_trade = True
 
                    elif position == 'SHORT':
                        # Check TP
                        if low <= entry_price * (1 - tp_pct):
                            pnl = tp_pct
-                           trades.append({
-                                "_sort_key": entry_time,
-                                "Asset": asset['name'],
-                                "Timeframe": timeframe_label,
-                                "Time": format_time(entry_time),
-                                "Type": "SHORT 🔴",
-                                "Price": entry_price,
-                                "Confidence": "N/A",
-                                "Model": "✅",
-                                "Return_Pct": pnl, 
-                                "SL_Pct": sl_pct,
-                                "Status": "HIT TP 🟢"
-                           })
-                           position = None
+                           status = "HIT TP 🟢"
+                           exit_trade = True
                        # Check SL
                        elif high >= entry_price * (1 + sl_pct):
                            pnl = -sl_pct
-                           trades.append({
-                                "_sort_key": entry_time,
-                                "Asset": asset['name'],
-                                "Timeframe": timeframe_label,
-                                "Time": format_time(entry_time),
-                                "Type": "SHORT 🔴",
-                                "Price": entry_price,
-                                "Confidence": "N/A",
-                                "Model": "✅",
-                                "Return_Pct": pnl, 
-                                "SL_Pct": sl_pct,
-                                "Status": "HIT SL 🔴"
-                           })
-                           position = None
+                           status = "HIT SL 🔴"
+                           exit_trade = True
+                           
+                   if exit_trade:
+                       trades.append({
+                            "_sort_key": entry_time,
+                            "Asset": asset['name'],
+                            "Timeframe": timeframe_label,
+                            "Time": format_time(entry_time),
+                            "Type": f"{position} {'🟢' if position == 'LONG' else '🔴'}",
+                            "Price": entry_price,
+                            "Confidence": "N/A",
+                            "Model": "✅",
+                            "Return_Pct": pnl, 
+                            "SL_Pct": sl_pct,
+                            "Status": status
+                       })
+                       position = None
 
-                   # --- ENTRY LOGIC ---
-                   if position is None:
-                        # Only take filtered signals
-                        if model_prob > 0.40:
-                            if 'LONG' in signal:
-                                position = 'LONG'
-                                entry_price = close
-                                entry_time = idx
-                            elif 'SHORT' in signal:
-                                position = 'SHORT'
-                                entry_price = close
-                                entry_time = idx
-                                
+                   # --- ENTRY & REVERSAL LOGIC ---
+                   # Only take filtered signals
+                   if model_prob > 0.40:
+                       new_pos = None
+                       if 'LONG' in signal:
+                           new_pos = 'LONG'
+                       elif 'SHORT' in signal:
+                           new_pos = 'SHORT'
+                           
+                       if new_pos:
+                           # If reversal (flipping position)
+                           if position is not None and position != new_pos:
+                               # Close current position at market price (reversal)
+                               last_close_pnl = 0.0
+                               if position == 'LONG':
+                                   last_close_pnl = (close - entry_price) / entry_price
+                               else:
+                                   last_close_pnl = (entry_price - close) / entry_price
+                                   
+                               trades.append({
+                                    "_sort_key": entry_time,
+                                    "Asset": asset['name'],
+                                    "Timeframe": timeframe_label,
+                                    "Time": format_time(entry_time),
+                                    "Type": f"{position} {'🟢' if position == 'LONG' else '🔴'}",
+                                    "Price": entry_price,
+                                    "Confidence": "N/A",
+                                    "Model": "✅",
+                                    "Return_Pct": last_close_pnl, 
+                                    "SL_Pct": sl_pct,
+                                    "Status": "FLIP 🔄"
+                               })
+                               # Prepare for new entry
+                               position = None 
+                           
+                           # Enter new position (if not already in one or just flipped)
+                           if position is None:
+                               position = new_pos
+                               entry_price = close
+                               entry_time = idx
+                               
                # --- END OF LOOP ---
                # If position is still open, calculate floating PnL
                if position is not None:
