@@ -1380,7 +1380,7 @@ st.markdown("""
 
 # --- MARKET TICKER TAPE ---
 st.components.v1.html("""
-<div class="tradingview-widget-container">
+<div class="tradingview-widget-container" style="width: 100%; height: 100%;">
   <div class="tradingview-widget-container__widget"></div>
   <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js" async>
   {
@@ -1454,7 +1454,7 @@ st.components.v1.html("""
 }
   </script>
 </div>
-""", height=40)
+""", height=46, scrolling=False)
 
 # Layout Columns
 col_left, col_center, col_right = st.columns([0.25, 0.5, 0.25], gap="small")
