@@ -1004,22 +1004,25 @@ def process_discord_alerts(df):
 def show_runic_alerts():
     # Header Row with Refresh Button
     with st.container(border=True):
-        # Adjusted columns: Title | History Btn | Metric | Refresh
-        c_title, c_hist, c_metric, c_btn = st.columns([0.35, 0.15, 0.35, 0.15], gap="small")
+        # Adjusted layout for Mobile Optimization
+        # Row 1: Title (Centered)
+        st.markdown('<div class="runic-header" style="font-size: 1rem; border: none !important; margin-bottom: 5px; padding: 0; margin-top: -5px; background: transparent; text-align: center;">RUNIC ALERTS</div>', unsafe_allow_html=True)
         
-        with c_title:
-             st.markdown('<div class="runic-header" style="font-size: 1rem; border: none !important; margin-bottom: 0; padding: 0; margin-top: -10px; background: transparent; text-align: left;">RUNIC ALERTS</div>', unsafe_allow_html=True)
+        # Row 2: Controls [History | Metrics | Refresh]
+        # Using columns to center the metrics and place buttons on sides
+        c_hist, c_metric, c_btn = st.columns([0.15, 0.70, 0.15], gap="small")
         
         with c_hist:
-            # History Button in Sidebar
-            st.markdown('<div style="margin-top: -5px;"></div>', unsafe_allow_html=True)
+            # History Button
             if st.button("📜", key="hist_side", help="Signal History", use_container_width=True):
                 st.session_state.active_tab = 'HISTORY'
                 st.rerun()
 
-        # Display 24H Return (Will be populated after calculation or from state)
-        # Use a placeholder for dynamic updates
-        return_placeholder = c_metric.empty()
+        with c_metric:
+             # Metrics
+             # Display 24H Return (Will be populated after calculation or from state)
+             # Use a placeholder for dynamic updates
+             return_placeholder = st.empty()
         
         def render_return_value(val_24, val_12):
             # 24H Logic
@@ -1031,14 +1034,14 @@ def show_runic_alerts():
             r12_sign = "+" if val_12 >= 0 else ""
             
             return_placeholder.markdown(f"""
-                <div style="text-align: center; margin-top: -12px; white-space: nowrap; line-height: 1.1;">
-                    <div style="margin-bottom: 2px;">
-                        <span style="font-size: 0.9rem; color: #888; font-weight: bold;">24H: </span>
-                        <span style="font-size: 0.9rem; font-weight: bold; color: {r24_color}; text-shadow: 0 0 10px {r24_color}40;">
+                <div style="text-align: center; white-space: nowrap; line-height: 1.1; margin-top: 2px;">
+                    <div style="display: inline-block; margin-right: 10px;">
+                        <span style="font-size: 0.8rem; color: #888; font-weight: bold;">24H: </span>
+                        <span style="font-size: 0.8rem; font-weight: bold; color: {r24_color}; text-shadow: 0 0 10px {r24_color}40;">
                             {r24_sign}{val_24:.2%}
                         </span>
                     </div>
-                    <div>
+                    <div style="display: inline-block;">
                         <span style="font-size: 0.8rem; color: #888; font-weight: bold;">12H: </span>
                         <span style="font-size: 0.8rem; font-weight: bold; color: {r12_color}; text-shadow: 0 0 10px {r12_color}40;">
                             {r12_sign}{val_12:.2%}
@@ -1053,8 +1056,6 @@ def show_runic_alerts():
         render_return_value(current_return_24, current_return_12)
 
         with c_btn:
-            # Shift button up slightly to align
-            st.markdown('<div style="margin-top: -5px;"></div>', unsafe_allow_html=True)
             refresh_click = st.button("↻", key="refresh_top", help="Refresh", use_container_width=True)
             
         # --- Data Fetching Logic ---
@@ -1660,12 +1661,12 @@ st.components.v1.html("""
   "showSymbolLogo": true,
   "colorTheme": "dark",
   "isTransparent": true,
-  "displayMode": "adaptive",
+  "displayMode": "regular",
   "locale": "en"
 }
   </script>
 </div>
-""", height=60, scrolling=False)
+""", height=78, scrolling=False)
 
 # Layout Columns
 col_left, col_center, col_right = st.columns([0.25, 0.5, 0.25], gap="small")
