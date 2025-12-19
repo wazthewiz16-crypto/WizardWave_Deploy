@@ -1008,7 +1008,7 @@ def show_runic_alerts():
         c_title, c_hist, c_metric, c_btn = st.columns([0.35, 0.15, 0.35, 0.15], gap="small")
         
         with c_title:
-             st.markdown('<div class="runic-header" style="font-size: 1rem; border: none !important; margin-bottom: 0; padding: 0; margin-top: -5px; background: transparent; text-align: left;">RUNIC ALERTS</div>', unsafe_allow_html=True)
+             st.markdown('<div class="runic-header" style="font-size: 1rem; border: none !important; margin-bottom: 0; padding: 0; margin-top: -10px; background: transparent; text-align: left;">RUNIC ALERTS</div>', unsafe_allow_html=True)
         
         with c_hist:
             # History Button in Sidebar
@@ -1255,7 +1255,7 @@ def show_runic_alerts():
                             
                             # Compact HTML representation
                             st.markdown(f"""
-                                <div style="display: flex; align-items: flex-start;">
+                                <div style="display: flex; align-items: flex-start; margin-top: -10px;">
                                     <div style="color: {direction_color}; font-size: 1.2rem; margin-right: 8px; margin-top: -2px;">{icon_char}</div>
                                     <div style="flex-grow: 1;">
                                         <div style="font-weight: bold; font-size: 0.9rem; color: #e0e0e0; display: flex; justify-content: space-between;">
@@ -1269,7 +1269,7 @@ def show_runic_alerts():
                                             TP: {row.get('Take_Profit', 'N/A')} | SL: {row.get('Stop_Loss', 'N/A')}
                                         </div>
                                         <div style="font-size: 0.7rem; color: #666;">
-                                            Entry: {row.get('Entry_Price')} | Now: <span style="color: #ffd700;">{row.get('Current_Price', 'N/A')}</span>
+                                            Entry: <span style="color: #00ff88;">{row.get('Entry_Price')}</span> | Now: <span style="color: #ffd700;">{row.get('Current_Price', 'N/A')}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1278,7 +1278,7 @@ def show_runic_alerts():
                         # --- 2. Button Section (Inside the Card) ---
                         with c_btn:
                             # Center the button vertically relative to content
-                            st.markdown('<div style="height: 15px;"></div>', unsafe_allow_html=True)
+                            st.markdown('<div style="height: 2px;"></div>', unsafe_allow_html=True)
                             
                             # Unique Key
                             unique_id = f"{row['Asset']}_{row.get('Timeframe','')}_{row.get('Entry_Time','')}"
@@ -1309,7 +1309,7 @@ def show_runic_alerts():
                             except:
                                 short_time = str(time_val)
                                 
-                            st.markdown(f"<div style='text-align: center; font-size: 0.65rem; color: #666; margin-top: -2px;'>{short_time}</div>", unsafe_allow_html=True)
+                            st.markdown(f"<div style='text-align: center; font-size: 0.65rem; color: #00eaff; margin-top: -2px;'>{short_time}</div>", unsafe_allow_html=True)
                             
                 
                 # --- Compact Numbered Pagination ---
