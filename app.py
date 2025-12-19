@@ -1265,10 +1265,10 @@ def show_runic_alerts():
                                         <div style="font-size: 0.75rem; color: #aaa; margin-top: 2px;">
                                             {row.get('Action')} | Conf: {row.get('Confidence')} | {row.get('Timeframe')}
                                         </div>
-                                        <div style="font-size: 0.7rem; color: #888; margin-top: 1px;">
-                                            TP: {row.get('Take_Profit', 'N/A')} | SL: {row.get('Stop_Loss', 'N/A')}
+                                        <div style="font-size: 0.8rem; color: #888; margin-top: 1px;">
+                                            TP: {row.get('Take_Profit', 'N/A')} | <span style="color: #d8b4fe;">SL: {row.get('Stop_Loss', 'N/A')}</span>
                                         </div>
-                                        <div style="font-size: 0.7rem; color: #666;">
+                                        <div style="font-size: 0.85rem; color: #666;">
                                             Entry: <span style="color: #00ff88;">{row.get('Entry_Price')}</span> | Now: <span style="color: #ffd700;">{row.get('Current_Price', 'N/A')}</span>
                                         </div>
                                     </div>
@@ -1381,7 +1381,7 @@ st.markdown("""
         background: linear-gradient(135deg, #c5a059 0%, #8a6e3c 100%);
         color: #000;
         font-family: 'Cinzel', serif;
-        font-size: 2.0rem;
+        font-size: 2.1rem;
         font-weight: bold;
         border: 2px solid #ffd700;
         box-shadow: 0 0 20px rgba(197, 160, 89, 0.6);
@@ -1400,12 +1400,12 @@ st.markdown("""
 
         text-align: center;
         color: #c5a059;
-        font-size: 0.9rem;
+        font-size: 1rem;
         font-weight: bold;
         border-bottom: 1px solid #4a3b22;
         padding-bottom: 2px;
         margin-bottom: 4px;
-        margin-top: -17px;
+        margin-top: -15px;
         text-shadow: 0 0 5px #c5a059;
     }
 
@@ -1415,7 +1415,7 @@ st.markdown("""
         background: linear-gradient(90deg, rgba(20, 20, 30, 0.8) 0%, rgba(35, 35, 50, 0.8) 100%);
         border: 1px solid #4a4a60;
         border-left: 4px solid #444;
-        margin-bottom: 2px;
+        margin-bottom: 2.2px;
         padding: 3px;
         border-radius: 5px;
         transition: all 0.3s ease;
@@ -1464,7 +1464,8 @@ st.markdown("""
         display: flex;
         gap: 6px;
         justify-content: center;
-        margin-bottom: 2px;
+        margin-bottom: 8px;
+        margin-top: 5px;
     }
     .spell-card {
         flex: 1;
@@ -1555,7 +1556,7 @@ st.markdown("""
     span[data-baseweb="tag"] {
         background-color: #00f0ff !important;
         color: #000000 !important;
-        font-size: 0.7rem !important;
+        font-size: 0.8rem !important;
         font-weight: bold !important;
         padding: 0px 4px !important;
         height: 22px !important;
@@ -1836,7 +1837,7 @@ with col_center:
               new TradingView.widget(
               {{
               "width": "100%",
-              "height": "600", 
+              "height": "605", 
               "autosize": false,
               "symbol": "{tv_sym}",
               "interval": "{tv_int}",
@@ -1860,7 +1861,7 @@ with col_center:
               </script>
             </div>
             """
-            components.html(tv_widget_code, height=620, scrolling=False)
+            components.html(tv_widget_code, height=623, scrolling=False)
             
             # st.markdown("<br>", unsafe_allow_html=True) # Spacer removed for tighter alignment
             
