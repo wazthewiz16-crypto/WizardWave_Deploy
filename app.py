@@ -1625,6 +1625,10 @@ st.components.v1.html("""
       "title": "DXY"
     },
     {
+      "proName": "CRYPTOCAP:BTC.D",
+      "title": "BTC.D"
+    },
+    {
       "proName": "OANDA:SPX500USD",
       "title": "S&P 500"
     },
