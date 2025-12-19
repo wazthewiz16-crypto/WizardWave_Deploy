@@ -1664,7 +1664,7 @@ st.components.v1.html("""
 }
   </script>
 </div>
-""", height=88, scrolling=False)
+""", height=80, scrolling=False)
 
 # Layout Columns
 col_left, col_center, col_right = st.columns([0.25, 0.5, 0.25], gap="small")
