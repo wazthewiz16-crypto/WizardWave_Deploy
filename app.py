@@ -1313,27 +1313,25 @@ def show_runic_alerts():
                             st.markdown(f"<div style='text-align: center; font-size: 0.65rem; color: #00eaff; margin-top: -2px;'>{short_time}</div>", unsafe_allow_html=True)
                             
                 
-                # --- Compact Numbered Pagination ---
-                # Layout: [First] [Prev] [Page Text] [Next]
-                p_first, p_prev, p_text, p_next = st.columns([0.15, 0.15, 0.55, 0.15])
+                # --- Compact Numbered Pagination (Mobile Optimized) ---
+                # Layout: [Page X/Y (Centered)]
+                #         [Prev]    [Next]
                 
-                with p_first:
-                    if st.button("⏪", key="first_main", disabled=(st.session_state.page_number == 0), help="First Page"):
-                        st.session_state.page_number = 0
-                        st.rerun()
-                        
+                # Page Text Centered Top
+                st.markdown(f"<div style='text-align: center; color: #888; font-size: 0.8rem; margin-bottom: 5px;'>Page {st.session_state.page_number + 1}/{total_pages}</div>", unsafe_allow_html=True)
+                
+                # Buttons Row: 50% / 50%
+                p_prev, p_next = st.columns([0.5, 0.5])
+                
                 with p_prev:
-                    if st.button("◀", key="prev_main", disabled=(st.session_state.page_number == 0)):
+                    if st.button("◀ Previous", key="prev_main", disabled=(st.session_state.page_number == 0), use_container_width=True):
                         st.session_state.page_number -= 1
                         st.rerun()
                         
                 with p_next:
-                    if st.button("▶", key="next_main", disabled=(st.session_state.page_number >= total_pages - 1)):
+                    if st.button("Next ▶", key="next_main", disabled=(st.session_state.page_number >= total_pages - 1), use_container_width=True):
                         st.session_state.page_number += 1
                         st.rerun()
-                        
-                with p_text:
-                    st.markdown(f"<div style='text-align: center; color: #888; font-size: 0.8rem; padding-top: 5px;'>Page {st.session_state.page_number + 1}/{total_pages}</div>", unsafe_allow_html=True)
 
         else:
             st.info("No active signals.")
@@ -1666,7 +1664,7 @@ st.components.v1.html("""
 }
   </script>
 </div>
-""", height=78, scrolling=False)
+""", height=94, scrolling=False)
 
 # Layout Columns
 col_left, col_center, col_right = st.columns([0.25, 0.5, 0.25], gap="small")
