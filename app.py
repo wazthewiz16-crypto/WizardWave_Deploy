@@ -1021,21 +1021,36 @@ def show_runic_alerts():
         # Use a placeholder for dynamic updates
         return_placeholder = c_metric.empty()
         
-        def render_return_value(val):
-            r_color = "#00ff88" if val >= 0 else "#ff3344"
-            r_sign = "+" if val >= 0 else ""
+        def render_return_value(val_24, val_12):
+            # 24H Logic
+            r24_color = "#00ff88" if val_24 >= 0 else "#ff3344"
+            r24_sign = "+" if val_24 >= 0 else ""
+            
+            # 12H Logic
+            r12_color = "#00ff88" if val_12 >= 0 else "#ff3344"
+            r12_sign = "+" if val_12 >= 0 else ""
+            
             return_placeholder.markdown(f"""
-                <div style="text-align: center; margin-top: -5px; white-space: nowrap;">
-                    <span style="font-size: 0.9rem; color: #888; font-weight: bold;">24H: </span>
-                    <span style="font-size: 0.9rem; font-weight: bold; color: {r_color}; text-shadow: 0 0 10px {r_color}40;">
-                        {r_sign}{val:.2%}
-                    </span>
+                <div style="text-align: center; margin-top: -12px; white-space: nowrap; line-height: 1.1;">
+                    <div style="margin-bottom: 2px;">
+                        <span style="font-size: 0.9rem; color: #888; font-weight: bold;">24H: </span>
+                        <span style="font-size: 0.9rem; font-weight: bold; color: {r24_color}; text-shadow: 0 0 10px {r24_color}40;">
+                            {r24_sign}{val_24:.2%}
+                        </span>
+                    </div>
+                    <div>
+                        <span style="font-size: 0.8rem; color: #888; font-weight: bold;">12H: </span>
+                        <span style="font-size: 0.8rem; font-weight: bold; color: {r12_color}; text-shadow: 0 0 10px {r12_color}40;">
+                            {r12_sign}{val_12:.2%}
+                        </span>
+                    </div>
                 </div>
             """, unsafe_allow_html=True)
             
         # Initial Render
-        current_return = st.session_state.get('runic_24h_return', 0.0)
-        render_return_value(current_return)
+        current_return_24 = st.session_state.get('runic_24h_return', 0.0)
+        current_return_12 = st.session_state.get('runic_12h_return', 0.0)
+        render_return_value(current_return_24, current_return_12)
 
         with c_btn:
             # Shift button up slightly to align
@@ -1051,6 +1066,8 @@ def show_runic_alerts():
             should_fetch = True
         elif 'last_runic_fetch' not in st.session_state:
             should_fetch = True
+        elif 'runic_12h_return' not in st.session_state:
+             should_fetch = True
         elif now - st.session_state.get('last_runic_fetch', 0) > 55:
             should_fetch = True
             
@@ -1072,7 +1089,7 @@ def show_runic_alerts():
         
             # Clear status
             
-            # --- Aggregated History for 24H Return ---
+            # --- Aggregated History for Returns ---
             # Combine all history
             all_history = []
             if h15m: all_history.extend(h15m)
@@ -1083,6 +1100,8 @@ def show_runic_alerts():
             if h4d: all_history.extend(h4d)
             
             total_24h_return = 0.0
+            total_12h_return = 0.0
+            
             if all_history:
                 hist_df = pd.DataFrame(all_history)
                 # Ensure sort key is datetime and UTC for consistent filtering
@@ -1090,25 +1109,31 @@ def show_runic_alerts():
                     try:
                        # Standardize to UTC
                        hist_df['_sort_key'] = pd.to_datetime(hist_df['_sort_key'], utc=True)
+                       now_utc = pd.Timestamp.now(tz='UTC')
                        
-                       # Filter for last 24h (Current UTC time - 24h)
-                       cutoff = pd.Timestamp.now(tz='UTC') - pd.Timedelta(hours=24)
+                       # Filter for last 24h and 12h
+                       cutoff_24 = now_utc - pd.Timedelta(hours=24)
+                       cutoff_12 = now_utc - pd.Timedelta(hours=12)
                        
-                       recent_sigs = hist_df[hist_df['_sort_key'] >= cutoff]
+                       recent_sigs_24 = hist_df[hist_df['_sort_key'] >= cutoff_24]
+                       recent_sigs_12 = hist_df[hist_df['_sort_key'] >= cutoff_12]
                        
-                       total_24h_return = recent_sigs['Return_Pct'].sum()
+                       total_24h_return = recent_sigs_24['Return_Pct'].sum()
+                       total_12h_return = recent_sigs_12['Return_Pct'].sum()
                     except Exception as e:
-                        print(f"Error calcing 24h return: {e}")
+                        print(f"Error calcing returns: {e}")
                         total_24h_return = 0.0
+                        total_12h_return = 0.0
 
             # Update state AND update visual immediately
             st.session_state['runic_24h_return'] = total_24h_return
+            st.session_state['runic_12h_return'] = total_12h_return
             
             # ALSO store the full history for the Verification Tab
             if all_history:
                  st.session_state['runic_history_df'] = pd.DataFrame(all_history)
             
-            render_return_value(total_24h_return)
+            render_return_value(total_24h_return, total_12h_return)
 
         
             # Consolidate
