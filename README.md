@@ -1,6 +1,4 @@
 # 🧙‍♂️ WizardWave: AI-Powered Trading Signal System
-<<<<<<< HEAD
-=======
 
 **WizardWave** is a comprehensive, gamified trading dashboard that combines classic technical analysis with modern machine learning to generate, filter, and manage high-probability trading signals. Built with a fantasy-themed "Arcane Portal" interface, it transforms the dry task of monitoring markets into an engaging experience while enforcing strict risk management protocols.
 
@@ -12,14 +10,17 @@ Dashboard Preview
 ## ✨ Key Features
 
 ### 🔮 The Arcane Portal (Dashboard)
-- **Live Signal Feed**: Real-time display of active trade setups across Crypto, Forex, and Indices.
-- **Runic Alerts**: A dedicated sidebar for quick-glance status updates on active signals.
+- **Dual-Engine Signal Feed**: Real-time display of active trade setups across Crypto, Forex, and Indices, split into High Timeframe (Trend) and Low Timeframe (Scalp) engines.
+- **Runic Alerts**: A dedicated sidebar for quick-glance status updates on active signals across 15m, 1h, 4h, 12h, 1d, and 4d timeframes.
 - **Realms (Market Sessions)**: A visual 24-hour timeline showing the overlap of major global trading sessions (Sydney, Tokyo, London, New York).
 - **The Oracle**: An automated countdown to high-impact economic events (CPI, NFP, FOMC) to help you avoid volatility spikes.
 
 ### 🧠 AI Meta-Labeling
-- **Smart Filtering**: Raw technical signals are not blindly trusted. They are passed through a **Random Forest Classifier**.
-- **Confidence Scoring**: Each signal is assigned a probability score (0-100%).
+- **Smart Filtering**: Raw technical signals are passed through specialized Random Forest Classifiers.
+- **Hybrid Confidence Scoring**:
+  - **HTF Model**: Optimized for 1D and 4D trend following.
+  - **LTF Model**: Optimized for 15M, 1H, and 4H scalping/swings.
+  - **Ensemble Logic**: 12H signals use a weighted mix (80% HTF / 20% LTF) for high-conviction entries.
 - **Meta-Labeling**: The system advises "TAKE" or "SKIP" based on whether the signal matches the characteristics of historically profitable trades.
 
 ### 🛡️ Risk Management Shield
@@ -31,34 +32,42 @@ Dashboard Preview
 
 ## ⚙️ How It Works: The Signal Pipeline
 
-The system operates on a linear pipeline that transforms raw market data into actionable intelligence.
+The system operates on a specialized dual-pipeline that transforms raw market data into actionable intelligence.
 
 ### 1. Data Ingestion (`data_fetcher.py`)
 - **Crypto**: Fetches real-time OHLCV data using `ccxt` (BinanceUS).
 - **Traditional**: Fetches Stocks, Forex, and Indices data using `yfinance`.
-- **Standardization**: All data is normalized to a common format for processing.
+- **Resampling**: Handles custom timeframes like 12H and 4D via robust resampling logic.
 
-### 2. Strategy Logic (`strategy.py`)
-The core "WizardWave" strategy is a trend-following system based on dynamic cloud structures.
-- **Trend Definition**: Uses two custom EMAs ("Mango D1" & "Mango D2") to form a "Cloud".
-    - Price > Cloud = **Bullish**
-    - Price < Cloud = **Bearish**
-- **Signal Triggers**:
-    - **Zone Entries**: Validated pullbacks into the "Bid Zone" (the area between the cloud bands) during a trend.
-    - **Reversals**: "Trend Flip" events where price forcefully breaks through the cloud structure.
+### 2. Dual Strategy Logic
+**A. High Timeframe (HTF) - `strategy.py`**:
+- **Goal**: Capture major multi-day trends.
+- **Logic**: "WizardWave" Trend Following.
+- **Timeframes**: 12H, 1D, 4D.
+- **Triggers**: Cloud Breakouts and Zone Pullbacks.
 
-### 3. ML Feature Engineering (`pipeline.py`)
-Before a signal is shown, it is enriched with secondary features:
-- **Volatility**: Rolling standard deviation of returns.
-- **RSI**: Relative Strength Index for overbought/oversold conditions.
-- **MA Distance**: Distance from the 50-period SMA (mean reversion potential).
+**B. Low Timeframe (LTF) - `strategy_scalp.py`**:
+- **Goal**: Capture intraday swings and scalps.
+- **Logic**: "WizardScalp" Momentum.
+- **Timeframes**: 15M, 1H, 4H, 12H (secondary).
+- **Triggers**: Cloud Crosses with ADX > 20 and EMA Trend Filtering.
+
+### 3. Advanced Feature Engineering (`feature_engine.py`)
+Signals are enriched with 8 distinct features before classification:
+- **Volatility**: Rolling standard deviation.
+- **RSI**: Relative Strength Index.
+- **MA Distance**: Mean reversion potential.
 - **ADX**: Trend strength intensity.
 - **Momentum**: Rate of Change (ROC).
+- **RVOL**: Relative Volume (Volume Conviction).
+- **Bollinger Width**: Volatility Squeeze/Expansion state.
+- **Candle Ratio**: Price action conviction (Body vs Range).
 
 ### 4. Meta-Labeling Classification
-- A pre-trained **Random Forest Model (`model.pkl`)** analyzes these features.
-- It predicts the probability of the trade hitting its Profit Target (PT) before its Stop Loss (SL).
-- **Triple Barrier Method**: The model was trained using a labeling method that considers time limits, profit targets, and stop losses to define "success."
+- **Two Specialized Models**: 
+    - `model_htf.pkl`: Trained on thousands of daily/4-day signals.
+    - `model_ltf.pkl`: Trained on faster intraday data.
+- **Triple Barrier Method**: Models are trained using dynamic Profit Targets and Stop Losses tailored to the asset class (Crypto vs. TradFi).
 
 ---
 
@@ -72,15 +81,14 @@ Before a signal is shown, it is enriched with secondary features:
    ```bash
    pip install -r requirements.txt
    ```
-   *(Ensure `ccxt`, `yfinance`, `pandas`, `pandas_ta`, `streamlit`, `scikit-learn`, `matplotlib` are included)*
 
 3. **Run the Application**:
    ```bash
    streamlit run app.py
    ```
 
-4. **Retrain the Model (Optional)**:
-   To update the ML model with the latest data:
+4. **Retrain the Models (Optional)**:
+   To update the ML models with the latest data:
    ```bash
    python pipeline.py
    ```
@@ -89,12 +97,13 @@ Before a signal is shown, it is enriched with secondary features:
 
 ## 📂 Project Structure
 
-- **`app.py`**: The main Streamlit application entry point. Handles UI, session state, and user interaction.
-- **`strategy.py`**: Contains the `WizardWaveStrategy` class with the core technical logic.
-- **`pipeline.py`**: The end-to-end Machine Learning pipeline (Data -> Features -> Training -> Backtesting).
-- **`data_fetcher.py`**: Wrapper for `ccxt` and `yfinance` to handle multi-asset data fetching.
-- **`model.pkl`**: The serialized trained Random Forest model.
-- **`strategy_config.json`**: Configuration for assets, timeframes, and model parameters.
+- **`app.py`**: Main application logic (Dashboard, UI, Signal Inference).
+- **`pipeline.py`**: Training pipeline for generating `model_htf.pkl` and `model_ltf.pkl`.
+- **`strategy.py`**: HTF Strategy Logic (WizardWave).
+- **`strategy_scalp.py`**: LTF Strategy Logic (WizardScalp).
+- **`feature_engine.py`**: Shared library for calculating technical features.
+- **`data_fetcher.py`**: Wrapper for data APIs.
+- **`strategy_config.json`**: Central configuration for assets, strategies, and model parameters.
 
 ---
 
@@ -102,112 +111,5 @@ Before a signal is shown, it is enriched with secondary features:
 
 - **Frontend**: Streamlit (Python)
 - **Data Analysis**: Pandas, NumPy, Pandas-TA
-- **Machine Learning**: Scikit-Learn (Random Forest)
+- **Machine Learning**: Scikit-Learn (Random Forest Ensemble)
 - **Data Feeds**: CCXT, yFinance
-- **Visualization**: Matplotlib (Backtests), Streamlit Native Charts
-
->>>>>>> df7fe73b10440680c41a3ad79d1c65ae24c7c8e6
-
-**WizardWave** is a comprehensive, gamified trading dashboard that combines classic technical analysis with modern machine learning to generate, filter, and manage high-probability trading signals. Built with a fantasy-themed "Arcane Portal" interface, it transforms the dry task of monitoring markets into an engaging experience while enforcing strict risk management protocols.
-
-![Dashboard Preview](backtest_result.png)
-*(Note: Replace with an actual screenshot of the app if available)*
-
----
-
-## ✨ Key Features
-
-### 🔮 The Arcane Portal (Dashboard)
-- **Live Signal Feed**: Real-time display of active trade setups across Crypto, Forex, and Indices.
-- **Runic Alerts**: A dedicated sidebar for quick-glance status updates on active signals.
-- **Realms (Market Sessions)**: A visual 24-hour timeline showing the overlap of major global trading sessions (Sydney, Tokyo, London, New York).
-- **The Oracle**: An automated countdown to high-impact economic events (CPI, NFP, FOMC) to help you avoid volatility spikes.
-
-### 🧠 AI Meta-Labeling
-- **Smart Filtering**: Raw technical signals are not blindly trusted. They are passed through a **Random Forest Classifier**.
-- **Confidence Scoring**: Each signal is assigned a probability score (0-100%).
-- **Meta-Labeling**: The system advises "TAKE" or "SKIP" based on whether the signal matches the characteristics of historically profitable trades.
-
-### 🛡️ Risk Management Shield
-- **Gamified Risk**: Capital is treated as "Mana". Taking trades costs Mana, limiting overtrading.
-- **Prop Firm Tracking**: Native support for tracking multiple prop firm accounts, including drawdown limits and profit targets.
-- **Position Sizing**: Automatic calculation of risk per trade based on account size and specific risk percentage (0.25%, 0.5%, 1.0%).
-
----
-
-## ⚙️ How It Works: The Signal Pipeline
-
-The system operates on a linear pipeline that transforms raw market data into actionable intelligence.
-
-### 1. Data Ingestion (`data_fetcher.py`)
-- **Crypto**: Fetches real-time OHLCV data using `ccxt` (BinanceUS).
-- **Traditional**: Fetches Stocks, Forex, and Indices data using `yfinance`.
-- **Standardization**: All data is normalized to a common format for processing.
-
-### 2. Strategy Logic (`strategy.py`)
-The core "WizardWave" strategy is a trend-following system based on dynamic cloud structures.
-- **Trend Definition**: Uses two custom EMAs ("Mango D1" & "Mango D2") to form a "Cloud".
-    - Price > Cloud = **Bullish**
-    - Price < Cloud = **Bearish**
-- **Signal Triggers**:
-    - **Zone Entries**: Validated pullbacks into the "Bid Zone" (the area between the cloud bands) during a trend.
-    - **Reversals**: "Trend Flip" events where price forcefully breaks through the cloud structure.
-
-### 3. ML Feature Engineering (`pipeline.py`)
-Before a signal is shown, it is enriched with secondary features:
-- **Volatility**: Rolling standard deviation of returns.
-- **RSI**: Relative Strength Index for overbought/oversold conditions.
-- **MA Distance**: Distance from the 50-period SMA (mean reversion potential).
-- **ADX**: Trend strength intensity.
-- **Momentum**: Rate of Change (ROC).
-
-### 4. Meta-Labeling Classification
-- A pre-trained **Random Forest Model (`model.pkl`)** analyzes these features.
-- It predicts the probability of the trade hitting its Profit Target (PT) before its Stop Loss (SL).
-- **Triple Barrier Method**: The model was trained using a labeling method that considers time limits, profit targets, and stop losses to define "success."
-
----
-
-## 🛠️ Installation & Setup
-
-1. **Prerequisites**:
-   - Python 3.8+
-   - pip
-
-2. **Install Dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-   *(Ensure `ccxt`, `yfinance`, `pandas`, `pandas_ta`, `streamlit`, `scikit-learn`, `matplotlib` are included)*
-
-3. **Run the Application**:
-   ```bash
-   streamlit run app.py
-   ```
-
-4. **Retrain the Model (Optional)**:
-   To update the ML model with the latest data:
-   ```bash
-   python pipeline.py
-   ```
-
----
-
-## 📂 Project Structure
-
-- **`app.py`**: The main Streamlit application entry point. Handles UI, session state, and user interaction.
-- **`strategy.py`**: Contains the `WizardWaveStrategy` class with the core technical logic.
-- **`pipeline.py`**: The end-to-end Machine Learning pipeline (Data -> Features -> Training -> Backtesting).
-- **`data_fetcher.py`**: Wrapper for `ccxt` and `yfinance` to handle multi-asset data fetching.
-- **`model.pkl`**: The serialized trained Random Forest model.
-- **`strategy_config.json`**: Configuration for assets, timeframes, and model parameters.
-
----
-
-## 🧩 Technology Stack
-
-- **Frontend**: Streamlit (Python)
-- **Data Analysis**: Pandas, NumPy, Pandas-TA
-- **Machine Learning**: Scikit-Learn (Random Forest)
-- **Data Feeds**: CCXT, yFinance
-- **Visualization**: Matplotlib (Backtests), Streamlit Native Charts
