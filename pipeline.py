@@ -9,6 +9,7 @@ from sklearn.metrics import accuracy_score
 from data_fetcher import fetch_data
 from strategy import WizardWaveStrategy
 from strategy_scalp import WizardScalpStrategy
+from feature_engine import calculate_ml_features
 
 # Load Configuration
 with open('strategy_config.json', 'r') as f:
@@ -67,21 +68,9 @@ def apply_triple_barrier(df, symbol, tf, group_config):
         
     time_limit = max(1, time_limit)
     
-    # Features (Common to both)
-    df['returns'] = df['close'].pct_change()
-    df['volatility'] = df['returns'].rolling(20).std()
-    df['rsi'] = ta.rsi(df['close'], length=14)
-    df['sma50'] = ta.sma(df['close'], length=50)
-    df['ma_dist'] = (df['close'] / df['sma50']) - 1
+    # Features (Centralized in feature_engine.py)
+    df = calculate_ml_features(df)
     
-    adx_df = ta.adx(df['high'], df['low'], df['close'], length=14)
-    if not adx_df.empty:
-        df['adx'] = adx_df['ADX_14']
-    else:
-        df['adx'] = 0
-
-    df['mom'] = ta.roc(df['close'], length=10)
-
     # Filter for Signals
     signal_indices = df[df['signal_type'] != 'NONE'].index
     
@@ -152,6 +141,9 @@ def apply_triple_barrier(df, symbol, tf, group_config):
             'ma_dist': row['ma_dist'],
             'adx': row['adx'],
             'mom': row['mom'],
+            'rvol': row.get('rvol', 0),
+            'bb_width': row.get('bb_width', 0),
+            'candle_ratio': row.get('candle_ratio', 0),
             'raw_ret': raw_ret,
             'label': outcome,
             'weight': sample_weight
@@ -208,7 +200,7 @@ def train_model(group_key, group_config):
         return
 
     # Train
-    features = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom']
+    features = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio']
     target = 'label'
     
     X = full_dataset[features]

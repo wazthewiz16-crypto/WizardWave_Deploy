@@ -6,6 +6,7 @@ import time
 import concurrent.futures
 import joblib
 from data_fetcher import fetch_data
+from feature_engine import calculate_ml_features
 from strategy import WizardWaveStrategy
 from strategy_scalp import WizardScalpStrategy
 import streamlit.components.v1 as components
@@ -258,40 +259,7 @@ if 'active_tv_interval' not in st.session_state:
 if 'active_tv_symbol' not in st.session_state:
     st.session_state.active_tv_symbol = "COINBASE:BTCUSD"
 
-def calculate_ml_features(df):
-    """
-    Calculates features for ML (Must match pipeline.py logic)
-    Features: volatility, rsi, ma_dist, adx, mom
-    """
-    df = df.copy()
-    try:
-        # 1. Volatility (20 period std dev of returns)
-        df['returns'] = df['close'].pct_change()
-        df['volatility'] = df['returns'].rolling(20).std()
-        
-        # 2. RSI
-        df['rsi'] = ta.rsi(df['close'], length=14)
-        
-        # 3. MA Distance (Price / SMA50 - 1)
-        df['sma50'] = ta.sma(df['close'], length=50)
-        df['ma_dist'] = (df['close'] / df['sma50']) - 1
-        
-        # 4. ADX
-        adx_df = ta.adx(df['high'], df['low'], df['close'], length=14)
-        if not adx_df.empty and 'ADX_14' in adx_df.columns:
-            df['adx'] = adx_df['ADX_14']
-        else:
-            df['adx'] = 0
 
-        # 5. Momentum (ROC)
-        df['mom'] = ta.roc(df['close'], length=10)
-        
-        # Fill NaNs with 0 to prevent crashes
-        df.fillna(0, inplace=True)
-        return df
-    except Exception as e:
-        print(f"Feature Calc Error: {e}")
-        return df
 
 models = load_ml_models()
 
@@ -360,7 +328,7 @@ def analyze_timeframe(timeframe_label):
             df_strat = calculate_ml_features(df_strat)
             
             if model:
-                features = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom']
+                features = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio']
                 # Predict for CURRENT candle
                 last_features = df_strat.iloc[[-1]][features]
                 prob = model.predict_proba(last_features)[0][1] # Prob of Class 1 (Good)
