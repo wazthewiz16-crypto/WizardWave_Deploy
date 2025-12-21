@@ -30,6 +30,10 @@ def fetch_data(symbol: str, asset_type: str, timeframe: str = '1h', limit: int =
         base_timeframe = '1d'
         resample_rule = '4d' # Pandas Offset Alias
         limit = limit * 4
+    elif timeframe == '12h':
+        base_timeframe = '1h'
+        resample_rule = '12h'
+        limit = limit * 12
         
     df = pd.DataFrame()
     if asset_type == 'crypto':

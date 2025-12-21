@@ -245,6 +245,7 @@ def get_tv_interval(tf_label):
     if "15" in tf_label: return "15"
     if "1 Hour" in tf_label: return "60"
     if "4 Hour" in tf_label: return "240"
+    if "12 Hour" in tf_label: return "720"
     if "1 Day" in tf_label: return "D"
     if "4 Day" in tf_label: return "240" # Fallback to 4H as 4D isn't standard in basic widget, or use 'D'
     return "60"
@@ -268,38 +269,44 @@ def analyze_timeframe(timeframe_label):
     active_trades = []
     historical_signals = [] # Store all historical signals found
     
-    tf_map = {
-        "15 Minutes": "15m",
-        "1 Hour": "1h",
-        "4 Hours": "4h",
-        "1 Day": "1d", 
-        "4 Days": "4d"
-    }
-    tf_code = tf_map.get(timeframe_label, "1h")
-    
-    # Determine HTF or LTF
-    is_ltf = tf_code in ['15m', '1h', '4h']
-    
-    # Initialize Strategy & Select Model
-    if is_ltf:
-        # Scalping
-        # Use simple lookback for LTF (e.g. 8)
-        strat = WizardScalpStrategy(lookback=8, sensitivity=1.0)
+    if timeframe_label == "15 Minutes":
+        tf_code = "15m"
+        group = 'ltf'
+    elif timeframe_label == "1 Hour":
+        tf_code = "1h"
+        group = 'ltf'
+    elif timeframe_label == "4 Hours":
+        tf_code = "4h"
+        group = 'ltf'
+    elif timeframe_label == "12 Hours":
+        tf_code = "12h"
+        group = 'htf'
+    elif timeframe_label == "1 Day":
+        tf_code = "1d"
+        group = 'htf'
+    elif timeframe_label == "4 Days":
+        tf_code = "4d"
+        group = 'htf'
+    else:
+        tf_code = "1d"
+        group = 'htf'
+
+    # Strategy & Config Selection
+    if group == 'ltf':
+        strat = WizardScalpStrategy(lookback=8, sensitivity=1.0) # Use simple lookback for LTF (e.g. 8)
         model = models['ltf']
-        # Tighter Targets
         tp_crypto = 0.02
         sl_crypto = 0.015
         tp_trad = 0.005
         sl_trad = 0.005
-    else:
-        # Trend
+    else: # HTF
         strat = WizardWaveStrategy(
-            lookback=lookback,
-            sensitivity=sensitivity,
-            cloud_spread=cloud_spread,
-            zone_pad_pct=zone_pad
+            lookback=lookback, # Uses global `lookback`
+            sensitivity=sensitivity, # Uses global `sensitivity`
+            cloud_spread=cloud_spread, # Uses global `cloud_spread`
+            zone_pad_pct=zone_pad # Uses global `zone_pad`
         )
-        model = models['htf']
+        model = models['htf'] # Default to HTF model
         tp_crypto = 0.08
         sl_crypto = 0.05
         tp_trad = 0.03
@@ -329,19 +336,44 @@ def analyze_timeframe(timeframe_label):
             
             if model:
                 features = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio']
-                # Predict for CURRENT candle
-                last_features = df_strat.iloc[[-1]][features]
-                prob = model.predict_proba(last_features)[0][1] # Prob of Class 1 (Good)
                 
-                # Predict for ALL rows (for history)
-                # Ensure no NaNs
-                df_clean = df_strat.dropna()
-                if not df_clean.empty:
-                    all_probs = model.predict_proba(df_clean[features])[:, 1]
-                    # Map back to original index
-                    df_strat.loc[df_clean.index, 'model_prob'] = all_probs
+                # --- ENSEMBLE LOGIC (12 Hours) ---
+                if timeframe_label == "12 Hours":
+                    # Combined Model: 80% HTF + 20% LTF
+                    m_htf = models['htf']
+                    m_ltf = models['ltf']
+                    
+                    # 1. Current Candle
+                    last_fts = df_strat.iloc[[-1]][features]
+                    p_htf = m_htf.predict_proba(last_fts)[0][1]
+                    p_ltf = m_ltf.predict_proba(last_fts)[0][1]
+                    prob = (0.8 * p_htf) + (0.2 * p_ltf)
+                    
+                    # 2. Historical Prediction
+                    df_clean = df_strat.dropna()
+                    if not df_clean.empty:
+                        all_p_htf = m_htf.predict_proba(df_clean[features])[:, 1]
+                        all_p_ltf = m_ltf.predict_proba(df_clean[features])[:, 1]
+                        # Vectorized Weighting
+                        df_strat.loc[df_clean.index, 'model_prob'] = (0.8 * all_p_htf) + (0.2 * all_p_ltf)
+                    else:
+                        df_strat['model_prob'] = 0.0
+                    
                 else:
-                    df_strat['model_prob'] = 0.0
+                    # --- STANDARD SINGLE MODEL ---
+                    # Predict for CURRENT candle
+                    last_features = df_strat.iloc[[-1]][features]
+                    prob = model.predict_proba(last_features)[0][1] # Prob of Class 1 (Good)
+                    
+                    # Predict for ALL rows (for history)
+                    # Ensure no NaNs
+                    df_clean = df_strat.dropna()
+                    if not df_clean.empty:
+                        all_probs = model.predict_proba(df_clean[features])[:, 1]
+                        # Map back to original index
+                        df_strat.loc[df_clean.index, 'model_prob'] = all_probs
+                    else:
+                        df_strat['model_prob'] = 0.0
                 
                 # Explicitly set probability for the last row (calculated separately above)
                 # This ensures the active forming candle is included in history simulation
@@ -1080,6 +1112,7 @@ def show_runic_alerts():
             r15m, a15m, h15m = analyze_timeframe("15 Minutes")
             r1h, a1h, h1h = analyze_timeframe("1 Hour")
             r4h, a4h, h4h = analyze_timeframe("4 Hours")
+            r12h, a12h, h12h = analyze_timeframe("12 Hours")
             r1d, a1d, h1d = analyze_timeframe("1 Day")
             r4d, a4d, h4d = analyze_timeframe("4 Days")
         
@@ -1091,6 +1124,7 @@ def show_runic_alerts():
             if h15m: all_history.extend(h15m)
             if h1h: all_history.extend(h1h)
             if h4h: all_history.extend(h4h)
+            if h12h: all_history.extend(h12h)
             if h1d: all_history.extend(h1d)
             if h4d: all_history.extend(h4d)
             
@@ -1099,7 +1133,7 @@ def show_runic_alerts():
                  st.session_state['runic_history_df'] = pd.DataFrame(all_history)
             
             # Consolidate Active
-            active_dfs = [df for df in [a15m, a1h, a4h, a1d, a4d] if df is not None and not df.empty]
+            active_dfs = [df for df in [a15m, a1h, a4h, a12h, a1d, a4d] if df is not None and not df.empty]
             
             if active_dfs:
                 combined_active = pd.concat(active_dfs).sort_values(by='_sort_key', ascending=False)
@@ -1138,6 +1172,7 @@ def show_runic_alerts():
                         tf_map_rev_metrics = {
                             "15m": "15 Minutes", 
                             "1H": "1 Hour", "4H": "4 Hours", 
+                            "12h": "12 Hours",
                             "1D": "1 Day", "4D": "4 Days"
                         }
                         selected_metrics_tfs = [tf_map_rev_metrics.get(x, x) for x in sel_short]
@@ -1170,13 +1205,15 @@ def show_runic_alerts():
             tf_order = {
                 "15 Minutes": 0, 
                 "1 Hour": 2, "4 Hours": 3, 
-                "1 Day": 4, "4 Days": 5
+                "12 Hours": 4,
+                "1 Day": 5, "4 Days": 6
             }
             
             # Mapping to Compact format
             tf_map = {
                 "15 Minutes": "15m", 
                 "1 Hour": "1H", "4 Hours": "4H", 
+                "12 Hours": "12H",
                 "1 Day": "1D", "4 Days": "4D"
             }
             tf_map_rev = {v: k for k, v in tf_map.items()}
@@ -1751,11 +1788,13 @@ with col_center:
                      tf_order = {
                         "15 Minutes": 0, 
                         "1 Hour": 2, "4 Hours": 3, 
-                        "1 Day": 4, "4 Days": 5
+                        "12 Hours": 4,
+                        "1 Day": 5, "4 Days": 6
                      }
                      tf_map = {
                         "15 Minutes": "15m", 
                         "1 Hour": "1H", "4 Hours": "4H", 
+                        "12 Hours": "12H",
                         "1 Day": "1D", "4 Days": "4D"
                      }
                      tf_map_rev = {v: k for k, v in tf_map.items()}
