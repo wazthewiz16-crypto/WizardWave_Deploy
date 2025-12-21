@@ -1100,44 +1100,11 @@ def show_runic_alerts():
             if h1d: all_history.extend(h1d)
             if h4d: all_history.extend(h4d)
             
-            total_24h_return = 0.0
-            total_12h_return = 0.0
-            
-            if all_history:
-                hist_df = pd.DataFrame(all_history)
-                # Ensure sort key is datetime and UTC for consistent filtering
-                if not hist_df.empty and '_sort_key' in hist_df.columns:
-                    try:
-                       # Standardize to UTC
-                       hist_df['_sort_key'] = pd.to_datetime(hist_df['_sort_key'], utc=True)
-                       now_utc = pd.Timestamp.now(tz='UTC')
-                       
-                       # Filter for last 24h and 12h
-                       cutoff_24 = now_utc - pd.Timedelta(hours=24)
-                       cutoff_12 = now_utc - pd.Timedelta(hours=12)
-                       
-                       recent_sigs_24 = hist_df[hist_df['_sort_key'] >= cutoff_24]
-                       recent_sigs_12 = hist_df[hist_df['_sort_key'] >= cutoff_12]
-                       
-                       total_24h_return = recent_sigs_24['Return_Pct'].sum()
-                       total_12h_return = recent_sigs_12['Return_Pct'].sum()
-                    except Exception as e:
-                        print(f"Error calcing returns: {e}")
-                        total_24h_return = 0.0
-                        total_12h_return = 0.0
-
-            # Update state AND update visual immediately
-            st.session_state['runic_24h_return'] = total_24h_return
-            st.session_state['runic_12h_return'] = total_12h_return
-            
-            # ALSO store the full history for the Verification Tab
+            # Update state (raw list only, returns calculated later)
             if all_history:
                  st.session_state['runic_history_df'] = pd.DataFrame(all_history)
             
-            render_return_value(total_24h_return, total_12h_return)
-
-        
-            # Consolidate
+            # Consolidate Active
             active_dfs = [df for df in [a15m, a30m, a1h, a4h, a1d, a4d] if df is not None and not df.empty]
             
             if active_dfs:
@@ -1153,6 +1120,53 @@ def show_runic_alerts():
             st.session_state['combined_active_df'] = combined_active
             st.session_state['last_runic_fetch'] = now
             
+        # --- RE-CALCULATE METRICS ON EVERY RERUN ---
+        # Get history from state
+        hist_df = st.session_state.get('runic_history_df', pd.DataFrame())
+        
+        calc_24h = 0.0
+        calc_12h = 0.0
+        
+        if not hist_df.empty and '_sort_key' in hist_df.columns:
+            try:
+               # Standardize to UTC
+               hist_df['_sort_key'] = pd.to_datetime(hist_df['_sort_key'], utc=True)
+               now_utc = pd.Timestamp.now(tz='UTC')
+               
+               cutoff_24 = now_utc - pd.Timedelta(hours=24)
+               cutoff_12 = now_utc - pd.Timedelta(hours=12)
+               
+               # Apply Timeframe Filter from State
+               selected_metrics_tfs = None
+               if 'runic_active_tf_selector' in st.session_state:
+                   sel_short = st.session_state['runic_active_tf_selector']
+                   if sel_short:
+                        tf_map_rev_metrics = {
+                            "15m": "15 Minutes", "30m": "30 Minutes", 
+                            "1H": "1 Hour", "4H": "4 Hours", 
+                            "1D": "1 Day", "4D": "4 Days"
+                        }
+                        selected_metrics_tfs = [tf_map_rev_metrics.get(x, x) for x in sel_short]
+               
+               hist_df_metrics = hist_df.copy()
+               if selected_metrics_tfs is not None:
+                   hist_df_metrics = hist_df_metrics[hist_df_metrics['Timeframe'].isin(selected_metrics_tfs)]
+               
+               recent_sigs_24 = hist_df_metrics[hist_df_metrics['_sort_key'] >= cutoff_24]
+               recent_sigs_12 = hist_df_metrics[hist_df_metrics['_sort_key'] >= cutoff_12]
+               
+               calc_24h = recent_sigs_24['Return_Pct'].sum()
+               calc_12h = recent_sigs_12['Return_Pct'].sum()
+               
+            except Exception as e:
+                # keep 0.0
+                pass
+        
+        # Update State & Render
+        st.session_state['runic_24h_return'] = calc_24h
+        st.session_state['runic_12h_return'] = calc_12h
+        render_return_value(calc_24h, calc_12h)
+        
         # Get Data for Display
         combined_active = st.session_state.get('combined_active_df', pd.DataFrame())
         
@@ -1182,7 +1196,7 @@ def show_runic_alerts():
             
             # Compact Multiselect
             st.markdown("<div style='margin-top: -15px;'></div>", unsafe_allow_html=True)
-            selected_short = st.multiselect("Timeframes", options=display_opts, default=display_opts, label_visibility="collapsed")
+            selected_short = st.multiselect("Timeframes", options=display_opts, default=display_opts, label_visibility="collapsed", key="runic_active_tf_selector")
             
             # Map back for filtering
             selected_tfs = [tf_map_rev.get(x, x) for x in selected_short]
