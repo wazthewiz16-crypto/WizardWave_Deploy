@@ -1034,7 +1034,7 @@ def show_runic_alerts():
             r12_sign = "+" if val_12 >= 0 else ""
             
             return_placeholder.markdown(f"""
-                <div style="text-align: center; white-space: nowrap; line-height: 1.1; margin-top: 2px;">
+                <div style="text-align: center; white-space: nowrap; margin-top: 2px;">
                     <div style="display: inline-block; margin-right: 10px;">
                         <span style="font-size: 0.8rem; color: #888; font-weight: bold;">24H: </span>
                         <span style="font-size: 0.8rem; font-weight: bold; color: {r24_color}; text-shadow: 0 0 10px {r24_color}40;">
@@ -1573,6 +1573,22 @@ st.markdown("""
     div[data-testid="stVerticalBlock"] {
         gap: 0.2rem !important;
     }
+    
+    /* Responsive Ticker Tape Hack */
+    /* Mobile First: Default is handled by Python height=80 */
+    
+    /* Desktop Override: Shrink to 60px */
+    @media (min-width: 900px) {
+        div[style*="height: 81px"],
+        div[style*="height:81px"] {
+            height: 60px !important;
+            min-height: 60px !important;
+        }
+        iframe[height="81"],
+        iframe[style*="height: 81px"] {
+            height: 100% !important;
+        }
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -1664,7 +1680,7 @@ st.components.v1.html("""
 }
   </script>
 </div>
-""", height=80, scrolling=False)
+""", height=81, scrolling=False)
 
 # Layout Columns
 col_left, col_center, col_right = st.columns([0.25, 0.5, 0.25], gap="small")
@@ -1707,17 +1723,51 @@ with col_center:
                     hist_df['_sort_key'] = pd.to_datetime(hist_df['_sort_key'], utc=True)
                  except: pass
                  
-                 # Toggle for 24H Only
-                 show_24h_only = st.checkbox("Show last 24 Hours Only", value=True)
+                 # Options Layout
+                 opt_col1, opt_col2 = st.columns([0.4, 0.6])
+                 with opt_col1:
+                     # Toggle for 24H Only
+                     show_24h_only = st.checkbox("Show last 24 Hours Only", value=True)
                  
-                 # 1. Filter Time
+                 # 1. Filter Time (Last 24h)
                  if show_24h_only:
                      cutoff = pd.Timestamp.now(tz='UTC') - pd.Timedelta(hours=24)
                      filtered_df = hist_df[hist_df['_sort_key'] >= cutoff].copy()
                  else:
                      filtered_df = hist_df.copy()
                      
-                 # Sort newest first
+                 # 2. Timeframe Filter
+                 # Get unique timeframes from FULL history to keep options stable, or filtered?
+                 # Stable options from full history is better UX.
+                 if 'Timeframe' in hist_df.columns:
+                     tf_order = {
+                        "15 Minutes": 0, "30 Minutes": 1, 
+                        "1 Hour": 2, "4 Hours": 3, 
+                        "1 Day": 4, "4 Days": 5
+                     }
+                     tf_map = {
+                        "15 Minutes": "15m", "30 Minutes": "30m", 
+                        "1 Hour": "1H", "4 Hours": "4H", 
+                        "1 Day": "1D", "4 Days": "4D"
+                     }
+                     tf_map_rev = {v: k for k, v in tf_map.items()}
+                     
+                     unique_tfs = hist_df['Timeframe'].unique().tolist()
+                     sorted_tfs = sorted(unique_tfs, key=lambda x: tf_order.get(x, 99))
+                     display_opts = [tf_map.get(x, x) for x in sorted_tfs]
+                     
+                     with opt_col2:
+                         selected_short = st.multiselect("Timeframes", options=display_opts, default=display_opts, label_visibility="collapsed", key="history_tf_filter")
+                         
+                     # Map back
+                     selected_tfs = [tf_map_rev.get(x, x) for x in selected_short]
+                     
+                     # Apply Filter
+                     if selected_tfs:
+                         filtered_df = filtered_df[filtered_df['Timeframe'].isin(selected_tfs)]
+                     else:
+                         filtered_df = pd.DataFrame(columns=filtered_df.columns) # Show nothing if nothing selected
+                         
                  # Sort newest first
                  filtered_df = filtered_df.sort_values(by='_sort_key', ascending=False)
 
