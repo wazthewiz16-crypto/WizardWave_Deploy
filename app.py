@@ -7,6 +7,7 @@ import concurrent.futures
 import joblib
 from data_fetcher import fetch_data
 from strategy import WizardWaveStrategy
+from strategy_scalp import WizardScalpStrategy
 import streamlit.components.v1 as components
 import json
 import urllib.request
@@ -194,13 +195,20 @@ if state_needs_update:
 
 # --- ML Model Integration ---
 @st.cache_resource
-def load_ml_model():
+def load_ml_models():
+    """Load both HTF and LTF models"""
+    models = {'htf': None, 'ltf': None}
     try:
-        model = joblib.load('model.pkl')
-        return model
+        models['htf'] = joblib.load('model_htf.pkl')
     except Exception as e:
-        print(f"Error loading model: {e}")
-        return None
+        print(f"Error loading HTF model: {e}")
+        
+    try:
+        models['ltf'] = joblib.load('model_ltf.pkl')
+    except Exception as e:
+        print(f"Error loading LTF model: {e}")
+        
+    return models
 
 # --- Utility: TradingView Symbol Mapping ---
 def get_tv_symbol(asset_entry):
@@ -234,7 +242,6 @@ def get_tv_interval(tf_label):
     # TV uses minutes or 'D', 'W'
     # "15 Minutes", "30 Minutes", "1 Hour", "4 Hours", "1 Day", "4 Days"
     if "15" in tf_label: return "15"
-    if "30" in tf_label: return "30"
     if "1 Hour" in tf_label: return "60"
     if "4 Hour" in tf_label: return "240"
     if "1 Day" in tf_label: return "D"
@@ -286,7 +293,7 @@ def calculate_ml_features(df):
         print(f"Feature Calc Error: {e}")
         return df
 
-model = load_ml_model()
+models = load_ml_models()
 
 def analyze_timeframe(timeframe_label):
     results = []
@@ -295,7 +302,6 @@ def analyze_timeframe(timeframe_label):
     
     tf_map = {
         "15 Minutes": "15m",
-        "30 Minutes": "30m",
         "1 Hour": "1h",
         "4 Hours": "4h",
         "1 Day": "1d", 
@@ -303,13 +309,33 @@ def analyze_timeframe(timeframe_label):
     }
     tf_code = tf_map.get(timeframe_label, "1h")
     
-    # Initialize Strategy
-    strat = WizardWaveStrategy(
-        lookback=lookback,
-        sensitivity=sensitivity,
-        cloud_spread=cloud_spread,
-        zone_pad_pct=zone_pad
-    )
+    # Determine HTF or LTF
+    is_ltf = tf_code in ['15m', '1h', '4h']
+    
+    # Initialize Strategy & Select Model
+    if is_ltf:
+        # Scalping
+        # Use simple lookback for LTF (e.g. 8)
+        strat = WizardScalpStrategy(lookback=8, sensitivity=1.0)
+        model = models['ltf']
+        # Tighter Targets
+        tp_crypto = 0.02
+        sl_crypto = 0.015
+        tp_trad = 0.005
+        sl_trad = 0.005
+    else:
+        # Trend
+        strat = WizardWaveStrategy(
+            lookback=lookback,
+            sensitivity=sensitivity,
+            cloud_spread=cloud_spread,
+            zone_pad_pct=zone_pad
+        )
+        model = models['htf']
+        tp_crypto = 0.08
+        sl_crypto = 0.05
+        tp_trad = 0.03
+        sl_trad = 0.04
 
     progress_bar = st.progress(0)
     status_text = st.empty()
@@ -399,16 +425,18 @@ def analyze_timeframe(timeframe_label):
                         decimals = 5
                         
                 # Calculate TP/SL Prices
-                pt_pct = 0.03 if is_trad else 0.08
-                sl_pct = 0.04 if is_trad else 0.05
+                # Use Closure Variables
+                curr_tp = tp_trad if is_trad else tp_crypto
+                curr_sl = sl_trad if is_trad else sl_crypto
+                
                 ep = trade['Entry Price']
                 
                 if trade['Position'] == 'LONG':
-                    tp_price = ep * (1 + pt_pct)
-                    sl_price = ep * (1 - sl_pct)
+                    tp_price = ep * (1 + curr_tp)
+                    sl_price = ep * (1 - curr_sl)
                 else:
-                    tp_price = ep * (1 - pt_pct)
-                    sl_price = ep * (1 + sl_pct)
+                    tp_price = ep * (1 - curr_tp)
+                    sl_price = ep * (1 + curr_sl)
 
                 active_trade_data = {
                     "_sort_key": sort_ts,
@@ -453,8 +481,8 @@ def analyze_timeframe(timeframe_label):
                entry_time = None
                sl_price = 0.0
                
-               sl_pct = 0.05 if asset_type == 'crypto' else 0.04
-               tp_pct = 0.08 if asset_type == 'crypto' else 0.03
+               curr_sl_pct = sl_trad if asset_type == 'trad' else sl_crypto
+               curr_tp_pct = tp_trad if asset_type == 'trad' else tp_crypto
                
                # Iterate through all bars
                # Assumes df is sorted by time
@@ -473,25 +501,25 @@ def analyze_timeframe(timeframe_label):
                    
                    if position == 'LONG':
                        # Check TP
-                       if high >= entry_price * (1 + tp_pct):
-                           pnl = tp_pct
+                       if high >= entry_price * (1 + curr_tp_pct):
+                           pnl = curr_tp_pct
                            status = "HIT TP 🟢"
                            exit_trade = True
                        # Check SL
-                       elif low <= entry_price * (1 - sl_pct):
-                           pnl = -sl_pct
+                       elif low <= entry_price * (1 - curr_sl_pct):
+                           pnl = -curr_sl_pct
                            status = "HIT SL 🔴"
                            exit_trade = True
 
                    elif position == 'SHORT':
                        # Check TP
-                       if low <= entry_price * (1 - tp_pct):
-                           pnl = tp_pct
+                       if low <= entry_price * (1 - curr_tp_pct):
+                           pnl = curr_tp_pct
                            status = "HIT TP 🟢"
                            exit_trade = True
                        # Check SL
-                       elif high >= entry_price * (1 + sl_pct):
-                           pnl = -sl_pct
+                       elif high >= entry_price * (1 + curr_sl_pct):
+                           pnl = -curr_sl_pct
                            status = "HIT SL 🔴"
                            exit_trade = True
                            
@@ -506,7 +534,7 @@ def analyze_timeframe(timeframe_label):
                             "Confidence": "N/A",
                             "Model": "✅",
                             "Return_Pct": pnl, 
-                            "SL_Pct": sl_pct,
+                            "SL_Pct": curr_sl_pct,
                             "Status": status
                        })
                        position = None
@@ -540,7 +568,7 @@ def analyze_timeframe(timeframe_label):
                                     "Confidence": "N/A",
                                     "Model": "✅",
                                     "Return_Pct": last_close_pnl, 
-                                    "SL_Pct": sl_pct,
+                                    "SL_Pct": curr_sl_pct,
                                     "Status": "FLIP 🔄"
                                })
                                # Prepare for new entry
@@ -571,7 +599,7 @@ def analyze_timeframe(timeframe_label):
                         "Confidence": "N/A",
                         "Model": "✅",
                         "Return_Pct": pnl, 
-                        "SL_Pct": sl_pct,
+                        "SL_Pct": curr_sl_pct,
                         "Status": "OPEN"
                     })
 
@@ -776,7 +804,7 @@ def render_prop_risk():
     accounts_changed = False
     
     for i, account in enumerate(st.session_state.user_accounts):
-        size = account['size']
+        size = account.get('size', 50000)
         pt_amt = account['profit_target_amt']
         dd_limit_amt = account['drawdown_limit_amt']
         
@@ -1082,7 +1110,6 @@ def show_runic_alerts():
             # Run All Timeframes
             # Note: analyze_timeframe uses st.progress which will display here
             r15m, a15m, h15m = analyze_timeframe("15 Minutes")
-            r30m, a30m, h30m = analyze_timeframe("30 Minutes")
             r1h, a1h, h1h = analyze_timeframe("1 Hour")
             r4h, a4h, h4h = analyze_timeframe("4 Hours")
             r1d, a1d, h1d = analyze_timeframe("1 Day")
@@ -1094,7 +1121,6 @@ def show_runic_alerts():
             # Combine all history
             all_history = []
             if h15m: all_history.extend(h15m)
-            if h30m: all_history.extend(h30m)
             if h1h: all_history.extend(h1h)
             if h4h: all_history.extend(h4h)
             if h1d: all_history.extend(h1d)
@@ -1105,7 +1131,7 @@ def show_runic_alerts():
                  st.session_state['runic_history_df'] = pd.DataFrame(all_history)
             
             # Consolidate Active
-            active_dfs = [df for df in [a15m, a30m, a1h, a4h, a1d, a4d] if df is not None and not df.empty]
+            active_dfs = [df for df in [a15m, a1h, a4h, a1d, a4d] if df is not None and not df.empty]
             
             if active_dfs:
                 combined_active = pd.concat(active_dfs).sort_values(by='_sort_key', ascending=False)
@@ -1142,7 +1168,7 @@ def show_runic_alerts():
                    sel_short = st.session_state['runic_active_tf_selector']
                    if sel_short:
                         tf_map_rev_metrics = {
-                            "15m": "15 Minutes", "30m": "30 Minutes", 
+                            "15m": "15 Minutes", 
                             "1H": "1 Hour", "4H": "4 Hours", 
                             "1D": "1 Day", "4D": "4 Days"
                         }
@@ -1174,14 +1200,14 @@ def show_runic_alerts():
         if not combined_active.empty:
             # Get unique timeframes and sort chronologically
             tf_order = {
-                "15 Minutes": 0, "30 Minutes": 1, 
+                "15 Minutes": 0, 
                 "1 Hour": 2, "4 Hours": 3, 
                 "1 Day": 4, "4 Days": 5
             }
             
             # Mapping to Compact format
             tf_map = {
-                "15 Minutes": "15m", "30 Minutes": "30m", 
+                "15 Minutes": "15m", 
                 "1 Hour": "1H", "4 Hours": "4H", 
                 "1 Day": "1D", "4 Days": "4D"
             }
@@ -1755,12 +1781,12 @@ with col_center:
                  # Stable options from full history is better UX.
                  if 'Timeframe' in hist_df.columns:
                      tf_order = {
-                        "15 Minutes": 0, "30 Minutes": 1, 
+                        "15 Minutes": 0, 
                         "1 Hour": 2, "4 Hours": 3, 
                         "1 Day": 4, "4 Days": 5
                      }
                      tf_map = {
-                        "15 Minutes": "15m", "30 Minutes": "30m", 
+                        "15 Minutes": "15m", 
                         "1 Hour": "1H", "4 Hours": "4H", 
                         "1 Day": "1D", "4 Days": "4D"
                      }
