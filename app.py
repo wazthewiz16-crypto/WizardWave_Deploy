@@ -1878,7 +1878,37 @@ with col_center:
                  
                  st.divider()
                  
-                 # Display Table
+                 # --- Reference Parameters (TP/SL) ---
+                 with st.expander("🛡️ Current Strategy Parameters", expanded=True):
+                     sys_c1, sys_c2 = st.columns(2)
+                     
+                     # HTF (Swing)
+                     with sys_c1:
+                        htf_c = config['htf']['triple_barrier']
+                        st.caption(f"**HTF (Swing)** | Timeout: {htf_c['time_limit_days']} Days")
+                        # Format for display
+                        st.markdown(f"""
+                        - **Crypto:** TP `{htf_c['crypto_pt']:.1%}` / SL `{htf_c['crypto_sl']:.1%}`
+                        - **TradFi:** TP `{htf_c['trad_pt']:.1%}` / SL `{htf_c['trad_sl']:.1%}`
+                        - **Forex:**  TP `{htf_c['forex_pt']:.1%}` / SL `{htf_c['forex_sl']:.1%}`
+                        """)
+                     
+                     # LTF (Scalp)
+                     with sys_c2:
+                        ltf_c = config['ltf']['triple_barrier']
+                        st.caption(f"**LTF (Scalp)** | Timeout: {ltf_c['time_limit_bars']} Bars")
+                        
+                        if ltf_c.get('crypto_use_dynamic'):
+                            c_str = f"⚡ *Dynamic* (σ x {ltf_c.get('crypto_dyn_pt_k')})"
+                        else:
+                            c_str = f"TP `{ltf_c['crypto_pt']:.1%}` / SL `{ltf_c['crypto_sl']:.1%}`"
+                            
+                        st.markdown(f"""
+                        - **Crypto:** {c_str}
+                        - **TradFi:** TP `{ltf_c['trad_pt']:.1%}` / SL `{ltf_c['trad_sl']:.1%}`
+                        - **Forex:**  TP `{ltf_c['forex_pt']:.1%}` / SL `{ltf_c['forex_sl']:.1%}`
+                        """)
+
                  # Simplify cols
                  if not filtered_df.empty:
                      display_cols = ['Time', 'Asset', 'Timeframe', 'Type', 'Price', 'Return_Pct', 'Status']
