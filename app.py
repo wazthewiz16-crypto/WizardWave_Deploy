@@ -315,6 +315,11 @@ def analyze_timeframe(timeframe_label):
         tp_forex = tb.get('forex_pt', 0.003)
         sl_forex = tb.get('forex_sl', 0.009)
         
+        # Dynamic barrier config
+        crypto_use_dynamic = tb.get('crypto_use_dynamic', False)
+        crypto_dyn_pt_k = tb.get('crypto_dyn_pt_k', 0.5)
+        crypto_dyn_sl_k = tb.get('crypto_dyn_sl_k', 0.5)
+        
     else: # HTF
         strat = WizardWaveStrategy(
             lookback=lookback, # Uses global `lookback`
@@ -332,6 +337,11 @@ def analyze_timeframe(timeframe_label):
         sl_trad = tb.get('trad_sl', 0.03)
         tp_forex = tb.get('forex_pt', 0.02)
         sl_forex = tb.get('forex_sl', 0.035)
+
+        # Dynamic barrier config (HTF defaults to False usually)
+        crypto_use_dynamic = tb.get('crypto_use_dynamic', False)
+        crypto_dyn_pt_k = tb.get('crypto_dyn_pt_k', 0.5)
+        crypto_dyn_sl_k = tb.get('crypto_dyn_sl_k', 0.5)
 
     progress_bar = st.progress(0)
     status_text = st.empty()
@@ -354,6 +364,13 @@ def analyze_timeframe(timeframe_label):
             
             # ML Features & Prediction
             df_strat = calculate_ml_features(df_strat)
+            
+            # --- Calculate Sigma for Dynamic Barriers ---
+            if crypto_use_dynamic and asset['type'] == 'crypto':
+                # Match pipeline.py: ewm(span=36).std()
+                df_strat['sigma'] = df_strat['close'].pct_change().ewm(span=36, adjust=False).std()
+                # Fill NaNs
+                df_strat['sigma'] = df_strat['sigma'].fillna(method='bfill').fillna(0.01)
             
             if model:
                 features = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio']
@@ -449,8 +466,19 @@ def analyze_timeframe(timeframe_label):
                 # Use Closure Variables
                 a_type = asset['type']
                 if a_type == 'crypto':
-                    curr_tp = tp_crypto
-                    curr_sl = sl_crypto
+                    if crypto_use_dynamic:
+                        # Dynamic Volatility Based
+                        try:
+                            # entry_idx is calculated earlier
+                            sigma_val = df_strat['sigma'].iloc[entry_idx]
+                        except:
+                            sigma_val = 0.01 # Fallback
+                        
+                        curr_tp = sigma_val * crypto_dyn_pt_k
+                        curr_sl = sigma_val * crypto_dyn_sl_k
+                    else:
+                        curr_tp = tp_crypto
+                        curr_sl = sl_crypto
                 elif a_type == 'forex':
                     curr_tp = tp_forex
                     curr_sl = sl_forex
@@ -1840,7 +1868,12 @@ with col_center:
                      display_opts = [tf_map.get(x, x) for x in sorted_tfs]
                      
                      with opt_col2:
-                         selected_short = st.multiselect("Timeframes", options=display_opts, default=display_opts, label_visibility="collapsed", key="history_tf_filter")
+                         # Initialize default selection in session state if new
+                         if "history_tf_filter" not in st.session_state:
+                             st.session_state.history_tf_filter = display_opts
+                         
+                         # Use session state via key, remove explicit default to avoid conflicts
+                         selected_short = st.multiselect("Timeframes", options=display_opts, label_visibility="collapsed", key="history_tf_filter")
                          
                      # Map back
                      selected_tfs = [tf_map_rev.get(x, x) for x in selected_short]
