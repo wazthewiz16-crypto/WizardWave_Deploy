@@ -19,6 +19,15 @@ from datetime import datetime, date
 # --- Persistence Logic ---
 STATE_FILE = "user_grimoire.json"
 
+# Load Strategy Config
+try:
+    with open('strategy_config.json', 'r') as f:
+        config = json.load(f)
+except Exception as e:
+    print(f"Error loading strategy_config.json: {e}")
+    config = {} # Fallback
+
+
 def load_grimoire():
     today = date.today()
     current_week = today.isocalendar()[1]
@@ -120,9 +129,9 @@ ASSETS = [
     {"symbol": "DX-Y.NYB", "type": "trad", "name": "DXY Index"},
     {"symbol": "GC=F", "type": "trad", "name": "Gold Futures"},
     {"symbol": "CL=F", "type": "trad", "name": "US Oil"},
-    {"symbol": "EURUSD=X", "type": "trad", "name": "EUR/USD"},
-    {"symbol": "GBPUSD=X", "type": "trad", "name": "GBP/USD"},
-    {"symbol": "AUDUSD=X", "type": "trad", "name": "AUD/USD"},
+    {"symbol": "EURUSD=X", "type": "forex", "name": "EUR/USD"},
+    {"symbol": "GBPUSD=X", "type": "forex", "name": "GBP/USD"},
+    {"symbol": "AUDUSD=X", "type": "forex", "name": "AUD/USD"},
     {"symbol": "SI=F", "type": "trad", "name": "Silver Futures"},
     {"symbol": "ARB/USDT", "type": "crypto", "name": "Arbitrum"},
     {"symbol": "AVAX/USDT", "type": "crypto", "name": "Avalanche"},
@@ -292,13 +301,20 @@ def analyze_timeframe(timeframe_label):
         group = 'htf'
 
     # Strategy & Config Selection
+    # Strategy & Config Selection
     if group == 'ltf':
         strat = WizardScalpStrategy(lookback=8, sensitivity=1.0) # Use simple lookback for LTF (e.g. 8)
         model = models['ltf']
-        tp_crypto = 0.02
-        sl_crypto = 0.015
-        tp_trad = 0.005
-        sl_trad = 0.005
+        
+        # Load optimized params from config
+        tb = config['ltf']['triple_barrier']
+        tp_crypto = tb.get('crypto_pt', 0.015)
+        sl_crypto = tb.get('crypto_sl', 0.005)
+        tp_trad = tb.get('trad_pt', 0.005)
+        sl_trad = tb.get('trad_sl', 0.002)
+        tp_forex = tb.get('forex_pt', 0.003)
+        sl_forex = tb.get('forex_sl', 0.009)
+        
     else: # HTF
         strat = WizardWaveStrategy(
             lookback=lookback, # Uses global `lookback`
@@ -307,10 +323,15 @@ def analyze_timeframe(timeframe_label):
             zone_pad_pct=zone_pad # Uses global `zone_pad`
         )
         model = models['htf'] # Default to HTF model
-        tp_crypto = 0.08
-        sl_crypto = 0.05
-        tp_trad = 0.03
-        sl_trad = 0.04
+        
+        # Load optimized params from config
+        tb = config['htf']['triple_barrier']
+        tp_crypto = tb.get('crypto_pt', 0.14)
+        sl_crypto = tb.get('crypto_sl', 0.04)
+        tp_trad = tb.get('trad_pt', 0.07)
+        sl_trad = tb.get('trad_sl', 0.03)
+        tp_forex = tb.get('forex_pt', 0.02)
+        sl_forex = tb.get('forex_sl', 0.035)
 
     progress_bar = st.progress(0)
     status_text = st.empty()
@@ -426,8 +447,16 @@ def analyze_timeframe(timeframe_label):
                         
                 # Calculate TP/SL Prices
                 # Use Closure Variables
-                curr_tp = tp_trad if is_trad else tp_crypto
-                curr_sl = sl_trad if is_trad else sl_crypto
+                a_type = asset['type']
+                if a_type == 'crypto':
+                    curr_tp = tp_crypto
+                    curr_sl = sl_crypto
+                elif a_type == 'forex':
+                    curr_tp = tp_forex
+                    curr_sl = sl_forex
+                else: # trad
+                    curr_tp = tp_trad
+                    curr_sl = sl_trad
                 
                 ep = trade['Entry Price']
                 
@@ -481,8 +510,15 @@ def analyze_timeframe(timeframe_label):
                entry_time = None
                sl_price = 0.0
                
-               curr_sl_pct = sl_trad if asset_type == 'trad' else sl_crypto
-               curr_tp_pct = tp_trad if asset_type == 'trad' else tp_crypto
+               if asset_type == 'crypto':
+                   curr_tp_pct = tp_crypto
+                   curr_sl_pct = sl_crypto
+               elif asset_type == 'forex':
+                   curr_tp_pct = tp_forex
+                   curr_sl_pct = sl_forex
+               else:
+                   curr_tp_pct = tp_trad
+                   curr_sl_pct = sl_trad
                
                # Iterate through all bars
                # Assumes df is sorted by time

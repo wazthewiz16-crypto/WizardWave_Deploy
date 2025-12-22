@@ -35,10 +35,12 @@
         "model_file": "model_htf.pkl",
         "triple_barrier": {
             "time_limit_days": 40,
-            "crypto_pt": 0.08,
-            "crypto_sl": 0.05,
-            "trad_pt": 0.03,
-            "trad_sl": 0.04
+            "crypto_pt": 0.14,
+            "crypto_sl": 0.04,
+            "trad_pt": 0.07,
+            "trad_sl": 0.03,
+            "forex_pt": 0.02,
+            "forex_sl": 0.035
         }
     },
     "ltf": {
@@ -56,10 +58,12 @@
         "model_file": "model_ltf.pkl",
         "triple_barrier": {
             "time_limit_bars": 24,
-            "crypto_pt": 0.02,
-            "crypto_sl": 0.015,
+            "crypto_pt": 0.015,
+            "crypto_sl": 0.005,
             "trad_pt": 0.005,
-            "trad_sl": 0.005
+            "trad_sl": 0.002,
+            "forex_pt": 0.003,
+            "forex_sl": 0.009
         }
     },
     "lookback_candles": 5000,

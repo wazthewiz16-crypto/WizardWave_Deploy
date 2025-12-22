@@ -17,20 +17,20 @@ with open('strategy_config.json', 'r') as f:
 
 def get_asset_type(symbol):
     """
-    Determines if an asset is 'crypto' or 'trad' based on the symbol.
+    Determines if an asset is 'crypto', 'forex', or 'trad' based on the symbol.
     """
     # Known Crypto Identifiers
     crypto_kw = ['BTC', 'ETH', 'SOL', 'DOGE', 'XRP', 'BNB', 'LINK', 'ARB', 'AVAX', 'ADA', 'USDT']
     if any(k in symbol.upper() for k in crypto_kw):
         return 'crypto'
     
-    # Common TradFi Patterns
-    if symbol.startswith('^') or symbol.endswith('=F') or '=X' in symbol:
+    # Forex
+    if '=X' in symbol:
+        return 'forex'
+
+    # Common TradFi Patterns (Indices, Futures, Stocks)
+    if symbol.startswith('^') or symbol.endswith('=F') or '-' in symbol:
         return 'trad'
-        
-    # Fallback: Hyphenated with USD usually Crypto unless specific Forex pairs not covered
-    if '-' in symbol and 'USD' in symbol:
-        return 'crypto'
         
     return 'trad'
 
@@ -47,6 +47,9 @@ def apply_triple_barrier(df, symbol, tf, group_config):
     if asset_type == 'crypto':
         pt = tb_config['crypto_pt']
         sl = tb_config['crypto_sl']
+    elif asset_type == 'forex':
+        pt = tb_config.get('forex_pt', tb_config['trad_pt'])
+        sl = tb_config.get('forex_sl', tb_config['trad_sl'])
     else:
         pt = tb_config['trad_pt']
         sl = tb_config['trad_sl']
