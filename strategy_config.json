@@ -63,7 +63,10 @@
             "trad_pt": 0.005,
             "trad_sl": 0.002,
             "forex_pt": 0.003,
-            "forex_sl": 0.009
+            "forex_sl": 0.009,
+            "crypto_use_dynamic": true,
+            "crypto_dyn_pt_k": 0.5,
+            "crypto_dyn_sl_k": 0.5
         }
     },
     "lookback_candles": 5000,

@@ -54,12 +54,21 @@ def apply_triple_barrier(df, symbol, tf, group_config):
         pt = tb_config['trad_pt']
         sl = tb_config['trad_sl']
     
+    
     # Weight
     weights_map = group_config.get('weights', {})
     sample_weight = weights_map.get(tf, 1.0)
     
+    # Calculate Volatility (Sigma) if needed for Dynamic Barrier
+    # Optimization: Only strictly needed for Crypto if configured, but calculating for all is fast and safe.
+    if tb_config.get('crypto_use_dynamic', False) or tb_config.get('use_dynamic_barrier', False):
+         df['sigma'] = df['close'].pct_change().ewm(span=36, adjust=False).std()
+         df['sigma'] = df['sigma'].fillna(method='bfill').fillna(0.01)
+    
     # Time Limit Calculation
-    if 'time_limit_bars' in tb_config:
+    if tb_config.get('use_dynamic_barrier', False) and 'dynamic_time_limit_bars' in tb_config:
+        time_limit = tb_config['dynamic_time_limit_bars']
+    elif 'time_limit_bars' in tb_config:
         time_limit = tb_config['time_limit_bars']
     else:
         # Convert days to bars (Legacy HTF logic)
@@ -103,17 +112,46 @@ def apply_triple_barrier(df, symbol, tf, group_config):
         outcome = 0 
         raw_ret = 0.0
         
-        # Calculate Target Prices
-        if direction == 1:
-            pt_price = entry_price * (1 + pt)
-            sl_price = entry_price * (1 - sl)
-            hit_pt = future_window['high'] >= pt_price
-            hit_sl = future_window['low'] <= sl_price
+        # Barrier Logic
+        is_crypto_dynamic = (asset_type == 'crypto' and tb_config.get('crypto_use_dynamic', False))
+        
+        if is_crypto_dynamic:
+             # Dynamic Volatility Based
+             sigma = row.get('sigma', 0.01)
+             k_pt = tb_config.get('crypto_dyn_pt_k', 0.5)
+             k_sl = tb_config.get('crypto_dyn_sl_k', 0.5)
+             
+             d_pt = k_pt * sigma
+             d_sl = k_sl * sigma
+             
+             if direction == 1:
+                 pt_price = entry_price * (1 + d_pt)
+                 sl_price = entry_price * (1 - d_sl)
+                 hit_pt = future_window['high'] >= pt_price
+                 hit_sl = future_window['low'] <= sl_price
+             else:
+                 pt_price = entry_price * (1 - d_pt)
+                 sl_price = entry_price * (1 + d_sl)
+                 hit_pt = future_window['low'] <= pt_price
+                 hit_sl = future_window['high'] >= sl_price
+                 
+             # Store dynamic PT/SL for debugging/logic if needed across loop
+             # (not needed for triple barrier outcome, just calc)
+             
         else:
-            pt_price = entry_price * (1 - pt)
-            sl_price = entry_price * (1 + sl)
-            hit_pt = future_window['low'] <= pt_price
-            hit_sl = future_window['high'] >= sl_price
+             # Static Fixed %
+             if direction == 1:
+                 pt_price = entry_price * (1 + pt)
+                 sl_price = entry_price * (1 - sl)
+                 hit_pt = future_window['high'] >= pt_price
+                 hit_sl = future_window['low'] <= sl_price
+             else:
+                 pt_price = entry_price * (1 - pt)
+                 sl_price = entry_price * (1 + sl)
+                 hit_pt = future_window['low'] <= pt_price
+                 hit_sl = future_window['high'] >= sl_price
+                 
+
             
         first_pt = hit_pt.idxmax() if hit_pt.any() else None
         first_sl = hit_sl.idxmax() if hit_sl.any() else None
