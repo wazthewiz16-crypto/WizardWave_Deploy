@@ -1475,19 +1475,44 @@ def show_runic_alerts():
                             unique_id = f"{row['Asset']}_{row.get('Timeframe','')}_{row.get('Entry_Time','')}"
                             unique_id = "".join(c for c in unique_id if c.isalnum() or c in ['_','-'])
                             
+                            # Buttons Layout
+                            c_b1, c_b2 = st.columns(2, gap="small")
+
                             # Visual "View" Button
-                            if st.button("👁️", key=f"btn_card_{unique_id}", use_container_width=True):
-                                # 1. Resolve Trading View Symbol
-                                tv_sym = get_tv_symbol({'symbol': asset_symbol, 'name': asset_name})
-                                # 2. Resolve Interval
-                                tv_int = get_tv_interval(row.get('Timeframe', '1 Hour'))
-                                
-                                # 3. Update Session State
-                                st.session_state.active_tv_symbol = tv_sym
-                                st.session_state.active_tv_interval = tv_int
-                                
-                                # 4. Trigger Main App Rerun
-                                st.rerun()
+                            with c_b1:
+                                if st.button("👁️", key=f"btn_card_view_{unique_id}", use_container_width=True, help="View Chart"):
+                                    # 1. Resolve Trading View Symbol
+                                    tv_sym = get_tv_symbol({'symbol': row['Symbol']})
+                                    tv_int = get_tv_interval(row['Timeframe'])
+                                    
+                                    # 2. Update State
+                                    st.session_state.active_tv_symbol = tv_sym
+                                    st.session_state.active_tv_interval = tv_int
+                                    st.session_state.active_signal = row.to_dict() # Store full signal data
+                                    st.session_state.active_view_mode = 'details' # Set Mode
+                                    st.rerun()
+
+                            # "Calc" Button
+                            with c_b2:
+                                if st.button("🧮", key=f"btn_card_calc_{unique_id}", use_container_width=True, help="Position Calculator"):
+                                    # 1. Resolve Trading View Symbol (optional but good for context)
+                                    tv_sym = get_tv_symbol({'symbol': row['Symbol']})
+                                    tv_int = get_tv_interval(row['Timeframe'])
+                                    
+                                    # 2. Update State
+                                    st.session_state.active_tv_symbol = tv_sym
+                                    st.session_state.active_tv_interval = tv_int
+                                    st.session_state.active_signal = row.to_dict()
+                                    st.session_state.active_view_mode = 'calculator' # Set Mode
+                                    
+                                    # Pre-fill Entry Price
+                                    try:
+                                        ep = float(str(row['Entry_Price']).replace(',',''))
+                                        st.session_state.calc_entry_input = ep
+                                    except:
+                                        st.session_state.calc_entry_input = 0.0
+                                        
+                                    st.rerun()
                                 
                             # Time under button
                             time_val = row.get('Entry_Time', row.get('Signal_Time', 'N/A'))
@@ -2093,50 +2118,136 @@ with col_center:
 
         
         elif st.session_state.active_tab == 'PORTAL':
-            # TradingView Widget
-            # Use Active Symbol or Fallback
-            tv_sym = st.session_state.get('active_tv_symbol', 'COINBASE:BTCUSD')
-            tv_int = st.session_state.get('active_tv_interval', '60')
             
-            # Helper to generate TV URL
-            clean_sym = tv_sym.replace("BINANCE:", "").replace("COINBASE:", "").replace("OANDA:", "")
-            tv_url = f"https://www.tradingview.com/chart?symbol={tv_sym}"
+            # Check Mode
+            view_mode = st.session_state.get('active_view_mode', 'details')
+            active_sig = st.session_state.get('active_signal', {})
             
-            st.caption(f"**active:** {tv_sym} ({tv_int}m) | [Open in TradingView ↗]({tv_url})")
-            
-            tv_widget_code = f"""
-            <div class="tradingview-widget-container" style="height:100%;width:100%">
-              <div id="tradingview_chart" style="height:calc(100% - 32px);width:100%"></div>
-              <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-              <script type="text/javascript">
-              new TradingView.widget(
-              {{
-              "width": "100%",
-              "height": "605", 
-              "autosize": false,
-              "symbol": "{tv_sym}",
-              "interval": "{tv_int}",
-              "timezone": "America/New_York",
-              "theme": "dark",
-              "style": "1",
-              "locale": "en",
-              "toolbar_bg": "#f1f3f6",
-              "enable_publishing": false,
-              "allow_symbol_change": true,
-              "container_id": "tradingview_chart",
-              "hide_side_toolbar": false,
-              "details": false,
-              "hotlist": false,
-              "calendar": true,
-              "studies": [
-                "MASimple@tv-basicstudies"
-              ]
-            }}
-              );
-              </script>
-            </div>
-            """
-            components.html(tv_widget_code, height=623, scrolling=False)
+            if view_mode == 'calculator' and active_sig:
+                # --- POSITION SIZE CALCULATOR ---
+                c_back, c_title = st.columns([0.2, 0.8])
+                with c_back:
+                    if st.button("⬅ Chart"):
+                        st.session_state.active_view_mode = 'details'
+                        st.rerun()
+                with c_title:
+                    st.markdown(f"### 🧮 Position Wizard: {active_sig.get('Asset', 'Unknown')}")
+                
+                st.divider()
+                
+                # 1. Select Account
+                accounts = st.session_state.get('user_accounts', [])
+                if not accounts:
+                    # Fallback default if none initialized
+                    accounts = [{'name': 'Default 50k', 'currentBalance': 50000}]
+                    
+                acc_names = [a['name'] for a in accounts]
+                selected_acc_name = st.selectbox("Select Grimoire (Account)", acc_names)
+                
+                # Find selected account object
+                selected_acc = next((a for a in accounts if a['name'] == selected_acc_name), accounts[0])
+                balance = float(selected_acc.get('currentBalance', 50000))
+                
+                # 2. Select Risk
+                risk_pct_map = {"0.25%": 0.0025, "0.50%": 0.005, "1.00%": 0.01}
+                risk_label = st.radio("Risk Enchantment", list(risk_pct_map.keys()), horizontal=True, index=1)
+                risk_val = risk_pct_map[risk_label]
+                
+                risk_amt = balance * risk_val
+                
+                st.info(f"**Risk Amount:** ${risk_amt:.2f} (on ${balance:,.0f} balance)")
+                
+                # 3. Inputs (Entry / SL)
+                # Parse from signal
+                def parse_price(v):
+                    try: return float(str(v).replace(',', ''))
+                    except: return 0.0
+                
+                # Use stored input if available, else calc from signal, else 0
+                default_entry = st.session_state.get('calc_entry_input', parse_price(active_sig.get('Entry_Price', 0)))
+                default_sl = parse_price(active_sig.get('Stop_Loss', 0))
+                
+                c_in1, c_in2 = st.columns(2)
+                with c_in1:
+                    entry_in = st.number_input("Entry Price", value=default_entry, format="%.5f")
+                with c_in2:
+                    sl_in = st.number_input("Stop Loss", value=default_sl, format="%.5f")
+                    
+                # 4. Calculation
+                st.divider()
+                
+                if entry_in > 0 and sl_in > 0 and entry_in != sl_in:
+                    # Distance %
+                    dist_pct = abs(entry_in - sl_in) / entry_in
+                    
+                    # Position Size (Value) = Risk / Distance
+                    # e.g. Risk $500, Distance 1% (0.01) -> Size $50,000
+                    pos_size_value = risk_amt / dist_pct
+                    
+                    # Units (Crypto/Stock)
+                    units = pos_size_value / entry_in
+                    
+                    # Leverage (Approx)
+                    leverage = pos_size_value / balance
+                    
+                    # Display
+                    mc1, mc2, mc3 = st.columns(3)
+                    mc1.metric("Position Size ($)", f"${pos_size_value:,.2f}")
+                    mc2.metric("Units", f"{units:.4f}")
+                    mc3.metric("Est. Leverage", f"{leverage:.2f}x")
+                    
+                    # Color feedback
+                    st.success(f"To risk **${risk_amt:.2f}** ({risk_label}), open a position worth **${pos_size_value:,.2f}**.")
+                else:
+                    st.warning("Please enter valid Entry and Stop Loss prices to cast the calculation.")
+
+            else:
+                # --- CHART VIEW (Standard) ---
+                # TradingView Widget
+                # Use Active Symbol or Fallback
+                tv_sym = st.session_state.get('active_tv_symbol', 'COINBASE:BTCUSD')
+                tv_int = st.session_state.get('active_tv_interval', '60')
+                
+                # Helper to generate TV URL
+                clean_sym = tv_sym.replace("BINANCE:", "").replace("COINBASE:", "").replace("OANDA:", "")
+                tv_url = f"https://www.tradingview.com/chart?symbol={tv_sym}"
+                
+                st.caption(f"**active:** {tv_sym} ({tv_int}m) | [Open in TradingView ↗]({tv_url})")
+                
+                tv_widget_code = f"""
+                <div class="tradingview-widget-container" style="height:100%;width:100%">
+                  <div id="tradingview_chart" style="height:calc(100% - 32px);width:100%"></div>
+                  <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+                  <script type="text/javascript">
+                  new TradingView.widget(
+                  {{
+                  "width": "100%",
+                  "height": "605", 
+                  "autosize": false,
+                  "symbol": "{tv_sym}",
+                  "interval": "{tv_int}",
+                  "timezone": "America/New_York",
+                  "theme": "dark",
+                  "style": "1",
+                  "locale": "en",
+                  "toolbar_bg": "#f1f3f6",
+                  "enable_publishing": false,
+                  "allow_symbol_change": true,
+                  "container_id": "tradingview_chart",
+                  "hide_side_toolbar": false,
+                  "details": false,
+                  "hotlist": false,
+                  "calendar": true,
+                  "studies": [
+                    "MASimple@tv-basicstudies"
+                  ]
+                }}
+                  );
+                  </script>
+                </div>
+                """
+                
+                components.html(tv_widget_code, height=620, scrolling=False)
             
             # st.markdown("<br>", unsafe_allow_html=True) # Spacer removed for tighter alignment
             
