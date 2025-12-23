@@ -388,7 +388,7 @@ def analyze_timeframe(timeframe_label):
                 df_strat['sigma'] = df_strat['sigma'].fillna(method='bfill').fillna(0.01)
             
             if model:
-                features = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio']
+                features = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi']
                 
                 # --- ENSEMBLE LOGIC (12 Hours) ---
                 if timeframe_label == "12 Hours":

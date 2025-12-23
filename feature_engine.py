@@ -90,6 +90,21 @@ def calculate_ml_features(df):
     else:
         df['candle_ratio'] = 0.5 # Neutral
         
+    # 9. ATR (Volatility Normalization)
+    df['atr'] = ta.atr(df['high'], df['low'], df['close'], length=14)
+    # Normalize ATR as % of Close
+    df['atr_pct'] = df['atr'] / df['close']
+    
+    # 10. MFI (Money Flow Index - Volume + Price)
+    if 'volume' in df.columns:
+        mfi = ta.mfi(df['high'], df['low'], df['close'], df['volume'], length=14)
+        if mfi is not None:
+             df['mfi'] = mfi
+        else:
+             df['mfi'] = 50 # Neutral
+    else:
+        df['mfi'] = 50
+
     # Fill any remaining NaNs (e.g. at start of dataframe)
     df.fillna(0, inplace=True)
     

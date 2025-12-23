@@ -185,6 +185,8 @@ def apply_triple_barrier(df, symbol, tf, group_config):
             'rvol': row.get('rvol', 0),
             'bb_width': row.get('bb_width', 0),
             'candle_ratio': row.get('candle_ratio', 0),
+            'atr_pct': row.get('atr_pct', 0),
+            'mfi': row.get('mfi', 50),
             'raw_ret': raw_ret,
             'label': outcome,
             'weight': sample_weight
@@ -241,7 +243,7 @@ def train_model(group_key, group_config):
         return
 
     # Train
-    features = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio']
+    features = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi']
     target = 'label'
     
     X = full_dataset[features]

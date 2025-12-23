@@ -57,7 +57,7 @@
         },
         "model_file": "model_ltf.pkl",
         "triple_barrier": {
-            "time_limit_bars": 24,
+            "time_limit_bars": 36,
             "crypto_pt": 0.015,
             "crypto_sl": 0.005,
             "trad_pt": 0.005,
@@ -65,16 +65,16 @@
             "forex_pt": 0.003,
             "forex_sl": 0.009,
             "crypto_use_dynamic": true,
-            "crypto_dyn_pt_k": 0.5,
+            "crypto_dyn_pt_k": 1.0,
             "crypto_dyn_sl_k": 0.5
         }
     },
     "lookback_candles": 5000,
     "model": {
         "type": "RandomForestClassifier",
-        "n_estimators": 100,
-        "max_depth": 8,
-        "confidence_threshold": 0.40
+        "n_estimators": 200,
+        "max_depth": 10,
+        "confidence_threshold": 0.55
     },
     "backtest": {
         "test_size": 500
