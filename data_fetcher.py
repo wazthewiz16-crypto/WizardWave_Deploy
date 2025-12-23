@@ -19,6 +19,31 @@ def fetch_data(symbol: str, asset_type: str, timeframe: str = '1h', limit: int =
     Returns:
         pd.DataFrame: Standardized OHLCV DataFrame.
     """
+    
+    # --- 4D LOCAL CACHE LOGIC ---
+    import os
+    import time
+    
+    CACHE_DIR = "market_data_cache"
+    if timeframe == '4d':
+        if not os.path.exists(CACHE_DIR):
+            os.makedirs(CACHE_DIR)
+            
+        clean_symbol = symbol.replace("/", "_").replace("^", "").replace("=", "")
+        cache_file = os.path.join(CACHE_DIR, f"{clean_symbol}_4d.csv")
+        
+        # Check if file exists and is fresh using a 1-hour cache duration
+        if os.path.exists(cache_file):
+            file_age = time.time() - os.path.getmtime(cache_file)
+            if file_age < 3600: 
+                try:
+                    df = pd.read_csv(cache_file, index_col='datetime', parse_dates=True)
+                    if not isinstance(df.index, pd.DatetimeIndex):
+                        df.index = pd.to_datetime(df.index)
+                    return df
+                except Exception as e:
+                    print(f"Error reading cache for {symbol}: {e}")
+
     base_timeframe = timeframe
     resample_rule = None
     
@@ -54,6 +79,18 @@ def fetch_data(symbol: str, asset_type: str, timeframe: str = '1h', limit: int =
         }
         # Resample and drop incomplete bins if necessary (though 'last' usually handles it)
         df_resampled = df.resample(resample_rule).agg(agg_dict).dropna()
+        
+        # --- SAVE 4D CACHE ---
+        if timeframe == '4d':
+            try:
+                if not os.path.exists(CACHE_DIR):
+                    os.makedirs(CACHE_DIR)
+                clean_symbol = symbol.replace("/", "_").replace("^", "").replace("=", "")
+                cache_file = os.path.join(CACHE_DIR, f"{clean_symbol}_4d.csv")
+                df_resampled.to_csv(cache_file)
+            except Exception as e:
+                print(f"Error saving cache for {symbol}: {e}")
+                
         return df_resampled
 
     return df
