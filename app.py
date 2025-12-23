@@ -518,6 +518,7 @@ def analyze_timeframe(timeframe_label):
                     "Entry_Price": f"{ep:.{decimals}f}",
                     "Take_Profit": f"{tp_price:.{decimals}f}",
                     "Stop_Loss": f"{sl_price:.{decimals}f}",
+                    "RR": f"{(abs(tp_price - ep) / abs(ep - sl_price) if abs(ep - sl_price) > 0 else 0):.2f}R",
                     "Current_Price": f"{df_strat.iloc[-1]['close']:.{decimals}f}",
                     "PnL (%)": f"{trade['PnL (%)']:.2f}%",
                     "Confidence": f"{entry_conf:.0%}",
@@ -1427,7 +1428,7 @@ def show_runic_alerts():
                                             {row.get('Action')} | Conf: {row.get('Confidence')} | <span style="color: #ff3344; font-weight: bold;">{row.get('Timeframe')}</span>
                                         </div>
                                         <div style="font-size: 0.8rem; color: #888; margin-top: 1px;">
-                                            TP: {row.get('Take_Profit', 'N/A')} | <span style="color: #d8b4fe;">SL: {row.get('Stop_Loss', 'N/A')}</span>
+                                            TP: {row.get('Take_Profit', 'N/A')} | <span style="color: #d8b4fe;">SL: {row.get('Stop_Loss', 'N/A')}</span> <span style="color: #666; font-size: 0.75rem;">({row.get('RR', '')})</span>
                                         </div>
                                         <div style="font-size: 0.85rem; color: #666;">
                                             Entry: <span style="color: #00ff88;">{row.get('Entry_Price')}</span> | Now: <span style="color: #ffd700;">{row.get('Current_Price', 'N/A')}</span>
