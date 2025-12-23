@@ -16,11 +16,13 @@ class WizardScalpStrategy:
                  lookback: int = 8, 
                  sensitivity: float = 1.0, 
                  cloud_spread: float = 0.4, 
-                 use_rsi_filter: bool = True):
+                 use_rsi_filter: bool = True,
+                 use_vol_filter: bool = True):
         self.lookback = lookback
         self.sensitivity = sensitivity
         self.cloud_spread = cloud_spread
         self.use_rsi_filter = use_rsi_filter
+        self.use_vol_filter = use_vol_filter
 
     def apply(self, df: pd.DataFrame) -> pd.DataFrame:
         if df.empty:
@@ -40,7 +42,7 @@ class WizardScalpStrategy:
         df['cloud_top'] = df[['mango_d1', 'mango_d2']].max(axis=1)
         df['cloud_bottom'] = df[['mango_d1', 'mango_d2']].min(axis=1)
         
-        # --- 2. RSI Filter & Bonus Filters ---
+        # --- 2. RSI, ADX, RVOL Filters ---
         df['rsi'] = ta.rsi(close, length=14)
         
         # ADX Filter (Avoid Choppiness) - Only trade if trend strength > 20
@@ -50,6 +52,13 @@ class WizardScalpStrategy:
         else:
             df['adx'] = 0
             
+        # Volume Filter (RVOL)
+        if 'volume' in df.columns:
+            df['vol_avg'] = df['volume'].rolling(20).mean()
+            df['rvol'] = df['volume'] / df['vol_avg'].replace(0, 1)
+        else:
+            df['rvol'] = 1.5 # Default pass if no vol data (e.g. some forearm feeds)
+
         # EMA Trend Filter (Align with Medium Term Trend)
         df['ema_trend'] = ta.ema(close, length=50)
 
@@ -68,12 +77,21 @@ class WizardScalpStrategy:
         df['bear_cross'] = df['is_below_cloud'] & (~df['prev_below'])
         
         # RST Logic: Don't Long if RSI > 75, Don't Short if RSI < 25 (Prevent FOMO at extremes)
+        # RVOL Logic: Require Rvol > 1.0 (Average or higher)
+        
+        long_conditions = True
+        short_conditions = True
+        
+        if self.use_vol_filter:
+             long_conditions &= (df['rvol'] > 1.0)
+             short_conditions &= (df['rvol'] > 1.0)
+            
         if self.use_rsi_filter:
-            can_long = (df['rsi'] < 75) & (df['adx'] > 20) & (close > df['ema_trend'])
-            can_short = (df['rsi'] > 25) & (df['adx'] > 20) & (close < df['ema_trend'])
-        else:
-            can_long = True
-            can_short = True
+            long_conditions &= (df['rsi'] < 75) & (df['adx'] > 20) & (close > df['ema_trend'])
+            short_conditions &= (df['rsi'] > 25) & (df['adx'] > 20) & (close < df['ema_trend'])
+            
+        can_long = long_conditions
+        can_short = short_conditions
             
         # Signals
         df['long_signal'] = df['bull_cross'] & can_long
