@@ -1504,6 +1504,7 @@ def show_runic_alerts():
                                     st.session_state.active_tv_interval = tv_int
                                     st.session_state.active_signal = row.to_dict()
                                     st.session_state.active_view_mode = 'calculator' # Set Mode
+                                    st.session_state.active_tab = 'RISK' # Switch to Shield Tab
                                     
                                     # Pre-fill Entry Price
                                     try:
@@ -2071,7 +2072,83 @@ with col_center:
                  st.info("No history available. Please wait for the Runic Alerts to refresh.")
 
         elif st.session_state.active_tab == 'RISK':
-            render_prop_risk()
+            # Ensure accounts are loaded/initialized if not present
+            if 'user_accounts' not in st.session_state or not st.session_state.user_accounts:
+                 # Initialize default if empty, or try to load
+                 init_prop_accounts()
+
+            # Check for Calculator Mode
+            view_mode = st.session_state.get('active_view_mode', 'default')
+            active_sig = st.session_state.get('active_signal', {})
+
+            if view_mode == 'calculator' and active_sig:
+                 # --- POSITION SIZE CALCULATOR ---
+                 c_back, c_title = st.columns([0.2, 0.8])
+                 with c_back:
+                     if st.button("⬅ Close"):
+                         st.session_state.active_view_mode = 'default'
+                         st.rerun()
+                 with c_title:
+                     st.markdown(f"### 🧮 Position Wizard: {active_sig.get('Asset', 'Unknown')}")
+                 
+                 st.divider()
+                 
+                 # 1. Select Account
+                 accounts = st.session_state.get('user_accounts', [])
+                 if not accounts: 
+                     accounts = [{'name': 'Default 50k', 'currentBalance': 50000}]
+                     
+                 acc_names = [a['name'] for a in accounts]
+                 selected_acc_name = st.selectbox("Select Grimoire (Account)", acc_names)
+                 
+                 # Find selected account object
+                 selected_acc = next((a for a in accounts if a['name'] == selected_acc_name), accounts[0])
+                 balance = float(selected_acc.get('currentBalance', 50000))
+                 
+                 # 2. Select Risk
+                 risk_pct_map = {"0.25%": 0.0025, "0.50%": 0.005, "1.00%": 0.01}
+                 risk_label = st.radio("Risk Enchantment", list(risk_pct_map.keys()), horizontal=True, index=1)
+                 risk_val = risk_pct_map[risk_label]
+                 
+                 risk_amt = balance * risk_val
+                 
+                 st.info(f"**Risk Amount:** ${risk_amt:.2f} (on ${balance:,.0f} balance)")
+                 
+                 # 3. Inputs (Entry / SL)
+                 def parse_price(v):
+                     try: return float(str(v).replace(',', ''))
+                     except: return 0.0
+                 
+                 default_entry = st.session_state.get('calc_entry_input', parse_price(active_sig.get('Entry_Price', 0)))
+                 default_sl = parse_price(active_sig.get('Stop_Loss', 0))
+                 
+                 c_in1, c_in2 = st.columns(2)
+                 with c_in1:
+                     entry_in = st.number_input("Entry Price", value=default_entry, format="%.5f")
+                 with c_in2:
+                     sl_in = st.number_input("Stop Loss", value=default_sl, format="%.5f")
+                     
+                 # 4. Calculation
+                 st.divider()
+                 
+                 if entry_in > 0 and sl_in > 0 and entry_in != sl_in:
+                     dist_pct = abs(entry_in - sl_in) / entry_in
+                     pos_size_value = risk_amt / dist_pct
+                     units = pos_size_value / entry_in
+                     leverage = pos_size_value / balance
+                     
+                     mc1, mc2, mc3 = st.columns(3)
+                     mc1.metric("Position Size ($)", f"${pos_size_value:,.2f}")
+                     mc2.metric("Units", f"{units:.4f}")
+                     mc3.metric("Est. Leverage", f"{leverage:.2f}x")
+                     
+                     # Fixed Formatting
+                     st.success(f"To risk ${risk_amt:.2f} ({risk_label}), open a position size of ${pos_size_value:,.2f}.")
+                 else:
+                     st.warning("Please enter valid Entry and Stop Loss prices to cast the calculation.")
+
+            else:
+                render_prop_risk()
             
         elif st.session_state.active_tab == 'SPELLBOOK':
              st.markdown("### 📘 Grimoire of Knowledge")
@@ -2119,135 +2196,52 @@ with col_center:
         
         elif st.session_state.active_tab == 'PORTAL':
             
-            # Check Mode
-            view_mode = st.session_state.get('active_view_mode', 'details')
-            active_sig = st.session_state.get('active_signal', {})
+            # --- CHART VIEW (Standard) ---
+            # TradingView Widget
+            # Use Active Symbol or Fallback
+            tv_sym = st.session_state.get('active_tv_symbol', 'COINBASE:BTCUSD')
+            tv_int = st.session_state.get('active_tv_interval', '60')
             
-            if view_mode == 'calculator' and active_sig:
-                # --- POSITION SIZE CALCULATOR ---
-                c_back, c_title = st.columns([0.2, 0.8])
-                with c_back:
-                    if st.button("⬅ Chart"):
-                        st.session_state.active_view_mode = 'details'
-                        st.rerun()
-                with c_title:
-                    st.markdown(f"### 🧮 Position Wizard: {active_sig.get('Asset', 'Unknown')}")
-                
-                st.divider()
-                
-                # 1. Select Account
-                accounts = st.session_state.get('user_accounts', [])
-                if not accounts:
-                    # Fallback default if none initialized
-                    accounts = [{'name': 'Default 50k', 'currentBalance': 50000}]
-                    
-                acc_names = [a['name'] for a in accounts]
-                selected_acc_name = st.selectbox("Select Grimoire (Account)", acc_names)
-                
-                # Find selected account object
-                selected_acc = next((a for a in accounts if a['name'] == selected_acc_name), accounts[0])
-                balance = float(selected_acc.get('currentBalance', 50000))
-                
-                # 2. Select Risk
-                risk_pct_map = {"0.25%": 0.0025, "0.50%": 0.005, "1.00%": 0.01}
-                risk_label = st.radio("Risk Enchantment", list(risk_pct_map.keys()), horizontal=True, index=1)
-                risk_val = risk_pct_map[risk_label]
-                
-                risk_amt = balance * risk_val
-                
-                st.info(f"**Risk Amount:** ${risk_amt:.2f} (on ${balance:,.0f} balance)")
-                
-                # 3. Inputs (Entry / SL)
-                # Parse from signal
-                def parse_price(v):
-                    try: return float(str(v).replace(',', ''))
-                    except: return 0.0
-                
-                # Use stored input if available, else calc from signal, else 0
-                default_entry = st.session_state.get('calc_entry_input', parse_price(active_sig.get('Entry_Price', 0)))
-                default_sl = parse_price(active_sig.get('Stop_Loss', 0))
-                
-                c_in1, c_in2 = st.columns(2)
-                with c_in1:
-                    entry_in = st.number_input("Entry Price", value=default_entry, format="%.5f")
-                with c_in2:
-                    sl_in = st.number_input("Stop Loss", value=default_sl, format="%.5f")
-                    
-                # 4. Calculation
-                st.divider()
-                
-                if entry_in > 0 and sl_in > 0 and entry_in != sl_in:
-                    # Distance %
-                    dist_pct = abs(entry_in - sl_in) / entry_in
-                    
-                    # Position Size (Value) = Risk / Distance
-                    # e.g. Risk $500, Distance 1% (0.01) -> Size $50,000
-                    pos_size_value = risk_amt / dist_pct
-                    
-                    # Units (Crypto/Stock)
-                    units = pos_size_value / entry_in
-                    
-                    # Leverage (Approx)
-                    leverage = pos_size_value / balance
-                    
-                    # Display
-                    mc1, mc2, mc3 = st.columns(3)
-                    mc1.metric("Position Size ($)", f"${pos_size_value:,.2f}")
-                    mc2.metric("Units", f"{units:.4f}")
-                    mc3.metric("Est. Leverage", f"{leverage:.2f}x")
-                    
-                    # Color feedback
-                    st.success(f"To risk **${risk_amt:.2f}** ({risk_label}), open a position worth **${pos_size_value:,.2f}**.")
-                else:
-                    st.warning("Please enter valid Entry and Stop Loss prices to cast the calculation.")
-
-            else:
-                # --- CHART VIEW (Standard) ---
-                # TradingView Widget
-                # Use Active Symbol or Fallback
-                tv_sym = st.session_state.get('active_tv_symbol', 'COINBASE:BTCUSD')
-                tv_int = st.session_state.get('active_tv_interval', '60')
-                
-                # Helper to generate TV URL
-                clean_sym = tv_sym.replace("BINANCE:", "").replace("COINBASE:", "").replace("OANDA:", "")
-                tv_url = f"https://www.tradingview.com/chart?symbol={tv_sym}"
-                
-                st.caption(f"**active:** {tv_sym} ({tv_int}m) | [Open in TradingView ↗]({tv_url})")
-                
-                tv_widget_code = f"""
-                <div class="tradingview-widget-container" style="height:100%;width:100%">
-                  <div id="tradingview_chart" style="height:calc(100% - 32px);width:100%"></div>
-                  <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-                  <script type="text/javascript">
-                  new TradingView.widget(
-                  {{
-                  "width": "100%",
-                  "height": "605", 
-                  "autosize": false,
-                  "symbol": "{tv_sym}",
-                  "interval": "{tv_int}",
-                  "timezone": "America/New_York",
-                  "theme": "dark",
-                  "style": "1",
-                  "locale": "en",
-                  "toolbar_bg": "#f1f3f6",
-                  "enable_publishing": false,
-                  "allow_symbol_change": true,
-                  "container_id": "tradingview_chart",
-                  "hide_side_toolbar": false,
-                  "details": false,
-                  "hotlist": false,
-                  "calendar": true,
-                  "studies": [
-                    "MASimple@tv-basicstudies"
-                  ]
-                }}
-                  );
-                  </script>
-                </div>
-                """
-                
-                components.html(tv_widget_code, height=620, scrolling=False)
+            # Helper to generate TV URL
+            clean_sym = tv_sym.replace("BINANCE:", "").replace("COINBASE:", "").replace("OANDA:", "")
+            tv_url = f"https://www.tradingview.com/chart?symbol={tv_sym}"
+            
+            st.caption(f"**active:** {tv_sym} ({tv_int}m) | [Open in TradingView ↗]({tv_url})")
+            
+            tv_widget_code = f"""
+            <div class="tradingview-widget-container" style="height:100%;width:100%">
+              <div id="tradingview_chart" style="height:calc(100% - 32px);width:100%"></div>
+              <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+              <script type="text/javascript">
+              new TradingView.widget(
+              {{
+              "width": "100%",
+              "height": "605", 
+              "autosize": false,
+              "symbol": "{tv_sym}",
+              "interval": "{tv_int}",
+              "timezone": "America/New_York",
+              "theme": "dark",
+              "style": "1",
+              "locale": "en",
+              "toolbar_bg": "#f1f3f6",
+              "enable_publishing": false,
+              "allow_symbol_change": true,
+              "container_id": "tradingview_chart",
+              "hide_side_toolbar": false,
+              "details": false,
+              "hotlist": false,
+              "calendar": true,
+              "studies": [
+                "MASimple@tv-basicstudies"
+              ]
+            }}
+              );
+              </script>
+            </div>
+            """
+            
+            components.html(tv_widget_code, height=620, scrolling=False)
             
             # st.markdown("<br>", unsafe_allow_html=True) # Spacer removed for tighter alignment
             
