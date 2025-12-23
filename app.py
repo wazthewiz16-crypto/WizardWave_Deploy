@@ -1108,6 +1108,7 @@ def process_discord_alerts(df):
         processed_file = 'processed_signals.json'
         processed_ids = set()
         
+        # Robust loading of processed IDs
         if os.path.exists(processed_file):
             try:
                 with open(processed_file, 'r') as f:
@@ -1116,6 +1117,13 @@ def process_discord_alerts(df):
                         processed_ids = set(content)
             except:
                 processed_ids = set() # Reset if corrupt
+                
+        # Current Time for freshness check (EST aware logic matches app format)
+        now_est = pd.Timestamp.now(tz='America/New_York')
+        
+        # Max Age for Alert (e.g. 3 hours). 
+        # Prevents flooding old alerts if app restarts.
+        MAX_ALERT_AGE_HOURS = 3
 
         new_alerts_sent = False
         
@@ -1123,14 +1131,30 @@ def process_discord_alerts(df):
         for _, row in df.iterrows():
             try:
                 # Create Unique ID (Asset + Timeframe + EntryTime)
-                # Use Entry_Time as primary differentiator
-                entry_time = str(row.get('Entry_Time', ''))
+                entry_time_str = str(row.get('Entry_Time', ''))
                 asset = str(row.get('Asset', ''))
                 tf = str(row.get('Timeframe', ''))
                 
-                sig_id = f"{asset}_{tf}_{entry_time}"
+                sig_id = f"{asset}_{tf}_{entry_time_str}"
                 
-                # Check if it is a TAKE signal
+                # 1. Freshness Check
+                try:
+                    # Entry_Time is formatted string: YYYY-MM-DD HH:MM:SS
+                    # We assume it is EST because format_time converts to EST
+                    entry_dt = pd.to_datetime(entry_time_str).tz_localize('America/New_York')
+                    
+                    # Calculate Age
+                    if (now_est - entry_dt).total_seconds() > (MAX_ALERT_AGE_HOURS * 3600):
+                        # Signal is too old, skip alerting (and don't add to processed to save space, or added??)
+                        # Actually good to add to processed so we don't re-eval, but strictly skip sending.
+                        # But if we rely on processed_ids persistence which is flaky, the Time Check is the critical safety net.
+                        continue 
+                except:
+                    # If parsing fails, we default to processing it (fallback) or skipping?
+                    # Safer to skip if we can't verify time.
+                    pass
+
+                # 2. Check "TAKE" Criteria
                 action_str = str(row.get('Action', '')).upper()
                 is_take = "TAKE" in action_str or "✅" in action_str
                 
@@ -1138,6 +1162,7 @@ def process_discord_alerts(df):
                     send_discord_alert(webhook_url, row)
                     processed_ids.add(sig_id)
                     new_alerts_sent = True
+                    
             except Exception as inner_e:
                 print(f"Skipping alert row: {inner_e}")
                 continue
@@ -1146,6 +1171,7 @@ def process_discord_alerts(df):
         if new_alerts_sent:
             try:
                 with open(processed_file, 'w') as f:
+                    # Convert set to list
                     json.dump(list(processed_ids), f)
             except Exception as e:
                 print(f"Error saving processed IDs: {e}")
