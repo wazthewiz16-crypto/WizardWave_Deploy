@@ -251,12 +251,13 @@ def get_tv_symbol(asset_entry):
 def get_tv_interval(tf_label):
     # TV uses minutes or 'D', 'W'
     # "15 Minutes", "30 Minutes", "1 Hour", "4 Hours", "1 Day", "4 Days"
+    # Also handles short codes: 15m, 1H, 4H, 12H, 1D, 4D
     if "15" in tf_label: return "15"
-    if "1 Hour" in tf_label: return "60"
-    if "4 Hour" in tf_label: return "240"
-    if "12 Hour" in tf_label: return "720"
-    if "1 Day" in tf_label: return "D"
-    if "4 Day" in tf_label: return "240" # Fallback to 4H as 4D isn't standard in basic widget, or use 'D'
+    if "1 Hour" in tf_label or "1H" in tf_label: return "60"
+    if "4 Hour" in tf_label or "4H" in tf_label: return "240"
+    if "12 Hour" in tf_label or "12H" in tf_label: return "720"
+    if "1 Day" in tf_label or "1D" in tf_label: return "D"
+    if "4 Day" in tf_label or "4D" in tf_label: return "240" # Fallback
     return "60"
 
 # Initialize Active Symbol/Interval State
@@ -299,6 +300,17 @@ def analyze_timeframe(timeframe_label):
     else:
         tf_code = "1d"
         group = 'htf'
+
+    # Shorten Timeframe Label
+    tf_map = {
+        "15 Minutes": "15m",
+        "1 Hour": "1H",
+        "4 Hours": "4H",
+        "12 Hours": "12H",
+        "1 Day": "1D",
+        "4 Days": "4D"
+    }
+    short_tf = tf_map.get(timeframe_label, timeframe_label)
 
     # Strategy & Config Selection
     # Strategy & Config Selection
@@ -500,7 +512,7 @@ def analyze_timeframe(timeframe_label):
                     "Asset": asset['name'],
                     "Symbol": asset['symbol'], # Store raw symbol
                     "Type": type_display,
-                    "Timeframe": timeframe_label,
+                    "Timeframe": short_tf,
                     "Entry_Time": ts_str,
                     "Signal_Time": ts_str, # Redundant but safe
                     "Entry_Price": f"{ep:.{decimals}f}",
@@ -536,6 +548,7 @@ def analyze_timeframe(timeframe_label):
                position = None
                entry_price = 0.0
                entry_time = None
+               entry_conf = 0.0
                sl_price = 0.0
                
                if asset_type == 'crypto':
@@ -591,11 +604,11 @@ def analyze_timeframe(timeframe_label):
                        trades.append({
                             "_sort_key": entry_time,
                             "Asset": asset['name'],
-                            "Timeframe": timeframe_label,
+                            "Timeframe": short_tf,
                             "Time": format_time(entry_time),
                             "Type": f"{position} {'🟢' if position == 'LONG' else '🔴'}",
                             "Price": entry_price,
-                            "Confidence": "N/A",
+                            "Confidence": f"{entry_conf:.0%}",
                             "Model": "✅",
                             "Return_Pct": pnl, 
                             "SL_Pct": curr_sl_pct,
@@ -625,11 +638,11 @@ def analyze_timeframe(timeframe_label):
                                trades.append({
                                     "_sort_key": entry_time,
                                     "Asset": asset['name'],
-                                    "Timeframe": timeframe_label,
+                                    "Timeframe": short_tf,
                                     "Time": format_time(entry_time),
                                     "Type": f"{position} {'🟢' if position == 'LONG' else '🔴'}",
                                     "Price": entry_price,
-                                    "Confidence": "N/A",
+                                    "Confidence": f"{entry_conf:.0%}",
                                     "Model": "✅",
                                     "Return_Pct": last_close_pnl, 
                                     "SL_Pct": curr_sl_pct,
@@ -643,6 +656,7 @@ def analyze_timeframe(timeframe_label):
                                position = new_pos
                                entry_price = close
                                entry_time = idx
+                               entry_conf = model_prob
                                
                # --- END OF LOOP ---
                # If position is still open, calculate floating PnL
@@ -656,11 +670,11 @@ def analyze_timeframe(timeframe_label):
                     trades.append({
                         "_sort_key": entry_time,
                         "Asset": asset['name'],
-                        "Timeframe": timeframe_label,
+                        "Timeframe": short_tf,
                         "Time": format_time(entry_time),
                         "Type": f"{position} {'🟢' if position == 'LONG' else '🔴'}",
                         "Price": entry_price,
-                        "Confidence": "N/A",
+                        "Confidence": f"{entry_conf:.0%}",
                         "Model": "✅",
                         "Return_Pct": pnl, 
                         "SL_Pct": curr_sl_pct,
@@ -1309,35 +1323,29 @@ def show_runic_alerts():
         # --- Timeframe Filter (Inside Box) ---
         if not combined_active.empty:
             # Get unique timeframes and sort chronologically
+            # Get unique timeframes and sort chronologically
             tf_order = {
-                "15 Minutes": 0, 
-                "1 Hour": 2, "4 Hours": 3, 
-                "12 Hours": 4,
-                "1 Day": 5, "4 Days": 6
+                "15m": 0, "15 Minutes": 0,
+                "1H": 2, "1 Hour": 2,
+                "4H": 3, "4 Hours": 3,
+                "12H": 4, "12 Hours": 4,
+                "1D": 5, "1 Day": 5,
+                "4D": 6, "4 Days": 6
             }
             
-            # Mapping to Compact format
-            tf_map = {
-                "15 Minutes": "15m", 
-                "1 Hour": "1H", "4 Hours": "4H", 
-                "12 Hours": "12H",
-                "1 Day": "1D", "4 Days": "4D"
-            }
-            tf_map_rev = {v: k for k, v in tf_map.items()}
-
             unique_tfs = combined_active['Timeframe'].unique().tolist()
-            # Sort first based on original order
+            # Sort first based on order
             sorted_tfs = sorted(unique_tfs, key=lambda x: tf_order.get(x, 99))
             
-            # Convert to display options
-            display_opts = [tf_map.get(x, x) for x in sorted_tfs]
+            # Simple Display
+            display_opts = sorted_tfs
             
             # Compact Multiselect
             st.markdown("<div style='margin-top: -15px;'></div>", unsafe_allow_html=True)
             selected_short = st.multiselect("Timeframes", options=display_opts, default=display_opts, label_visibility="collapsed", key="runic_active_tf_selector")
             
-            # Map back for filtering
-            selected_tfs = [tf_map_rev.get(x, x) for x in selected_short]
+            # Use directly
+            selected_tfs = selected_short
             
             # --- Filter Data ---
             df_display = combined_active.copy()
@@ -1893,33 +1901,28 @@ with col_center:
                  # Stable options from full history is better UX.
                  if 'Timeframe' in hist_df.columns:
                      tf_order = {
-                        "15 Minutes": 0, 
-                        "1 Hour": 2, "4 Hours": 3, 
-                        "12 Hours": 4,
-                        "1 Day": 5, "4 Days": 6
+                        "15m": 0, "15 Minutes": 0,
+                        "1H": 2, "1 Hour": 2,
+                        "4H": 3, "4 Hours": 3,
+                        "12H": 4, "12 Hours": 4,
+                        "1D": 5, "1 Day": 5,
+                        "4D": 6, "4 Days": 6
                      }
-                     tf_map = {
-                        "15 Minutes": "15m", 
-                        "1 Hour": "1H", "4 Hours": "4H", 
-                        "12 Hours": "12H",
-                        "1 Day": "1D", "4 Days": "4D"
-                     }
-                     tf_map_rev = {v: k for k, v in tf_map.items()}
                      
                      unique_tfs = hist_df['Timeframe'].unique().tolist()
                      sorted_tfs = sorted(unique_tfs, key=lambda x: tf_order.get(x, 99))
-                     display_opts = [tf_map.get(x, x) for x in sorted_tfs]
+                     display_opts = sorted_tfs
                      
                      with opt_col2:
                          # Initialize default selection in session state if new
                          if "history_tf_filter" not in st.session_state:
                              st.session_state.history_tf_filter = display_opts
                          
-                         # Use session state via key, remove explicit default to avoid conflicts
+                         # Use session state via key
                          selected_short = st.multiselect("Timeframes", options=display_opts, label_visibility="collapsed", key="history_tf_filter")
                          
-                     # Map back
-                     selected_tfs = [tf_map_rev.get(x, x) for x in selected_short]
+                     # Use directly
+                     selected_tfs = selected_short
                      
                      # Apply Filter
                      if selected_tfs:
@@ -1987,7 +1990,7 @@ with col_center:
 
                  # Simplify cols
                  if not filtered_df.empty:
-                     display_cols = ['Time', 'Asset', 'Timeframe', 'Type', 'Price', 'Return_Pct', 'Status']
+                     display_cols = ['Time', 'Asset', 'Timeframe', 'Type', 'Confidence', 'Price', 'Return_Pct', 'Status']
                      # Fill Status if missing
                      if 'Status' not in filtered_df.columns:
                          filtered_df['Status'] = 'CLOSED'
