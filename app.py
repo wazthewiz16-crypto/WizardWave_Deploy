@@ -357,7 +357,10 @@ def analyze_timeframe(timeframe_label):
 
     progress_bar = st.progress(0)
     status_text = st.empty()
-    status_text.text(f"[{timeframe_label}] Fetching data for {len(ASSETS)} assets...")
+    if timeframe_label == "4 Days":
+        status_text.text(f"[{timeframe_label}] Fetching data for {len(ASSETS)} assets... (Local Cache Active)")
+    else:
+        status_text.text(f"[{timeframe_label}] Fetching data for {len(ASSETS)} assets...")
 
     def process_asset(asset):
         try:
