@@ -1091,12 +1091,16 @@ def send_discord_alert(webhook_url, signal_data):
         print(f"Error sending Discord alert: {e}")
 
 def process_discord_alerts(df):
-    """Checks for new signals and sends Discord alerts."""
+    """
+    Checks for new 'TAKE' signals and sends Discord alerts.
+    Uses a robust file-locking simulation strategy to prevent duplicate alerts
+    when multiple Streamlit instances are running (common in multipage/multitab usage).
+    """
     try:
         # Load Config
         if not os.path.exists('discord_config.json'):
             return
-            
+
         with open('discord_config.json', 'r') as f:
             config = json.load(f)
             webhook_url = config.get('webhook_url')
@@ -1104,77 +1108,72 @@ def process_discord_alerts(df):
         if not webhook_url:
             return
 
-        # Load Processed IDs
         processed_file = 'processed_signals.json'
-        processed_ids = set()
-        
-        # Robust loading of processed IDs
-        if os.path.exists(processed_file):
-            try:
-                with open(processed_file, 'r') as f:
-                    content = json.load(f)
-                    if isinstance(content, list):
-                        processed_ids = set(content)
-            except:
-                processed_ids = set() # Reset if corrupt
-                
-        # Current Time for freshness check (EST aware logic matches app format)
-        now_est = pd.Timestamp.now(tz='America/New_York')
         
         # Max Age for Alert (e.g. 3 hours). 
         # Prevents flooding old alerts if app restarts.
         MAX_ALERT_AGE_HOURS = 3
+        now_est = pd.Timestamp.now(tz='America/New_York')
 
-        new_alerts_sent = False
-        
-        # Iterate and Check
         for _, row in df.iterrows():
             try:
-                # Create Unique ID (Asset + Timeframe + EntryTime)
+                # 1. Check "TAKE" Criteria First (Optimization)
+                action_str = str(row.get('Action', '')).upper()
+                is_take = "TAKE" in action_str or "✅" in action_str
+                
+                if not is_take:
+                    continue
+
+                # 2. Create Unique ID (Asset + Timeframe + EntryTime)
                 entry_time_str = str(row.get('Entry_Time', ''))
                 asset = str(row.get('Asset', ''))
                 tf = str(row.get('Timeframe', ''))
                 
-                sig_id = f"{asset}_{tf}_{entry_time_str}"
+                # Robust ID: remove spaces/special chars from ID string itself just in case
+                sig_id = f"{asset}_{tf}_{entry_time_str}".replace(" ", "_")
                 
-                # 1. Freshness Check
-                try:
-                    # Entry_Time is formatted string: YYYY-MM-DD HH:MM:SS
-                    # We assume it is EST because format_time converts to EST
-                    entry_dt = pd.to_datetime(entry_time_str).tz_localize('America/New_York')
-                    
-                    # Calculate Age
-                    if (now_est - entry_dt).total_seconds() > (MAX_ALERT_AGE_HOURS * 3600):
-                        # Signal is too old, skip alerting (and don't add to processed to save space, or added??)
-                        # Actually good to add to processed so we don't re-eval, but strictly skip sending.
-                        # But if we rely on processed_ids persistence which is flaky, the Time Check is the critical safety net.
-                        continue 
-                except:
-                    # If parsing fails, we default to processing it (fallback) or skipping?
-                    # Safer to skip if we can't verify time.
-                    pass
+                if sig_id == "__": continue
 
-                # 2. Check "TAKE" Criteria
-                action_str = str(row.get('Action', '')).upper()
-                is_take = "TAKE" in action_str or "✅" in action_str
+                # 3. Freshness Check
+                try:
+                    entry_dt = pd.to_datetime(entry_time_str).tz_localize('America/New_York')
+                    if (now_est - entry_dt).total_seconds() > (MAX_ALERT_AGE_HOURS * 3600):
+                        continue # Too old
+                except:
+                    pass # Proceed if check fails (fallback)
+
+                # 4. ATOMIC CHECK-AND-SEND
+                # Add random jitter to desynchronize multiple tabs checking at exact same millisecond
+                time.sleep(random.uniform(0.1, 1.5))
                 
-                if is_take and sig_id not in processed_ids and sig_id != "__":
+                # Read latest IDs from disk immediately before decision
+                current_ids = set()
+                if os.path.exists(processed_file):
+                    try:
+                        with open(processed_file, 'r') as f:
+                            content = json.load(f)
+                            if isinstance(content, list):
+                                current_ids = set(content)
+                    except:
+                        pass # Start empty if corrupt
+
+                # If NOT in file, then we send
+                if sig_id not in current_ids:
+                    
+                    # SEND ALERT
                     send_discord_alert(webhook_url, row)
-                    processed_ids.add(sig_id)
-                    new_alerts_sent = True
+                    
+                    # WRITE IMMEDIATELY to lock it for others
+                    current_ids.add(sig_id)
+                    try:
+                        with open(processed_file, 'w') as f:
+                            json.dump(list(current_ids), f)
+                    except Exception as e:
+                        print(f"Error saving processed ID {sig_id}: {e}")
                     
             except Exception as inner_e:
                 print(f"Skipping alert row: {inner_e}")
                 continue
-        
-        # Save updated IDs
-        if new_alerts_sent:
-            try:
-                with open(processed_file, 'w') as f:
-                    # Convert set to list
-                    json.dump(list(processed_ids), f)
-            except Exception as e:
-                print(f"Error saving processed IDs: {e}")
                 
     except Exception as e:
         print(f"Error processing Discord alerts: {e}")
