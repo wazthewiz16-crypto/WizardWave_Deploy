@@ -58,15 +58,15 @@
         "model_file": "model_ltf.pkl",
         "triple_barrier": {
             "time_limit_bars": 36,
-            "crypto_pt": 0.015,
-            "crypto_sl": 0.005,
-            "trad_pt": 0.005,
-            "trad_sl": 0.002,
-            "forex_pt": 0.003,
-            "forex_sl": 0.009,
+            "crypto_pt": 0.02,
+            "crypto_sl": 0.01,
+            "trad_pt": 0.01,
+            "trad_sl": 0.005,
+            "forex_pt": 0.004,
+            "forex_sl": 0.002,
             "crypto_use_dynamic": true,
-            "crypto_dyn_pt_k": 1.0,
-            "crypto_dyn_sl_k": 0.5
+            "crypto_dyn_pt_k": 3.0,
+            "crypto_dyn_sl_k": 1.5
         }
     },
     "lookback_candles": 5000,
