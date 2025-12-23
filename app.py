@@ -861,7 +861,50 @@ def init_prop_accounts():
 
 def render_prop_risk():
     init_prop_accounts()
-    
+
+    # --- Position Size Calculator ---
+    with st.container(border=True):
+        st.markdown("### 🧮 Position Size Calculator")
+        
+        # Get list of asset names or symbols
+        try:
+            asset_options = [a['symbol'] for a in ASSETS]
+        except:
+            asset_options = ["BTC/USDT", "ETH/USDT"] # Fallback
+
+        # Row 1: Inputs
+        c1, c2, c3, c4 = st.columns(4)
+        with c1:
+            calc_asset = st.selectbox("Asset", options=asset_options, key="calc_asset")
+        with c2:
+            calc_entry = st.number_input("Entry Price", min_value=0.0, format="%.5f", step=0.0001, key="calc_entry")
+        with c3:
+            calc_sl = st.number_input("Stop Loss", min_value=0.0, format="%.5f", step=0.0001, key="calc_sl")
+        with c4:
+            calc_risk = st.number_input("Risk ($)", min_value=0.0, value=100.0, step=10.0, key="calc_risk")
+
+        # Row 2: Results (Calculated only if valid)
+        if calc_entry > 0 and calc_sl > 0 and calc_risk > 0 and calc_entry != calc_sl:
+            st.markdown("---")
+            
+            diff = calc_entry - calc_sl
+            direction = "LONG" if diff > 0 else "SHORT"
+            risk_per_unit = abs(diff)
+            
+            # Position Size (Units) = Risk / |Entry - SL|
+            pos_size = calc_risk / risk_per_unit
+            
+            # Notional Value = Units * Entry
+            notional = pos_size * calc_entry
+            
+            rc1, rc2, rc3 = st.columns(3)
+            with rc1:
+                st.metric("Direction", f"{direction} {'🟢' if direction == 'LONG' else '🔴'}")
+            with rc2:
+                st.metric("Position Size", f"{pos_size:,.4f}")
+            with rc3:
+                st.metric("Total Position Value", f"${notional:,.2f}")
+
     # Grid Layout
     cols = st.columns(2)
     
