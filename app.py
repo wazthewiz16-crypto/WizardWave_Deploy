@@ -204,8 +204,8 @@ if state_needs_update:
         st.experimental_rerun()
 
 # --- ML Model Integration ---
-@st.cache_resource
-def load_ml_models():
+@st.cache_resource(ttl=3600) # Add TTL to prevent stale models
+def load_ml_models_v2():
     """Load both HTF and LTF models"""
     models = {'htf': None, 'ltf': None}
     try:
@@ -272,7 +272,7 @@ if 'active_tv_symbol' not in st.session_state:
 
 
 
-models = load_ml_models()
+models = load_ml_models_v2()
 
 def analyze_timeframe(timeframe_label):
     results = []

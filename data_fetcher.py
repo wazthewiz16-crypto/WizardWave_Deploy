@@ -63,7 +63,7 @@ def fetch_data(symbol: str, asset_type: str, timeframe: str = '1h', limit: int =
     df = pd.DataFrame()
     if asset_type == 'crypto':
         df = _fetch_crypto(symbol, base_timeframe, limit)
-    elif asset_type == 'trad':
+    elif asset_type == 'trad' or asset_type == 'forex':
         df = _fetch_trad(symbol, base_timeframe, limit)
     else:
         raise ValueError("Invalid asset_type. Must be 'crypto' or 'trad'.")
