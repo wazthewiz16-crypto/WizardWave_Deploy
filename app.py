@@ -4,6 +4,113 @@ import pandas_ta as ta
 import numpy as np
 import time
 import concurrent.futures
+import threading
+
+# --- Thread Manager for Background Fetching ---
+class GlobalRunManager:
+    def __init__(self):
+        self.is_running = False
+        self.lock = threading.Lock()
+        self.result_container = {} # keys: 'data', 'ready', 'message'
+
+    def start_run(self):
+        with self.lock:
+            if self.is_running:
+                return False
+            self.is_running = True
+            self.result_container = {'ready': False, 'running': True}
+            return True
+
+    def finish_run(self, result_data):
+        with self.lock:
+            self.is_running = False
+            self.result_container = {
+                'ready': True, 
+                'running': False, 
+                'data': result_data
+            }
+            
+    def get_status(self):
+        with self.lock:
+            return self.result_container.copy()
+
+# Initialize Global Manager
+if 'THREAD_MANAGER' not in st.session_state:
+    st.session_state.THREAD_MANAGER = GlobalRunManager()
+# Also use a module-level global for persistency if session state fails across thread boundary (it shouldn't if defined here but let's stick to session state if possible or global)
+# Streamlit re-runs module, so global resets? 
+# Correct: Globals reset on re-run unless st.cache_resource is used.
+@st.cache_resource
+def get_thread_manager():
+    return GlobalRunManager()
+
+thread_manager = get_thread_manager()
+
+def run_runic_analysis():
+    """Background worker function"""
+    try:
+        # Run All Timeframes
+        # We pass silent=True to avoid UI calls
+        r15m, a15m, h15m = analyze_timeframe("15 Minutes", silent=True)
+        r1h, a1h, h1h = analyze_timeframe("1 Hour", silent=True)
+        r4h, a4h, h4h = analyze_timeframe("4 Hours", silent=True)
+        r12h, a12h, h12h = analyze_timeframe("12 Hours", silent=True)
+        r1d, a1d, h1d = analyze_timeframe("1 Day", silent=True)
+        r4d, a4d, h4d = analyze_timeframe("4 Days", silent=True)
+        
+        # Aggregate History
+        all_history = []
+        if h15m: all_history.extend(h15m)
+        if h1h: all_history.extend(h1h)
+        if h4h: all_history.extend(h4h)
+        if h12h: all_history.extend(h12h)
+        if h1d: all_history.extend(h1d)
+        if h4d: all_history.extend(h4d)
+        
+        history_df = pd.DataFrame()
+        if all_history:
+             history_df = pd.DataFrame(all_history)
+        
+        # Aggregate Active
+        active_dfs = [df for df in [a15m, a1h, a4h, a12h, a1d, a4d] if df is not None and not df.empty]
+        combined_active = pd.DataFrame()
+        if active_dfs:
+            combined_active = pd.concat(active_dfs).sort_values(by='_sort_key', ascending=False)
+            
+        # Process Discord (Side Effect - OK in thread? Yes, usually I/O)
+        if not combined_active.empty:
+            process_discord_alerts(combined_active)
+            
+        # Metrics Calculation
+        calc_24h = 0.0
+        calc_12h = 0.0
+        try:
+           if not history_df.empty and '_sort_key' in history_df.columns:
+               history_df['_sort_key'] = pd.to_datetime(history_df['_sort_key'], utc=True)
+               now_utc = pd.Timestamp.now(tz='UTC')
+               recent_sigs_24 = history_df[history_df['_sort_key'] >= (now_utc - pd.Timedelta(hours=24))]
+               recent_sigs_12 = history_df[history_df['_sort_key'] >= (now_utc - pd.Timedelta(hours=12))]
+               calc_24h = recent_sigs_24['Return_Pct'].sum()
+               calc_12h = recent_sigs_12['Return_Pct'].sum()
+        except: pass
+
+        # Package Result
+        result = {
+            'history': history_df,
+            'active': combined_active,
+            'metrics': (calc_24h, calc_12h),
+            'timestamp': time.time()
+        }
+        
+        # Finish
+        thread_manager.finish_run(result)
+        
+    except Exception as e:
+        print(f"Background Fetch Failed: {e}")
+        import traceback
+        traceback.print_exc()
+        thread_manager.finish_run(None)
+
 import joblib
 from data_fetcher import fetch_data
 from feature_engine import calculate_ml_features
@@ -1244,7 +1351,7 @@ def process_discord_alerts(df):
     except Exception as e:
         print(f"Error processing Discord alerts: {e}")
 
-@st.fragment(run_every=120)
+@st.fragment(run_every=5)
 def show_runic_alerts():
     # Header Row with Refresh Button
     with st.container(border=True):
@@ -1302,123 +1409,55 @@ def show_runic_alerts():
         with c_btn:
             refresh_click = st.button("↻", key="refresh_top", help="Refresh", use_container_width=True)
             
-        # --- Data Fetching Logic ---
-        # Determine if we need to fetch data
-        now = time.time()
-        should_fetch = False
-        
-        if refresh_click:
-            should_fetch = True
-        elif 'last_runic_fetch' not in st.session_state:
-            should_fetch = True
-        elif 'runic_12h_return' not in st.session_state:
-             should_fetch = True
-        elif now - st.session_state.get('last_runic_fetch', 0) > 55:
-            should_fetch = True
-            
-        # Initialize Data Container
-        if 'combined_active_df' not in st.session_state:
-             st.session_state.combined_active_df = pd.DataFrame()
-
-        # --- PRE-RENDER CACHED UI ---
-        # Render the current state BEFORE checking/fetching updates
-        # This prevents the white screen of death (emptying list) during fetch
-        combined_active = st.session_state.get('combined_active_df', pd.DataFrame())
-        
-        # --- Timeframe Filter (Inside Box) ---
+    # --- Render Active List Helper ---
+    def render_active_list(combined_active):
         if not combined_active.empty:
-            # Get unique timeframes and sort chronologically
-            tf_order = {
-                "15m": 0, "15 Minutes": 0,
-                "1H": 2, "1 Hour": 2,
-                "4H": 3, "4 Hours": 3,
-                "12H": 4, "12 Hours": 4,
-                "1D": 5, "1 Day": 5,
-                "4D": 6, "4 Days": 6
-            }
-            
+            tf_order = {"15m": 0, "15 Minutes": 0, "1H": 2, "1 Hour": 2, "4H": 3, "4 Hours": 3, "12H": 4, "12 Hours": 4, "1D": 5, "1 Day": 5, "4D": 6, "4 Days": 6}
             unique_tfs = combined_active['Timeframe'].unique().tolist()
-            # Sort first based on order
             sorted_tfs = sorted(unique_tfs, key=lambda x: tf_order.get(x, 99))
             
-            # Simple Display
-            display_opts = sorted_tfs
-            
-            # Compact Multiselect
             st.markdown("<div style='margin-top: -15px;'></div>", unsafe_allow_html=True)
-            selected_short = st.multiselect("Timeframes", options=display_opts, default=display_opts, label_visibility="collapsed", key="runic_active_tf_selector")
+            selected_short = st.multiselect("Timeframes", options=sorted_tfs, default=sorted_tfs, label_visibility="collapsed", key="runic_active_tf_selector")
             
-            # Use directly
-            selected_tfs = selected_short
-            
-            # --- Filter Data ---
             df_display = combined_active.copy()
+            if show_take_only and 'Action' in df_display.columns:
+                df_display = df_display[df_display['Action'].str.contains("TAKE")]
             
-            # Use global show_take_only variable (default True)
-            if show_take_only:
-                 if 'Action' in df_display.columns:
-                    df_display = df_display[df_display['Action'].str.contains("TAKE")]
-            
-            if selected_tfs:
-                df_display = df_display[df_display['Timeframe'].isin(selected_tfs)]
+            if selected_short:
+                df_display = df_display[df_display['Timeframe'].isin(selected_short)]
             else:
                 st.warning("Select Timeframe")
-                df_display = pd.DataFrame(columns=df_display.columns) # Empty
+                df_display = pd.DataFrame(columns=df_display.columns)
 
-            # --- Render ---
             if df_display.empty:
                 st.info("No active signals.")
             else:
-                # Pagination Logic (Reduced per page for standard height)
                 ITEMS_PER_PAGE = 5 
-                if 'page_number' not in st.session_state:
-                    st.session_state.page_number = 0
-                    
+                if 'page_number' not in st.session_state: st.session_state.page_number = 0
                 total_pages = max(1, (len(df_display) - 1) // ITEMS_PER_PAGE + 1)
                 
-                # Ensure page number is valid
-                if st.session_state.page_number >= total_pages:
-                    st.session_state.page_number = total_pages - 1
-                if st.session_state.page_number < 0:
-                    st.session_state.page_number = 0
+                if st.session_state.page_number >= total_pages: st.session_state.page_number = total_pages - 1
+                if st.session_state.page_number < 0: st.session_state.page_number = 0
                     
                 start_idx = st.session_state.page_number * ITEMS_PER_PAGE
                 end_idx = start_idx + ITEMS_PER_PAGE
-                
                 current_batch = df_display.iloc[start_idx:end_idx]
                 
                 for index, row in current_batch.iterrows():
-                    # --- Card Container for "Inside" Look ---
-                    # We use a container with a border to group Content + Button
                     with st.container(border=True):
-                        
-                        # Layout: [Content (0.8) | Button (0.2)]
                         c_content, c_btn = st.columns([0.75, 0.25])
-                        
-                        # --- 1. Content Section ---
                         with c_content:
                             is_long = "LONG" in row.get('Type', '')
                             direction_color = "#00ff88" if is_long else "#ff3344"
-                            
-                            # Icon Logic
                             asset_name = row['Asset']
-                            asset_symbol = row.get('Symbol', '')
-                            if not asset_symbol:
-                                 for a in ASSETS:
-                                     if a['name'] == asset_name:
-                                         asset_symbol = a['symbol']
-                                         break
-                            
                             icon_char = "⚡"
                             if "BTC" in asset_name: icon_char = "₿"
                             elif "ETH" in asset_name: icon_char = "Ξ"
                             elif "SOL" in asset_name: icon_char = "◎"
-                            
                             action_text = "BULL" if is_long else "BEAR"
                             pnl_val = row.get('PnL (%)', '0.00%')
                             pnl_color = "#00ff88" if not str(pnl_val).startswith("-") else "#ff3344"
                             
-                            # Compact HTML representation
                             st.markdown(f"""
                                 <div style="display: flex; align-items: flex-start; margin-top: -10px;">
                                     <div style="color: {direction_color}; font-size: 1.2rem; margin-right: 8px; margin-top: -2px;">{icon_char}</div>
@@ -1439,158 +1478,112 @@ def show_runic_alerts():
                                     </div>
                                 </div>
                             """, unsafe_allow_html=True)
-                            
-                        # --- 2. Button Section (Inside the Card) ---
                         with c_btn:
-                            # Center the button vertically relative to content
                             st.markdown('<div style="height: 2px;"></div>', unsafe_allow_html=True)
-                            
-                            # Unique Key
                             unique_id = f"{row['Asset']}_{row.get('Timeframe','')}_{row.get('Entry_Time','')}"
                             unique_id = "".join(c for c in unique_id if c.isalnum() or c in ['_','-'])
-                            
-                            # Buttons Layout
                             c_b1, c_b2 = st.columns(2, gap="small")
-
-                            # Visual "View" Button
                             with c_b1:
                                 if st.button("👁️", key=f"btn_card_view_{unique_id}", use_container_width=True, help="View Chart"):
-                                    # 1. Resolve Trading View Symbol
-                                    tv_sym = get_tv_symbol({'symbol': row['Symbol']})
-                                    tv_int = get_tv_interval(row['Timeframe'])
-                                    
-                                    # 2. Update State
-                                    st.session_state.active_tv_symbol = tv_sym
-                                    st.session_state.active_tv_interval = tv_int
-                                    st.session_state.active_signal = row.to_dict() # Store full signal data
-                                    st.session_state.active_view_mode = 'details' # Set Mode
-                                    st.rerun()
-
-                            # "Calc" Button
-                            with c_b2:
-                                if st.button("🧮", key=f"btn_card_calc_{unique_id}", use_container_width=True, help="Position Calculator"):
-                                    # 1. Resolve Trading View Symbol (optional but good for context)
-                                    tv_sym = get_tv_symbol({'symbol': row['Symbol']})
-                                    tv_int = get_tv_interval(row['Timeframe'])
-                                    
-                                    # 2. Update State
+                                    tv_sym = get_tv_symbol({'symbol': row.get('Symbol', '')})
+                                    try: tv_int = get_tv_interval(row['Timeframe'])
+                                    except: tv_int = '60'
                                     st.session_state.active_tv_symbol = tv_sym
                                     st.session_state.active_tv_interval = tv_int
                                     st.session_state.active_signal = row.to_dict()
-                                    st.session_state.active_view_mode = 'calculator' # Set Mode
-                                    st.session_state.active_tab = 'RISK' # Switch to Shield Tab
-                                    
-                                    # Pre-fill Entry Price
+                                    st.session_state.active_view_mode = 'details'
+                                    st.rerun()
+                            with c_b2:
+                                if st.button("🧮", key=f"btn_card_calc_{unique_id}", use_container_width=True, help="Position Calculator"):
+                                    tv_sym = get_tv_symbol({'symbol': row.get('Symbol', '')})
+                                    try: tv_int = get_tv_interval(row['Timeframe'])
+                                    except: tv_int = '60'
+                                    st.session_state.active_tv_symbol = tv_sym
+                                    st.session_state.active_tv_interval = tv_int
+                                    st.session_state.active_signal = row.to_dict()
+                                    st.session_state.active_view_mode = 'calculator' 
+                                    st.session_state.active_tab = 'RISK' 
                                     try:
                                         ep = float(str(row['Entry_Price']).replace(',',''))
                                         st.session_state.calc_entry_input = ep
                                     except:
                                         st.session_state.calc_entry_input = 0.0
-                                        
                                     st.rerun()
-                                
-                            # Time under button
                             time_val = row.get('Entry_Time', row.get('Signal_Time', 'N/A'))
-                            # Try to make it shorter? e.g. 2025-12-15 17:30 -> 12-15 17:30
-                            try:
-                                if len(str(time_val)) > 10:
-                                    short_time = str(time_val)[5:-3] # remove YYYY- and :SS
-                                else:
-                                    short_time = str(time_val)
-                            except:
-                                short_time = str(time_val)
-                                
+                            try: short_time = str(time_val)[5:-3] if len(str(time_val)) > 10 else str(time_val)
+                            except: short_time = str(time_val)
                             st.markdown(f"<div style='text-align: center; font-size: 0.65rem; color: #00eaff; margin-top: -2px;'>{short_time}</div>", unsafe_allow_html=True)
-                            
                 
-                # --- Compact Numbered Pagination (Mobile Optimized) ---
-                # Layout: [Page X/Y (Centered)]
-                #         [First] [Prev] [Next] [Last]
-                
-                # Page Text Centered Top
                 st.markdown(f"<div style='text-align: center; color: #888; font-size: 0.8rem; margin-bottom: 5px;'>Page {st.session_state.page_number + 1}/{total_pages}</div>", unsafe_allow_html=True)
-                
-                # Buttons Row: 4 Columns
                 p_first, p_prev, p_next, p_last = st.columns([0.25, 0.25, 0.25, 0.25], gap="small")
-                
                 with p_first:
                     if st.button("⏮", key="first_main", disabled=(st.session_state.page_number == 0), use_container_width=True, help="First Page"):
                         st.session_state.page_number = 0
                         st.rerun()
-
                 with p_prev:
                     if st.button("◀", key="prev_main", disabled=(st.session_state.page_number == 0), use_container_width=True, help="Previous"):
                         st.session_state.page_number -= 1
                         st.rerun()
-                        
                 with p_next:
                     if st.button("▶", key="next_main", disabled=(st.session_state.page_number >= total_pages - 1), use_container_width=True, help="Next"):
                         st.session_state.page_number += 1
                         st.rerun()
-
                 with p_last:
                     if st.button("⏭", key="last_main", disabled=(st.session_state.page_number >= total_pages - 1), use_container_width=True, help="Last Page"):
                         st.session_state.page_number = total_pages - 1
                         st.rerun()
-
         else:
             st.info("No active signals.")
 
-    # --- FETCH LOGIC (Background) ---
-    if should_fetch:
-        status_box = st.empty()
-        status_box.caption("🔮 Consulting the Oracle...")
-        
-        r15m, a15m, h15m = analyze_timeframe("15 Minutes")
-        r1h, a1h, h1h = analyze_timeframe("1 Hour")
-        r4h, a4h, h4h = analyze_timeframe("4 Hours")
-        r12h, a12h, h12h = analyze_timeframe("12 Hours")
-        r1d, a1d, h1d = analyze_timeframe("1 Day")
-        r4d, a4d, h4d = analyze_timeframe("4 Days")
-        
-        all_history = []
-        if h15m: all_history.extend(h15m)
-        if h1h: all_history.extend(h1h)
-        if h4h: all_history.extend(h4h)
-        if h12h: all_history.extend(h12h)
-        if h1d: all_history.extend(h1d)
-        if h4d: all_history.extend(h4d)
-        
-        if all_history:
-             st.session_state['runic_history_df'] = pd.DataFrame(all_history)
-        
-        active_dfs = [df for df in [a15m, a1h, a4h, a12h, a1d, a4d] if df is not None and not df.empty]
-        if active_dfs:
-            combined_active = pd.concat(active_dfs).sort_values(by='_sort_key', ascending=False)
-        else:
-            combined_active = pd.DataFrame()
-        
-        if not combined_active.empty:
-            process_discord_alerts(combined_active)
+    # 1. RENDER CACHED UI
+    if 'combined_active_df' not in st.session_state:
+         st.session_state.combined_active_df = pd.DataFrame()
+    render_active_list(st.session_state.combined_active_df)
 
-        st.session_state['combined_active_df'] = combined_active
-        st.session_state['last_runic_fetch'] = now
-        
-        # Update Metrics
-        hist_df = st.session_state.get('runic_history_df', pd.DataFrame())
-        calc_24h = 0.0
-        calc_12h = 0.0
-        try:
-           if not hist_df.empty and '_sort_key' in hist_df.columns:
-               hist_df['_sort_key'] = pd.to_datetime(hist_df['_sort_key'], utc=True)
-               now_utc = pd.Timestamp.now(tz='UTC')
-               recent_sigs_24 = hist_df[hist_df['_sort_key'] >= (now_utc - pd.Timedelta(hours=24))]
-               recent_sigs_12 = hist_df[hist_df['_sort_key'] >= (now_utc - pd.Timedelta(hours=12))]
-               calc_24h = recent_sigs_24['Return_Pct'].sum()
-               calc_12h = recent_sigs_12['Return_Pct'].sum()
-        except: pass
-        
-        st.session_state['runic_24h_return'] = calc_24h
-        st.session_state['runic_12h_return'] = calc_12h
-        
-        status_box.empty()
-        st.rerun()
+    # 2. CHECK BACKGROUND STATUS
+    status = thread_manager.get_status()
+    
+    # Check if thread finished
+    if status.get('ready', False):
+        # Ingest Data
+        # We process result
+        data = status.get('data')
+        if data:
+            st.session_state['runic_history_df'] = data['history']
+            st.session_state['combined_active_df'] = data['active']
+            st.session_state['runic_24h_return'] = data['metrics'][0]
+            st.session_state['runic_12h_return'] = data['metrics'][1]
+            st.session_state['last_runic_fetch'] = data['timestamp']
+            
+            st.rerun()
+    
+    # Check if running
+    is_running = status.get('running', False)
+    if is_running:
+        st.markdown("<div style='text-align: center; color: #ffd700; font-size: 0.8rem; margin-top: 5px;'>🔮 Consulting the Oracle...</div>", unsafe_allow_html=True)
 
+    # 3. TRIGGER NEW RUN IF NEEDED
+    now = time.time()
+    should_start = False
+    
+    # Manual Trigger
+    if refresh_click and not is_running:
+        should_start = True
+        
+    # Auto Trigger
+    elif not is_running:
+        if 'last_runic_fetch' not in st.session_state:
+            should_start = True
+        elif now - st.session_state.get('last_runic_fetch', 0) > 55:
+            should_start = True
+            
+    if should_start:
+        started = thread_manager.start_run()
+        if started:
+            # Launch Thread
+            t = threading.Thread(target=run_runic_analysis)
+            t.start()
+            st.rerun()
 # --- Main Dashboard Logic (Simplified) ---
 show_take_only = True # Default behavior
 
