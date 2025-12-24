@@ -1354,7 +1354,7 @@ def process_discord_alerts(df):
     except Exception as e:
         print(f"Error processing Discord alerts: {e}")
 
-@st.fragment(run_every=15)
+@st.fragment(run_every=120)
 def show_runic_alerts():
     # Header Row with Refresh Button
     with st.container(border=True):
