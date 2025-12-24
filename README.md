@@ -5,13 +5,26 @@
 Dashboard Preview
 <img width="2011" height="868" alt="image" src="https://github.com/user-attachments/assets/f01385ba-7cfd-4cc0-b1e4-58a16b91319d" />
 
+### New Interfaces
+**Active Runic Alerts**:
+<img width="800" alt="runic_alerts_new" src="./documentation/runic_alerts_v2.png" />
+
+**Signal History with NY Session Highlights**:
+<img width="800" alt="signal_history_new" src="./documentation/signal_history_v2.png" />
+
 ---
 
 ## ✨ Key Features
 
 ### 🔮 The Arcane Portal (Dashboard)
 - **Dual-Engine Signal Feed**: Real-time display of active trade setups across Crypto, Forex, and Indices, split into High Timeframe (Trend) and Low Timeframe (Scalp) engines.
-- **Runic Alerts**: A dedicated sidebar for quick-glance status updates on active signals across 15m, 1h, 4h, 12h, 1d, and 4d timeframes.
+- **Runic Alerts**: A dedicated sidebar for live signal monitoring. 
+  - **Non-Blocking Updates**: Powered by a multi-threaded background worker, allowing the UI to remain responsive while data is fetched.
+  - **Live Progress**: A real-time progress bar shows the status of the data fetch cycle.
+  - **Dynamic Styling**: Active signals display "Confidence" in high-visibility light orange.
+- **Signal History**: A comprehensive log of all past signals.
+  - **New Filters**: "Show Last 24h" and "Show Open Trades Only" to focus on relevant data.
+  - **Session Highlighting**: Trades executed during the New York Session (8 AM - 5 PM ET) are automatically highlighted in Burnt Orange for quick identification.
 - **Realms (Market Sessions)**: A visual 24-hour timeline showing the overlap of major global trading sessions (Sydney, Tokyo, London, New York).
 - **The Oracle**: An automated countdown to high-impact economic events (CPI, NFP, FOMC) to help you avoid volatility spikes.
 
