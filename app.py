@@ -529,6 +529,26 @@ def analyze_timeframe(timeframe_label):
                     "Signal": trade['Position'] # Map Position to Signal column for frontend
                 }
 
+                # --- VALIDATE: Verify trade hasn't already closed ---
+                # Check price action SUBSEQUENT to entry to see if TP or SL was hit.
+                # Only check bars strictly AFTER the entry time.
+                future_price_action = df_strat.loc[df_strat.index > ts]
+                
+                if not future_price_action.empty:
+                    hit_tp = False
+                    hit_sl = False
+                    
+                    if trade['Position'] == 'LONG':
+                        hit_tp = (future_price_action['high'] >= tp_price).any()
+                        hit_sl = (future_price_action['low'] <= sl_price).any()
+                    elif trade['Position'] == 'SHORT':
+                        hit_tp = (future_price_action['low'] <= tp_price).any()
+                        hit_sl = (future_price_action['high'] >= sl_price).any()
+                        
+                    if hit_tp or hit_sl:
+                        # Trade has already closed in history!
+                        active_trade_data = None
+
             # --- Latest Candle Status ---
             current = df_strat.iloc[-1]
             signal = current['signal_type']
