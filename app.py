@@ -874,7 +874,7 @@ def analyze_timeframe(timeframe_label, silent=False):
             return None, None, None
 
     # Parallel Execution
-    with concurrent.futures.ThreadPoolExecutor() as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
         future_to_asset = {executor.submit(process_asset, asset): asset for asset in ASSETS}
         
         for i, future in enumerate(concurrent.futures.as_completed(future_to_asset)):
