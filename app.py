@@ -381,7 +381,7 @@ if 'active_tv_symbol' not in st.session_state:
 
 models = load_ml_models_v2()
 
-def analyze_timeframe(timeframe_label):
+def analyze_timeframe(timeframe_label, silent=False):
     results = []
     active_trades = []
     historical_signals = [] # Store all historical signals found
@@ -462,12 +462,14 @@ def analyze_timeframe(timeframe_label):
         crypto_dyn_pt_k = tb.get('crypto_dyn_pt_k', 0.5)
         crypto_dyn_sl_k = tb.get('crypto_dyn_sl_k', 0.5)
 
-    progress_bar = st.progress(0)
-    status_text = st.empty()
+    progress_bar = st.progress(0) if not silent else None
+    status_text = st.empty() if not silent else None
     if timeframe_label == "4 Days":
-        status_text.text(f"[{timeframe_label}] Fetching data for {len(ASSETS)} assets... (Local Cache Active)")
+        if not silent and status_text:
+            status_text.text(f"[{timeframe_label}] Fetching data for {len(ASSETS)} assets... (Local Cache Active)")
     else:
-        status_text.text(f"[{timeframe_label}] Fetching data for {len(ASSETS)} assets...")
+        if not silent and status_text:
+            status_text.text(f"[{timeframe_label}] Fetching data for {len(ASSETS)} assets...")
 
     def process_asset(asset):
         try:
@@ -876,7 +878,8 @@ def analyze_timeframe(timeframe_label):
         future_to_asset = {executor.submit(process_asset, asset): asset for asset in ASSETS}
         
         for i, future in enumerate(concurrent.futures.as_completed(future_to_asset)):
-            progress_bar.progress((i + 1) / len(ASSETS))
+            if not silent and progress_bar:
+                progress_bar.progress((i + 1) / len(ASSETS))
             try:
                 res, trade, hist = future.result()
                 if res: results.append(res)
@@ -885,8 +888,8 @@ def analyze_timeframe(timeframe_label):
             except Exception:
                 pass
 
-    progress_bar.empty()
-    status_text.empty()
+    if not silent and progress_bar: progress_bar.empty()
+    if not silent and status_text: status_text.empty()
     
     # Sort
     if active_trades:
@@ -1976,6 +1979,8 @@ with col_center:
                  with opt_col1:
                      # Toggle for 24H Only
                      show_24h_only = st.checkbox("Show last 24 Hours Only", value=True)
+                     # Toggle for Open Trades Only (New)
+                     show_open_only = st.checkbox("Show Open Trades Only", value=False)
                  
                  # 1. Filter Time (Last 24h)
                  if show_24h_only:
@@ -1984,9 +1989,12 @@ with col_center:
                  else:
                      filtered_df = hist_df.copy()
                      
-                 # 2. Timeframe Filter
-                 # Get unique timeframes from FULL history to keep options stable, or filtered?
-                 # Stable options from full history is better UX.
+                 # 2. Filter Open Trades (New)
+                 if show_open_only:
+                     if 'Status' in filtered_df.columns:
+                         filtered_df = filtered_df[filtered_df['Status'] == 'OPEN']
+                     
+                 # 3. Timeframe Filter
                  if 'Timeframe' in hist_df.columns:
                      tf_order = {
                         "15m": 0, "15 Minutes": 0,
@@ -2039,7 +2047,7 @@ with col_center:
                  
                  # Metrics
                  m1, m2, m3 = st.columns(3)
-                 m1.metric("PnL Sum (Verify)", f"{total_ret:.2%}")
+                 m1.metric("PnL Sum (24hrs)", f"{total_ret:.2%}")
                  m2.metric("Trades", total_trades)
                  m3.metric("Win Rate", f"{win_rate:.0%}")
                  
@@ -2086,10 +2094,30 @@ with col_center:
                      # Format Return
                      filtered_df['Return'] = filtered_df['Return_Pct'].apply(lambda x: f"{x:.2%}")
                      
+                     # Highlight Logic (NY Session)
+                     def highlight_ny(row):
+                         try:
+                             # _sort_key is UTC datetime
+                             ts = row['_sort_key']
+                             if pd.isna(ts): return [''] * len(row)
+                             ts_ny = ts.tz_convert('America/New_York')
+                             # Check 8am-5pm (17:00) | Use strictly < 17 or <= 17? "8am-5pm" implies inclusive or up to.
+                             # Usually session is 9:30 - 4:00. But user asked for 8-5.
+                             if 8 <= ts_ny.hour < 17:
+                                 return ['background-color: #ff9800; color: black; font-weight: bold'] * len(row)
+                             else:
+                                 return [''] * len(row)
+                         except:
+                             return [''] * len(row)
+                     
+                     # We need columns + Sort Key for styling
+                     styler = filtered_df[display_cols + ['Return', '_sort_key']].style.apply(highlight_ny, axis=1)
+                     
                      st.dataframe(
-                         filtered_df[display_cols + ['Return']], 
+                         styler, 
                          column_config={
-                             "Return_Pct": None, # Hide raw
+                             "Return_Pct": None, 
+                             "_sort_key": None, # Hide sort key
                              "Return": st.column_config.TextColumn("Return"),
                              "Type": st.column_config.TextColumn("Signal Type"),
                              "Timeframe": st.column_config.TextColumn("TF"),
