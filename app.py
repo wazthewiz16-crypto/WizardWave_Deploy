@@ -1491,7 +1491,7 @@ def show_runic_alerts():
                                             <span style="color: {pnl_color};">{pnl_val}</span>
                                         </div>
                                         <div style="font-size: 0.75rem; color: #aaa; margin-top: 2px;">
-                                            {row.get('Action')} | Conf: {row.get('Confidence')} | <span style="color: #ff3344; font-weight: bold;">{row.get('Timeframe')}</span>
+                                            {row.get('Action')} | <span style="color: #FFB74D;">Conf: {row.get('Confidence')}</span> | <span style="color: #ff3344; font-weight: bold;">{row.get('Timeframe')}</span>
                                         </div>
                                         <div style="font-size: 0.8rem; color: #888; margin-top: 1px;">
                                             TP: {row.get('Take_Profit', 'N/A')} | <span style="color: #d8b4fe;">SL: {row.get('Stop_Loss', 'N/A')}</span> <span style="color: #666; font-size: 0.75rem;">({row.get('RR', '')})</span>
