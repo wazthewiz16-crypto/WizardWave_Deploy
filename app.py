@@ -1577,7 +1577,7 @@ def show_runic_alerts():
     elif not is_running:
         if 'last_runic_fetch' not in st.session_state:
             should_start = True
-        elif now - st.session_state.get('last_runic_fetch', 0) > 55:
+        elif now - st.session_state.get('last_runic_fetch', 0) > 115:
             should_start = True
             
     if should_start:
