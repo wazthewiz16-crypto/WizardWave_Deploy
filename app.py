@@ -5,6 +5,8 @@ import numpy as np
 import time
 import concurrent.futures
 import threading
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 # --- Thread Manager for Background Fetching ---
 class GlobalRunManager:
@@ -893,7 +895,7 @@ def analyze_timeframe(timeframe_label, silent=False):
             return None, None, None
 
     # Parallel Execution
-    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
         future_to_asset = {executor.submit(process_asset, asset): asset for asset in ASSETS}
         
         for i, future in enumerate(concurrent.futures.as_completed(future_to_asset)):
