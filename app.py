@@ -1505,22 +1505,32 @@ def show_runic_alerts():
                 
                 # --- Compact Numbered Pagination (Mobile Optimized) ---
                 # Layout: [Page X/Y (Centered)]
-                #         [Prev]    [Next]
+                #         [First] [Prev] [Next] [Last]
                 
                 # Page Text Centered Top
                 st.markdown(f"<div style='text-align: center; color: #888; font-size: 0.8rem; margin-bottom: 5px;'>Page {st.session_state.page_number + 1}/{total_pages}</div>", unsafe_allow_html=True)
                 
-                # Buttons Row: 50% / 50%
-                p_prev, p_next = st.columns([0.5, 0.5])
+                # Buttons Row: 4 Columns
+                p_first, p_prev, p_next, p_last = st.columns([0.25, 0.25, 0.25, 0.25], gap="small")
                 
+                with p_first:
+                    if st.button("⏮", key="first_main", disabled=(st.session_state.page_number == 0), use_container_width=True, help="First Page"):
+                        st.session_state.page_number = 0
+                        st.rerun()
+
                 with p_prev:
-                    if st.button("◀ Previous", key="prev_main", disabled=(st.session_state.page_number == 0), use_container_width=True):
+                    if st.button("◀", key="prev_main", disabled=(st.session_state.page_number == 0), use_container_width=True, help="Previous"):
                         st.session_state.page_number -= 1
                         st.rerun()
                         
                 with p_next:
-                    if st.button("Next ▶", key="next_main", disabled=(st.session_state.page_number >= total_pages - 1), use_container_width=True):
+                    if st.button("▶", key="next_main", disabled=(st.session_state.page_number >= total_pages - 1), use_container_width=True, help="Next"):
                         st.session_state.page_number += 1
+                        st.rerun()
+
+                with p_last:
+                    if st.button("⏭", key="last_main", disabled=(st.session_state.page_number >= total_pages - 1), use_container_width=True, help="Last Page"):
+                        st.session_state.page_number = total_pages - 1
                         st.rerun()
 
         else:
