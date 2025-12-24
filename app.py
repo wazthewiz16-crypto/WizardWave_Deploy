@@ -43,6 +43,10 @@ class GlobalRunManager:
         with self.lock:
             return self.result_container.copy()
 
+    def ack_result(self):
+        with self.lock:
+            self.result_container['ready'] = False
+
 # Initialize Global Manager
 if 'THREAD_MANAGER' not in st.session_state:
     st.session_state.THREAD_MANAGER = GlobalRunManager()
@@ -1573,6 +1577,7 @@ def show_runic_alerts():
             st.session_state['runic_12h_return'] = data['metrics'][1]
             st.session_state['last_runic_fetch'] = data['timestamp']
             
+            thread_manager.ack_result()
             st.rerun()
     
     # Check if running
