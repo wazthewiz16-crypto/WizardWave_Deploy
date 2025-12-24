@@ -10,6 +10,7 @@ import threading
 class GlobalRunManager:
     def __init__(self):
         self.is_running = False
+        self.progress = 0
         self.lock = threading.Lock()
         self.result_container = {} # keys: 'data', 'ready', 'message'
 
@@ -18,15 +19,23 @@ class GlobalRunManager:
             if self.is_running:
                 return False
             self.is_running = True
-            self.result_container = {'ready': False, 'running': True}
+            self.progress = 0
+            self.result_container = {'ready': False, 'running': True, 'progress': 0}
             return True
+
+    def update_progress(self, val):
+        with self.lock:
+            self.progress = val
+            self.result_container['progress'] = val
 
     def finish_run(self, result_data):
         with self.lock:
             self.is_running = False
+            self.progress = 100
             self.result_container = {
                 'ready': True, 
                 'running': False, 
+                'progress': 100,
                 'data': result_data
             }
             
@@ -52,11 +61,17 @@ def run_runic_analysis():
         # Run All Timeframes
         # We pass silent=True to avoid UI calls
         r15m, a15m, h15m = analyze_timeframe("15 Minutes", silent=True)
+        thread_manager.update_progress(16)
         r1h, a1h, h1h = analyze_timeframe("1 Hour", silent=True)
+        thread_manager.update_progress(32)
         r4h, a4h, h4h = analyze_timeframe("4 Hours", silent=True)
+        thread_manager.update_progress(48)
         r12h, a12h, h12h = analyze_timeframe("12 Hours", silent=True)
+        thread_manager.update_progress(64)
         r1d, a1d, h1d = analyze_timeframe("1 Day", silent=True)
+        thread_manager.update_progress(80)
         r4d, a4d, h4d = analyze_timeframe("4 Days", silent=True)
+        thread_manager.update_progress(95)
         
         # Aggregate History
         all_history = []
@@ -1563,7 +1578,9 @@ def show_runic_alerts():
     # Check if running
     is_running = status.get('running', False)
     if is_running:
-        st.markdown("<div style='text-align: center; color: #ffd700; font-size: 0.8rem; margin-top: 5px;'>🔮 Consulting the Oracle...</div>", unsafe_allow_html=True)
+        progress_val = status.get('progress', 0)
+        st.progress(progress_val)
+        st.markdown(f"<div style='text-align: center; color: #ffd700; font-size: 0.8rem; margin-top: -15px;'>🔮 Consulting the Oracle... ({progress_val}%)</div>", unsafe_allow_html=True)
 
     # 3. TRIGGER NEW RUN IF NEEDED
     now = time.time()
