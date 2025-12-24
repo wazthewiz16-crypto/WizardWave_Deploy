@@ -4,7 +4,6 @@ import pandas as pd
 import pandas_ta as ta
 import streamlit as st
 
-@st.cache_data(ttl=300)
 def fetch_data(symbol: str, asset_type: str, timeframe: str = '1h', limit: int = 100) -> pd.DataFrame:
     """
     Unified data fetcher for Crypto and Traditional assets.
