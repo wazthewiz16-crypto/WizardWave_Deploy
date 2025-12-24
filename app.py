@@ -1354,7 +1354,7 @@ def process_discord_alerts(df):
     except Exception as e:
         print(f"Error processing Discord alerts: {e}")
 
-@st.fragment(run_every=5)
+@st.fragment(run_every=15)
 def show_runic_alerts():
     # Header Row with Refresh Button
     with st.container(border=True):
@@ -2104,7 +2104,7 @@ with col_center:
                              # Check 8am-5pm (17:00) | Use strictly < 17 or <= 17? "8am-5pm" implies inclusive or up to.
                              # Usually session is 9:30 - 4:00. But user asked for 8-5.
                              if 8 <= ts_ny.hour < 17:
-                                 return ['background-color: #ff9800; color: black; font-weight: bold'] * len(row)
+                                 return ['background-color: #B36B00; color: white; font-weight: bold'] * len(row)
                              else:
                                  return [''] * len(row)
                          except:
