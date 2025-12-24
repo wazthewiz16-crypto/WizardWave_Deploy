@@ -568,7 +568,7 @@ def analyze_timeframe(timeframe_label):
                # Iterate through all bars
                # Assumes df is sorted by time
                # print(f"DEBUGGING HIST: {asset['name']} - {len(df)} rows. Last: {df.index[-1]}")
-               for idx, row in df.iterrows():
+               for int_idx, (idx, row) in enumerate(df.iterrows()):
                    close = row['close']
                    high = row['high']
                    low = row['low']
@@ -660,7 +660,53 @@ def analyze_timeframe(timeframe_label):
                                position = new_pos
                                entry_price = close
                                entry_time = idx
+                               entry_int_idx = int_idx # Store integer index for time limit check
                                entry_conf = model_prob
+
+                   # --- TIME LIMIT CHECK ---
+                   if position is not None:
+                       # Determine Limit based on TF
+                       is_ltf = short_tf in ['15m', '15 Minutes']
+                       
+                       # Hardcoded limits from config to match strategy logic
+                       # LTF: 36 bars, HTF: ~40 days? (HTF is day/4h, 40 days is huge)
+                       # Let's use config values if possible, else defaults
+                       if is_ltf:
+                           limit = 36
+                       else:
+                           # HTF Limit: 40 Days. 
+                           # If 1H bars: 40 * 24 = 960 bars
+                           # If 4H bars: 40 * 6 = 240 bars
+                           # If 1D bars: 40 bars
+                           if '1H' in short_tf or '1 Hour' in short_tf: limit = 40 * 24
+                           elif '4H' in short_tf or '4 Hours' in short_tf: limit = 40 * 6
+                           else: limit = 40
+                       
+                       bars_held = int_idx - entry_int_idx
+                       if bars_held >= limit:
+                           # Close at current close
+                           tl_pnl = 0.0
+                           if position == 'LONG':
+                               tl_pnl = (close - entry_price) / entry_price
+                           else:
+                               tl_pnl = (entry_price - close) / entry_price
+                               
+                           trades.append({
+                                "_sort_key": entry_time,
+                                "Asset": asset['name'],
+                                "Timeframe": short_tf,
+                                "Time": format_time(entry_time),
+                                "Type": f"{position} {'🟢' if position == 'LONG' else '🔴'}",
+                                "Price": entry_price,
+                                "Confidence": f"{entry_conf:.0%}",
+                                "Model": "✅",
+                                "Return_Pct": tl_pnl, 
+                                "SL_Pct": curr_sl_pct,
+                                "Status": "TIME LIMIT ⌛"
+                           })
+                           position = None
+                               
+               # --- END OF LOOP ---
                                
                # --- END OF LOOP ---
                # If position is still open, calculate floating PnL
