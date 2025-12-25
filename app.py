@@ -6,6 +6,7 @@ import time
 import concurrent.futures
 import threading
 import warnings
+import pyperclip
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.simplefilter(action='ignore', category=ResourceWarning)
 
@@ -1542,7 +1543,7 @@ def show_runic_alerts():
                             st.markdown('<div style="height: 2px;"></div>', unsafe_allow_html=True)
                             unique_id = f"{row['Asset']}_{row.get('Timeframe','')}_{row.get('Entry_Time','')}"
                             unique_id = "".join(c for c in unique_id if c.isalnum() or c in ['_','-'])
-                            c_b1, c_b2 = st.columns(2, gap="small")
+                            c_b1, c_b2, c_b3 = st.columns([0.4, 0.4, 0.2], gap="small")
                             with c_b1:
                                 if st.button("👁️", key=f"btn_card_view_{unique_id}", use_container_width=True, help="View Chart"):
                                     tv_sym = get_tv_symbol({'symbol': row.get('Symbol', '')})
@@ -1569,10 +1570,14 @@ def show_runic_alerts():
                                     except:
                                         st.session_state.calc_entry_input = 0.0
                                     st.rerun()
-                            
-                            # Copy-Trade Helper
-                            trade_str = f"{'LONG' if is_long else 'SHORT'} {asset_name} @ {row.get('Current_Price',0)} | SL {row.get('Stop_Loss','')} | TP {row.get('Take_Profit','')}"
-                            st.code(trade_str, language="text")
+                            with c_b3:
+                                trade_str_raw = f"{'LONG' if is_long else 'SHORT'} {asset_name} @ {row.get('Current_Price',0)} | SL {row.get('Stop_Loss','')} | TP {row.get('Take_Profit','')}"
+                                if st.button("📋", key=f"btn_copy_{unique_id}", help="Copy Trade Details", use_container_width=True):
+                                     try:
+                                         pyperclip.copy(trade_str_raw)
+                                         st.toast(f"Copied: {asset_name}", icon="📋")
+                                     except Exception as ex:
+                                         st.warning(f"Copy failed: {ex}")
                             
                             time_val = row.get('Entry_Time', row.get('Signal_Time', 'N/A'))
                             try: short_time = str(time_val)[5:-3] if len(str(time_val)) > 10 else str(time_val)
