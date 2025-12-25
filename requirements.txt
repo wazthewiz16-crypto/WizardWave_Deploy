@@ -9,3 +9,4 @@ joblib
 ccxt
 yfinance
 scikit-learn
+st-copy-to-clipboard
