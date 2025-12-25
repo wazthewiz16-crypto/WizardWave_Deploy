@@ -1529,46 +1529,46 @@ def show_runic_alerts():
 
                             # --- HTML CARD ---
                             st.markdown(f"""
-<div style="font-family: 'Lato', sans-serif; padding: 2px 4px; display: flex; flex-direction: column; justify-content: center;">
+<div style="font-family: 'Lato', sans-serif; padding: 0px 2px; display: flex; flex-direction: column; justify-content: center; overflow: hidden;">
 <!-- HEADER ROW -->
-<div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 3px; margin-bottom: 3px;">
-<div style="display: flex; align-items: center; gap: 6px;">
-<span style="font-size: 1.1rem; color: #e0e0e0;">{icon_char}</span>
-<span style="font-weight: 700; font-size: 0.9rem; color: #fff; letter-spacing: 0.5px;">{asset_name}</span>
-<span style="font-size: 0.65rem; font-weight: bold; padding: 1px 4px; border-radius: 3px; background: {direction_color}20; color: {direction_color}; border: 1px solid {direction_color}40;">{action_text}</span>
+<div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 2px; margin-bottom: 2px;">
+<div style="display: flex; align-items: center; gap: 4px;">
+<span style="font-size: 1.0rem; color: #e0e0e0;">{icon_char}</span>
+<span style="font-weight: 700; font-size: 0.85rem; color: #fff; letter-spacing: 0.5px;">{asset_name}</span>
+<span style="font-size: 0.6rem; font-weight: bold; padding: 0px 3px; border-radius: 2px; background: {direction_color}20; color: {direction_color}; border: 1px solid {direction_color}40;">{action_text}</span>
 </div>
-<div style="font-family: 'Monospace', monospace; font-size: 0.85rem; font-weight: bold; color: {pnl_color}; text-shadow: 0 0 5px {pnl_color}40;">
+<div style="font-family: 'Monospace', monospace; font-size: 0.8rem; font-weight: bold; color: {pnl_color}; text-shadow: 0 0 5px {pnl_color}40;">
 {pnl_display_str}
 </div>
 </div>
 <!-- DETAILS GRID -->
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px; font-size: 0.75rem; color: #ccc;">
-<!-- Signal Info -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0px 8px; font-size: 0.7rem; color: #ccc; line-height: 1.2;">
+<!-- Signal -->
 <div style="display: flex; justify-content: space-between;">
-<span style="color: #666;">Signal:</span>
+<span style="color: #666;">Sig:</span>
 <span style="color: #fff; font-weight: bold;">{row.get('Action')}</span>
 </div>
 <div style="display: flex; justify-content: space-between;">
 <span style="color: #666;">Conf:</span>
 <span><span style="color: #FFB74D; font-weight: bold;">{row.get('Confidence')}</span> <span style="color:#444">|</span> <span style="color: #ff3344; font-weight: bold;">{row.get('Timeframe')}</span></span>
 </div>
-<!-- Price Info -->
+<!-- Entry/Now -->
 <div style="display: flex; justify-content: space-between;">
-<span style="color: #666;">Entry:</span>
+<span style="color: #666;">Ent:</span>
 <span style="color: #00ff88; font-family: monospace;">{row.get('Entry_Price')}</span>
 </div>
 <div style="display: flex; justify-content: space-between;">
 <span style="color: #666;">Now:</span>
 <span style="color: #ffd700; font-family: monospace;">{row.get('Current_Price', 'N/A')}</span>
 </div>
-<!-- TP/SL Info -->
-<div style="grid-column: 1 / -1; display: flex; justify-content: space-between; border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 2px; padding-top: 2px;">
+<!-- TP/SL -->
+<div style="grid-column: 1 / -1; display: flex; justify-content: space-between; border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 1px; padding-top: 1px;">
 <div><span style="color: #666;">TP:</span> <span style="color: #ddd;">{row.get('Take_Profit', 'N/A')}</span></div>
 <div><span style="color: #666;">SL:</span> <span style="color: #d8b4fe;">{row.get('Stop_Loss', 'N/A')}</span></div>
 </div>
 </div>
 <!-- FOOTER -->
-<div style="display: flex; justify-content: space-between; margin-top: 2px; font-size: 0.65rem; color: #555;">
+<div style="display: flex; justify-content: space-between; margin-top: 1px; font-size: 0.6rem; color: #555;">
 <span>R/R: <span style="color: #888;">{row.get('RR', 'N/A')}</span></span>
 <span>{str(row.get('Entry_Time', ''))[5:-3]}</span>
 </div>
@@ -1579,6 +1579,15 @@ def show_runic_alerts():
                              unique_id = f"{row['Asset']}_{row.get('Timeframe','')}_{row.get('Entry_Time','')}"
                              unique_id = "".join(c for c in unique_id if c.isalnum() or c in ['_','-'])
                              
+                             # Vertically align buttons
+                             st.markdown("""
+                                 <style>
+                                 div[data-testid="stColumn"] > div > div > div > div > div {
+                                     margin-bottom: 2px !important;
+                                 }
+                                 </style>
+                             """, unsafe_allow_html=True)
+
                              if st.button("👁️", key=f"btn_v_{unique_id}", use_container_width=True, help="View"):
                                  tv_sym = get_tv_symbol({'symbol': row.get('Symbol', '')})
                                  try: tv_int = get_tv_interval(row['Timeframe'])
@@ -1604,11 +1613,9 @@ def show_runic_alerts():
                                  except: st.session_state.calc_entry_input = 0.0
                                  st.rerun()
                                  
-                             # Clipboard centered
-                             c_copy = st.container()
-                             with c_copy:
-                                 trade_str_raw = f"{'LONG' if is_long else 'SHORT'} {asset_name} @ {row.get('Current_Price',0)} | SL {row.get('Stop_Loss','')} | TP {row.get('Take_Profit','')}"
-                                 st_copy_to_clipboard(trade_str_raw, "📋", "✅")
+                             # Clipboard centered - removing extra container to tighten spacing
+                             trade_str_raw = f"{'LONG' if is_long else 'SHORT'} {asset_name} @ {row.get('Current_Price',0)} | SL {row.get('Stop_Loss','')} | TP {row.get('Take_Profit','')}"
+                             st_copy_to_clipboard(trade_str_raw, "📋", "✅")
 
                 # Pagination (Compact)
                 st.markdown(f"<div style='text-align: center; color: #666; font-size: 0.75rem; margin-top: 5px; margin-bottom: 2px;'>page {st.session_state.page_number + 1} / {total_pages}</div>", unsafe_allow_html=True)
@@ -1644,11 +1651,14 @@ def show_runic_alerts():
             st.rerun()
     
     # Check if running
+    # Check if running
     is_running = status.get('running', False)
     if is_running:
         progress_val = status.get('progress', 0)
         st.progress(progress_val)
         st.markdown(f"<div style='text-align: center; color: #ffd700; font-size: 0.8rem; margin-top: -15px;'>🔮 Consulting the Oracle... ({progress_val}%)</div>", unsafe_allow_html=True)
+        time.sleep(1)
+        st.rerun()
 
     # 3. TRIGGER NEW RUN IF NEEDED
     now = time.time()
