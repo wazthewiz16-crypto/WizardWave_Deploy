@@ -1521,55 +1521,43 @@ def show_runic_alerts():
                             lbl_pnl = "Net" if st.session_state.get('manual_mode', False) or fee_cost > 0 else "PnL"
                             
                             # Optimized Runic Card Layout
-                            st.markdown(f"""
-                                <div style="font-family: 'Lato', sans-serif; padding: 2px 0 5px 0;">
-                                    <!-- Header: Asset & PnL -->
-                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; border-bottom: 1px solid #333; padding-bottom: 4px;">
-                                        <div style="font-size: 1.05rem; font-weight: 700; color: #fff; display: flex; align-items: center;">
-                                            <span style="font-size: 1.2rem; margin-right: 6px;">{icon_char}</span>
-                                            {asset_name} 
-                                            <span style="color: {direction_color}; margin-left: 6px; font-size: 0.8rem; background: {direction_color}20; padding: 1px 4px; border-radius: 4px;">{action_text}</span>
-                                        </div>
-                                        <div style="font-weight: 700; font-size: 0.95rem; color: {pnl_color}; text-shadow: 0 0 5px {pnl_color}40;">
-                                            {lbl_pnl}: {pnl_display_str}
-                                        </div>
-                                    </div>
-
-                                    <!-- Data Grid -->
-                                    <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 2px 10px; font-size: 0.85rem;">
-                                        <!-- Row 1 -->
-                                        <div style="color: #ddd;">
-                                            <span style="color: #888;">Signal:</span> {row.get('Action')}
-                                        </div>
-                                        <div style="text-align: right; color: #ddd;">
-                                            <span style="color: #888;">Conf:</span> <span style="color: #FFB74D; font-weight: bold;">{row.get('Confidence')}</span>
-                                            <span style="color: #444;">|</span>
-                                            <span style="color: #ff3344; font-weight: bold;">{row.get('Timeframe')}</span>
-                                        </div>
-
-                                        <!-- Row 2 -->
-                                        <div style="color: #ddd;">
-                                             <span style="color: #888;">Entry:</span> <span style="color: #00ff88;">{row.get('Entry_Price')}</span>
-                                        </div>
-                                        <div style="text-align: right; color: #ddd;">
-                                             <span style="color: #888;">Now:</span> <span style="color: #ffd700;">{row.get('Current_Price', 'N/A')}</span>
-                                        </div>
-
-                                        <!-- Row 3 -->
-                                        <div style="color: #ddd;">
-                                            <span style="color: #888;">TP:</span> {row.get('Take_Profit', 'N/A')}
-                                        </div>
-                                        <div style="text-align: right; color: #ddd;">
-                                            <span style="color: #888;">SL:</span> <span style="color: #d8b4fe;">{row.get('Stop_Loss', 'N/A')}</span>
-                                        </div>
-                                        
-                                        <!-- Row 4 (RR) -->
-                                        <div style="grid-column: 1 / -1; margin-top: 2px; border-top: 1px dashed #333; padding-top: 2px; font-size: 0.75rem; color: #666; text-align: right;">
-                                             Risk/Reward: {row.get('RR', 'N/A')}
-                                        </div>
-                                    </div>
-                                </div>
-                            """, unsafe_allow_html=True)
+                            st.markdown(f"""<div style="font-family: 'Lato', sans-serif; padding: 2px 0 5px 0;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; border-bottom: 1px solid #333; padding-bottom: 4px;">
+        <div style="font-size: 1.05rem; font-weight: 700; color: #fff; display: flex; align-items: center;">
+            <span style="font-size: 1.2rem; margin-right: 6px;">{icon_char}</span>
+            {asset_name} 
+            <span style="color: {direction_color}; margin-left: 6px; font-size: 0.8rem; background: {direction_color}20; padding: 1px 4px; border-radius: 4px;">{action_text}</span>
+        </div>
+        <div style="font-weight: 700; font-size: 0.95rem; color: {pnl_color}; text-shadow: 0 0 5px {pnl_color}40;">
+            {lbl_pnl}: {pnl_display_str}
+        </div>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 2px 10px; font-size: 0.85rem;">
+        <div style="color: #ddd;">
+            <span style="color: #888;">Signal:</span> {row.get('Action')}
+        </div>
+        <div style="text-align: right; color: #ddd;">
+            <span style="color: #888;">Conf:</span> <span style="color: #FFB74D; font-weight: bold;">{row.get('Confidence')}</span>
+            <span style="color: #444;">|</span>
+            <span style="color: #ff3344; font-weight: bold;">{row.get('Timeframe')}</span>
+        </div>
+        <div style="color: #ddd;">
+                <span style="color: #888;">Entry:</span> <span style="color: #00ff88;">{row.get('Entry_Price')}</span>
+        </div>
+        <div style="text-align: right; color: #ddd;">
+                <span style="color: #888;">Now:</span> <span style="color: #ffd700;">{row.get('Current_Price', 'N/A')}</span>
+        </div>
+        <div style="color: #ddd;">
+            <span style="color: #888;">TP:</span> {row.get('Take_Profit', 'N/A')}
+        </div>
+        <div style="text-align: right; color: #ddd;">
+            <span style="color: #888;">SL:</span> <span style="color: #d8b4fe;">{row.get('Stop_Loss', 'N/A')}</span>
+        </div>
+        <div style="grid-column: 1 / -1; margin-top: 2px; border-top: 1px dashed #333; padding-top: 2px; font-size: 0.75rem; color: #666; text-align: right;">
+                Risk/Reward: {row.get('RR', 'N/A')}
+        </div>
+    </div>
+</div>""", unsafe_allow_html=True)
                         with c_btn:
                             st.markdown('<div style="height: 2px;"></div>', unsafe_allow_html=True)
                             unique_id = f"{row['Asset']}_{row.get('Timeframe','')}_{row.get('Entry_Time','')}"
