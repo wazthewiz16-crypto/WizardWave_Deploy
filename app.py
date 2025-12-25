@@ -1530,53 +1530,48 @@ def show_runic_alerts():
                             # --- HTML CARD ---
                             st.markdown(f"""
 <div style="font-family: 'Lato', sans-serif; padding: 2px 4px; display: flex; flex-direction: column; justify-content: center; min-height: 85px;">
-    <!-- HEADER ROW -->
-    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 3px; margin-bottom: 3px;">
-        <div style="display: flex; align-items: center; gap: 6px;">
-            <span style="font-size: 1.1rem; color: #e0e0e0;">{icon_char}</span>
-            <span style="font-weight: 700; font-size: 0.9rem; color: #fff; letter-spacing: 0.5px;">{asset_name}</span>
-            <span style="font-size: 0.65rem; font-weight: bold; padding: 1px 4px; border-radius: 3px; background: {direction_color}20; color: {direction_color}; border: 1px solid {direction_color}40;">{action_text}</span>
-        </div>
-        <div style="font-family: 'Monospace', monospace; font-size: 0.85rem; font-weight: bold; color: {pnl_color}; text-shadow: 0 0 5px {pnl_color}40;">
-            {pnl_display_str}
-        </div>
-    </div>
-    
-    <!-- DETAILS GRID -->
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px; font-size: 0.75rem; color: #ccc;">
-        
-        <!-- Signal Info -->
-        <div style="display: flex; justify-content: space-between;">
-            <span style="color: #666;">Signal:</span>
-            <span style="color: #fff; font-weight: bold;">{row.get('Action')}</span>
-        </div>
-        <div style="display: flex; justify-content: space-between;">
-            <span style="color: #666;">Conf:</span>
-            <span><span style="color: #FFB74D; font-weight: bold;">{row.get('Confidence')}</span> <span style="color:#444">|</span> <span style="color: #ff3344; font-weight: bold;">{row.get('Timeframe')}</span></span>
-        </div>
-
-        <!-- Price Info -->
-        <div style="display: flex; justify-content: space-between;">
-            <span style="color: #666;">Entry:</span>
-            <span style="color: #00ff88; font-family: monospace;">{row.get('Entry_Price')}</span>
-        </div>
-        <div style="display: flex; justify-content: space-between;">
-            <span style="color: #666;">Now:</span>
-            <span style="color: #ffd700; font-family: monospace;">{row.get('Current_Price', 'N/A')}</span>
-        </div>
-
-        <!-- TP/SL Info -->
-        <div style="grid-column: 1 / -1; display: flex; justify-content: space-between; border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 2px; padding-top: 2px;">
-            <div><span style="color: #666;">TP:</span> <span style="color: #ddd;">{row.get('Take_Profit', 'N/A')}</span></div>
-            <div><span style="color: #666;">SL:</span> <span style="color: #d8b4fe;">{row.get('Stop_Loss', 'N/A')}</span></div>
-        </div>
-    </div>
-    
-    <!-- FOOTER -->
-    <div style="display: flex; justify-content: space-between; margin-top: 2px; font-size: 0.65rem; color: #555;">
-        <span>R/R: <span style="color: #888;">{row.get('RR', 'N/A')}</span></span>
-        <span>{str(row.get('Entry_Time', ''))[5:-3]}</span>
-    </div>
+<!-- HEADER ROW -->
+<div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 3px; margin-bottom: 3px;">
+<div style="display: flex; align-items: center; gap: 6px;">
+<span style="font-size: 1.1rem; color: #e0e0e0;">{icon_char}</span>
+<span style="font-weight: 700; font-size: 0.9rem; color: #fff; letter-spacing: 0.5px;">{asset_name}</span>
+<span style="font-size: 0.65rem; font-weight: bold; padding: 1px 4px; border-radius: 3px; background: {direction_color}20; color: {direction_color}; border: 1px solid {direction_color}40;">{action_text}</span>
+</div>
+<div style="font-family: 'Monospace', monospace; font-size: 0.85rem; font-weight: bold; color: {pnl_color}; text-shadow: 0 0 5px {pnl_color}40;">
+{pnl_display_str}
+</div>
+</div>
+<!-- DETAILS GRID -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px; font-size: 0.75rem; color: #ccc;">
+<!-- Signal Info -->
+<div style="display: flex; justify-content: space-between;">
+<span style="color: #666;">Signal:</span>
+<span style="color: #fff; font-weight: bold;">{row.get('Action')}</span>
+</div>
+<div style="display: flex; justify-content: space-between;">
+<span style="color: #666;">Conf:</span>
+<span><span style="color: #FFB74D; font-weight: bold;">{row.get('Confidence')}</span> <span style="color:#444">|</span> <span style="color: #ff3344; font-weight: bold;">{row.get('Timeframe')}</span></span>
+</div>
+<!-- Price Info -->
+<div style="display: flex; justify-content: space-between;">
+<span style="color: #666;">Entry:</span>
+<span style="color: #00ff88; font-family: monospace;">{row.get('Entry_Price')}</span>
+</div>
+<div style="display: flex; justify-content: space-between;">
+<span style="color: #666;">Now:</span>
+<span style="color: #ffd700; font-family: monospace;">{row.get('Current_Price', 'N/A')}</span>
+</div>
+<!-- TP/SL Info -->
+<div style="grid-column: 1 / -1; display: flex; justify-content: space-between; border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 2px; padding-top: 2px;">
+<div><span style="color: #666;">TP:</span> <span style="color: #ddd;">{row.get('Take_Profit', 'N/A')}</span></div>
+<div><span style="color: #666;">SL:</span> <span style="color: #d8b4fe;">{row.get('Stop_Loss', 'N/A')}</span></div>
+</div>
+</div>
+<!-- FOOTER -->
+<div style="display: flex; justify-content: space-between; margin-top: 2px; font-size: 0.65rem; color: #555;">
+<span>R/R: <span style="color: #888;">{row.get('RR', 'N/A')}</span></span>
+<span>{str(row.get('Entry_Time', ''))[5:-3]}</span>
+</div>
 </div>
 """, unsafe_allow_html=True)
                         
@@ -1740,7 +1735,7 @@ st.markdown("""
     /* Transparent Secondary Buttons (Nav & Alerts) */
     div.stButton > button[kind="secondary"] {
         height: auto !important;
-        min-height: 30px;
+        min-height: 20px;
         padding: 2px 4px !important;
         background-color: transparent !important;
         border: 1px solid transparent !important;
