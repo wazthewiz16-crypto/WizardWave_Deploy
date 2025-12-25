@@ -1529,7 +1529,7 @@ def show_runic_alerts():
 
                             # --- HTML CARD ---
                             st.markdown(f"""
-<div style="font-family: 'Lato', sans-serif; padding: 2px 4px; display: flex; flex-direction: column; justify-content: center; min-height: 85px;">
+<div style="font-family: 'Lato', sans-serif; padding: 2px 4px; display: flex; flex-direction: column; justify-content: center;">
 <!-- HEADER ROW -->
 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 3px; margin-bottom: 3px;">
 <div style="display: flex; align-items: center; gap: 6px;">
@@ -1579,10 +1579,6 @@ def show_runic_alerts():
                              unique_id = f"{row['Asset']}_{row.get('Timeframe','')}_{row.get('Entry_Time','')}"
                              unique_id = "".join(c for c in unique_id if c.isalnum() or c in ['_','-'])
                              
-                             # Vertical Functional Strip
-                             # Use small vertical spacing
-                             st.markdown('<div style="height: 4px;"></div>', unsafe_allow_html=True)
-                             
                              if st.button("👁️", key=f"btn_v_{unique_id}", use_container_width=True, help="View"):
                                  tv_sym = get_tv_symbol({'symbol': row.get('Symbol', '')})
                                  try: tv_int = get_tv_interval(row['Timeframe'])
@@ -1608,9 +1604,11 @@ def show_runic_alerts():
                                  except: st.session_state.calc_entry_input = 0.0
                                  st.rerun()
                                  
-                             # Clipboard Button logic
-                             trade_str_raw = f"{'LONG' if is_long else 'SHORT'} {asset_name} @ {row.get('Current_Price',0)} | SL {row.get('Stop_Loss','')} | TP {row.get('Take_Profit','')}"
-                             st_copy_to_clipboard(trade_str_raw, "📋", "✅")
+                             # Clipboard centered
+                             c_copy = st.container()
+                             with c_copy:
+                                 trade_str_raw = f"{'LONG' if is_long else 'SHORT'} {asset_name} @ {row.get('Current_Price',0)} | SL {row.get('Stop_Loss','')} | TP {row.get('Take_Profit','')}"
+                                 st_copy_to_clipboard(trade_str_raw, "📋", "✅")
 
                 # Pagination (Compact)
                 st.markdown(f"<div style='text-align: center; color: #666; font-size: 0.75rem; margin-top: 5px; margin-bottom: 2px;'>page {st.session_state.page_number + 1} / {total_pages}</div>", unsafe_allow_html=True)
