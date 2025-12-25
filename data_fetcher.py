@@ -19,29 +19,44 @@ def fetch_data(symbol: str, asset_type: str, timeframe: str = '1h', limit: int =
         pd.DataFrame: Standardized OHLCV DataFrame.
     """
     
-    # --- 4D LOCAL CACHE LOGIC ---
+    # --- GENERIC LOCAL CACHE LOGIC ---
     import os
     import time
     
     CACHE_DIR = "market_data_cache"
-    if timeframe == '4d':
-        if not os.path.exists(CACHE_DIR):
-            os.makedirs(CACHE_DIR)
-            
-        clean_symbol = symbol.replace("/", "_").replace("^", "").replace("=", "")
-        cache_file = os.path.join(CACHE_DIR, f"{clean_symbol}_4d.csv")
+    if not os.path.exists(CACHE_DIR):
+        os.makedirs(CACHE_DIR)
         
-        # Check if file exists and is fresh using a 1-hour cache duration
-        if os.path.exists(cache_file):
-            file_age = time.time() - os.path.getmtime(cache_file)
-            if file_age < 3600: 
-                try:
-                    df = pd.read_csv(cache_file, index_col='datetime', parse_dates=True)
-                    if not isinstance(df.index, pd.DatetimeIndex):
-                        df.index = pd.to_datetime(df.index)
-                    return df
-                except Exception as e:
-                    print(f"Error reading cache for {symbol}: {e}")
+    # TTL Configuration (in seconds)
+    ttl_map = {
+        '1m': 60,
+        '5m': 150,
+        '15m': 300,    # 5 minutes
+        '30m': 900,
+        '1h': 1800,    # 30 minutes
+        '4h': 7200,    # 2 hours
+        '12h': 21600,  # 6 hours
+        '1d': 43200,   # 12 hours (since day closes once)
+        '4d': 86400    # 24 hours
+    }
+    
+    # Use timeframe-based TTL or default to 1 hour
+    current_ttl = ttl_map.get(timeframe, 3600)
+    
+    clean_symbol = symbol.replace("/", "_").replace("^", "").replace("=", "")
+    cache_file = os.path.join(CACHE_DIR, f"{clean_symbol}_{timeframe}.csv")
+    
+    # Check if file exists and is fresh
+    if os.path.exists(cache_file):
+        file_age = time.time() - os.path.getmtime(cache_file)
+        if file_age < current_ttl: 
+            try:
+                df = pd.read_csv(cache_file, index_col='datetime', parse_dates=True)
+                if not isinstance(df.index, pd.DatetimeIndex):
+                    df.index = pd.to_datetime(df.index)
+                return df
+            except Exception as e:
+                print(f"Error reading cache for {symbol}: {e}")
 
     base_timeframe = timeframe
     resample_rule = None
@@ -68,6 +83,8 @@ def fetch_data(symbol: str, asset_type: str, timeframe: str = '1h', limit: int =
         raise ValueError("Invalid asset_type. Must be 'crypto' or 'trad'.")
 
     # Resample if needed
+    # Resample if needed
+    final_df = df
     if not df.empty and resample_rule:
         agg_dict = {
             'open': 'first',
@@ -76,23 +93,20 @@ def fetch_data(symbol: str, asset_type: str, timeframe: str = '1h', limit: int =
             'close': 'last',
             'volume': 'sum'
         }
-        # Resample and drop incomplete bins if necessary (though 'last' usually handles it)
-        df_resampled = df.resample(resample_rule).agg(agg_dict).dropna()
+        # Resample and drop incomplete bins
+        final_df = df.resample(resample_rule).agg(agg_dict).dropna()
         
-        # --- SAVE 4D CACHE ---
-        if timeframe == '4d':
-            try:
-                if not os.path.exists(CACHE_DIR):
-                    os.makedirs(CACHE_DIR)
-                clean_symbol = symbol.replace("/", "_").replace("^", "").replace("=", "")
-                cache_file = os.path.join(CACHE_DIR, f"{clean_symbol}_4d.csv")
-                df_resampled.to_csv(cache_file)
-            except Exception as e:
-                print(f"Error saving cache for {symbol}: {e}")
-                
-        return df_resampled
+    # --- SAVE GENERIC CACHE ---
+    if not final_df.empty:
+        try:
+            # CACHE_DIR and clean_symbol logic reused
+            clean_symbol = symbol.replace("/", "_").replace("^", "").replace("=", "")
+            cache_file = os.path.join(CACHE_DIR, f"{clean_symbol}_{timeframe}.csv")
+            final_df.to_csv(cache_file)
+        except Exception as e:
+            print(f"Error saving cache for {symbol}: {e}")
 
-    return df
+    return final_df
 
 def _fetch_crypto(symbol: str, timeframe: str, limit: int) -> pd.DataFrame:
     """Attributes:

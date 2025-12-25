@@ -897,7 +897,8 @@ def analyze_timeframe(timeframe_label, silent=False):
             return None, None, None
 
     # Parallel Execution
-    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+    # Increased workers to 8 to speed up initial fetch (I/O bound)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
         future_to_asset = {executor.submit(process_asset, asset): asset for asset in ASSETS}
         
         for i, future in enumerate(concurrent.futures.as_completed(future_to_asset)):
@@ -1519,22 +1520,52 @@ def show_runic_alerts():
                             
                             lbl_pnl = "Net" if st.session_state.get('manual_mode', False) or fee_cost > 0 else "PnL"
                             
+                            # Optimized Runic Card Layout
                             st.markdown(f"""
-                                <div style="display: flex; align-items: flex-start; margin-top: -15px; margin-bottom: -15px; line-height: 1.0;">
-                                    <div style="color: {direction_color}; font-size: 1.2rem; margin-right: 8px; margin-top: -2px;">{icon_char}</div>
-                                    <div style="flex-grow: 1;">
-                                        <div style="font-weight: bold; font-size: 0.9rem; color: #e0e0e0; display: flex; justify-content: space-between; margin-bottom: -2px;">
-                                            <span>{asset_name} <span style="color:{direction_color}; font-size: 0.8rem;">{action_text}</span></span>
-                                            <span style="color: {pnl_color}; font-size: 0.85rem;">{lbl_pnl}: {pnl_display_str}</span>
+                                <div style="font-family: 'Lato', sans-serif; padding: 2px 0 5px 0;">
+                                    <!-- Header: Asset & PnL -->
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; border-bottom: 1px solid #333; padding-bottom: 4px;">
+                                        <div style="font-size: 1.05rem; font-weight: 700; color: #fff; display: flex; align-items: center;">
+                                            <span style="font-size: 1.2rem; margin-right: 6px;">{icon_char}</span>
+                                            {asset_name} 
+                                            <span style="color: {direction_color}; margin-left: 6px; font-size: 0.8rem; background: {direction_color}20; padding: 1px 4px; border-radius: 4px;">{action_text}</span>
                                         </div>
-                                        <div style="font-size: 0.75rem; color: #aaa; margin-top: -2px; margin-bottom: -2px;">
-                                            {row.get('Action')} | <span style="color: #FFB74D;">Conf: {row.get('Confidence')}</span> | <span style="color: #ff3344; font-weight: bold;">{row.get('Timeframe')}</span>
+                                        <div style="font-weight: 700; font-size: 0.95rem; color: {pnl_color}; text-shadow: 0 0 5px {pnl_color}40;">
+                                            {lbl_pnl}: {pnl_display_str}
                                         </div>
-                                        <div style="font-size: 0.8rem; color: #888; margin-top: -2px; margin-bottom: -2px;">
-                                            TP: {row.get('Take_Profit', 'N/A')} | <span style="color: #d8b4fe;">SL: {row.get('Stop_Loss', 'N/A')}</span> <span style="color: #666; font-size: 0.75rem;">({row.get('RR', '')})</span>
+                                    </div>
+
+                                    <!-- Data Grid -->
+                                    <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 2px 10px; font-size: 0.85rem;">
+                                        <!-- Row 1 -->
+                                        <div style="color: #ddd;">
+                                            <span style="color: #888;">Signal:</span> {row.get('Action')}
                                         </div>
-                                        <div style="font-size: 0.85rem; color: #666; margin-top: -2px;">
-                                            Entry: <span style="color: #00ff88;">{row.get('Entry_Price')}</span> | Now: <span style="color: #ffd700;">{row.get('Current_Price', 'N/A')}</span>
+                                        <div style="text-align: right; color: #ddd;">
+                                            <span style="color: #888;">Conf:</span> <span style="color: #FFB74D; font-weight: bold;">{row.get('Confidence')}</span>
+                                            <span style="color: #444;">|</span>
+                                            <span style="color: #ff3344; font-weight: bold;">{row.get('Timeframe')}</span>
+                                        </div>
+
+                                        <!-- Row 2 -->
+                                        <div style="color: #ddd;">
+                                             <span style="color: #888;">Entry:</span> <span style="color: #00ff88;">{row.get('Entry_Price')}</span>
+                                        </div>
+                                        <div style="text-align: right; color: #ddd;">
+                                             <span style="color: #888;">Now:</span> <span style="color: #ffd700;">{row.get('Current_Price', 'N/A')}</span>
+                                        </div>
+
+                                        <!-- Row 3 -->
+                                        <div style="color: #ddd;">
+                                            <span style="color: #888;">TP:</span> {row.get('Take_Profit', 'N/A')}
+                                        </div>
+                                        <div style="text-align: right; color: #ddd;">
+                                            <span style="color: #888;">SL:</span> <span style="color: #d8b4fe;">{row.get('Stop_Loss', 'N/A')}</span>
+                                        </div>
+                                        
+                                        <!-- Row 4 (RR) -->
+                                        <div style="grid-column: 1 / -1; margin-top: 2px; border-top: 1px dashed #333; padding-top: 2px; font-size: 0.75rem; color: #666; text-align: right;">
+                                             Risk/Reward: {row.get('RR', 'N/A')}
                                         </div>
                                     </div>
                                 </div>
