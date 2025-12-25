@@ -2408,7 +2408,7 @@ with col_center:
             clean_sym = tv_sym.replace("BINANCE:", "").replace("COINBASE:", "").replace("OANDA:", "")
             tv_url = f"https://www.tradingview.com/chart?symbol={tv_sym}"
             
-            st.caption(f"**active:** {tv_sym} ({tv_int}m) | [Open in TradingView ↗]({tv_url})")
+            # st.caption(f"**active:** {tv_sym} ({tv_int}m) | [Open in TradingView ↗]({tv_url})")
             
             tv_widget_code = f"""
             <div class="tradingview-widget-container" style="height:100%;width:100%">
