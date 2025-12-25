@@ -1528,16 +1528,16 @@ def show_runic_alerts():
                             # Optimized Runic Card Layout
                             st.markdown(f"""<div style="font-family: 'Lato', sans-serif; padding: 2px 0 5px 0;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; border-bottom: 1px solid #333; padding-bottom: 4px;">
-        <div style="font-size: 1.05rem; font-weight: 700; color: #fff; display: flex; align-items: center;">
-            <span style="font-size: 1.2rem; margin-right: 6px;">{icon_char}</span>
+        <div style="font-size: 0.95rem; font-weight: 700; color: #fff; display: flex; align-items: center;">
+            <span style="font-size: 1.1rem; margin-right: 6px;">{icon_char}</span>
             {asset_name} 
-            <span style="color: {direction_color}; margin-left: 6px; font-size: 0.8rem; background: {direction_color}20; padding: 1px 4px; border-radius: 4px;">{action_text}</span>
+            <span style="color: {direction_color}; margin-left: 6px; font-size: 0.75rem; background: {direction_color}20; padding: 1px 4px; border-radius: 4px;">{action_text}</span>
         </div>
-        <div style="font-weight: 700; font-size: 0.95rem; color: {pnl_color}; text-shadow: 0 0 5px {pnl_color}40;">
+        <div style="font-weight: 700; font-size: 0.85rem; color: {pnl_color}; text-shadow: 0 0 5px {pnl_color}40;">
             {lbl_pnl}: {pnl_display_str}
         </div>
     </div>
-    <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 2px 10px; font-size: 0.85rem;">
+    <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 2px 10px; font-size: 0.8rem;">
         <div style="color: #ddd;">
             <span style="color: #888;">Signal:</span> {row.get('Action')}
         </div>
@@ -1558,7 +1558,7 @@ def show_runic_alerts():
         <div style="text-align: right; color: #ddd;">
             <span style="color: #888;">SL:</span> <span style="color: #d8b4fe;">{row.get('Stop_Loss', 'N/A')}</span>
         </div>
-        <div style="grid-column: 1 / -1; margin-top: 2px; border-top: 1px dashed #333; padding-top: 2px; font-size: 0.75rem; color: #666; text-align: right;">
+        <div style="grid-column: 1 / -1; margin-top: 2px; border-top: 1px dashed #333; padding-top: 2px; font-size: 0.7rem; color: #666; text-align: right;">
                 Risk/Reward: {row.get('RR', 'N/A')}
         </div>
     </div>
