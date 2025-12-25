@@ -1499,7 +1499,9 @@ def show_runic_alerts():
                 
                 for index, row in current_batch.iterrows():
                     with st.container(border=True):
-                        c_content, c_btn = st.columns([0.75, 0.25])
+                        # Force fixed height for uniformity (CSS hack via markdown if needed, or just consistent content)
+                        # We use a slight ratio adjust for better button alignment
+                        c_content, c_btn = st.columns([0.82, 0.18])
                         with c_content:
                             is_long = "LONG" in row.get('Type', '')
                             direction_color = "#00ff88" if is_long else "#ff3344"
@@ -1525,19 +1527,19 @@ def show_runic_alerts():
                             
                             lbl_pnl = "Net" if st.session_state.get('manual_mode', False) or fee_cost > 0 else "PnL"
                             
-                            # Optimized Runic Card Layout
-                            st.markdown(f"""<div style="font-family: 'Lato', sans-serif; padding: 2px 0 5px 0;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; border-bottom: 1px solid #333; padding-bottom: 4px;">
-        <div style="font-size: 0.95rem; font-weight: 700; color: #fff; display: flex; align-items: center;">
-            <span style="font-size: 1.1rem; margin-right: 6px;">{icon_char}</span>
+                            # Optimized Runic Card Layout - REDUCED SIZE & FIXED HEIGHT
+                            st.markdown(f"""<div style="font-family: 'Lato', sans-serif; padding: 0px 0 2px 0; min-height: 95px; display: flex; flex-direction: column; justify-content: center;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; border-bottom: 1px solid #333; padding-bottom: 2px;">
+        <div style="font-size: 0.9rem; font-weight: 700; color: #fff; display: flex; align-items: center;">
+            <span style="font-size: 1.0rem; margin-right: 4px;">{icon_char}</span>
             {asset_name} 
-            <span style="color: {direction_color}; margin-left: 6px; font-size: 0.75rem; background: {direction_color}20; padding: 1px 4px; border-radius: 4px;">{action_text}</span>
+            <span style="color: {direction_color}; margin-left: 4px; font-size: 0.7rem; background: {direction_color}20; padding: 1px 3px; border-radius: 4px;">{action_text}</span>
         </div>
-        <div style="font-weight: 700; font-size: 0.85rem; color: {pnl_color}; text-shadow: 0 0 5px {pnl_color}40;">
+        <div style="font-weight: 700; font-size: 0.8rem; color: {pnl_color}; text-shadow: 0 0 5px {pnl_color}40;">
             {lbl_pnl}: {pnl_display_str}
         </div>
     </div>
-    <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 2px 10px; font-size: 0.8rem;">
+    <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 1px 8px; font-size: 0.75rem;">
         <div style="color: #ddd;">
             <span style="color: #888;">Signal:</span> {row.get('Action')}
         </div>
@@ -1558,16 +1560,25 @@ def show_runic_alerts():
         <div style="text-align: right; color: #ddd;">
             <span style="color: #888;">SL:</span> <span style="color: #d8b4fe;">{row.get('Stop_Loss', 'N/A')}</span>
         </div>
-        <div style="grid-column: 1 / -1; margin-top: 2px; border-top: 1px dashed #333; padding-top: 2px; font-size: 0.7rem; color: #666; text-align: right;">
+        <div style="grid-column: 1 / -1; margin-top: 1px; border-top: 1px dashed #333; padding-top: 1px; font-size: 0.65rem; color: #666; text-align: right;">
                 Risk/Reward: {row.get('RR', 'N/A')}
         </div>
     </div>
 </div>""", unsafe_allow_html=True)
                         with c_btn:
-                            st.markdown('<div style="height: 2px;"></div>', unsafe_allow_html=True)
+                            # Vertically center buttons using spacers
+                            st.markdown('<div style="height: 10px;"></div>', unsafe_allow_html=True)
+                            
                             unique_id = f"{row['Asset']}_{row.get('Timeframe','')}_{row.get('Entry_Time','')}"
                             unique_id = "".join(c for c in unique_id if c.isalnum() or c in ['_','-'])
-                            c_b1, c_b2, c_b3 = st.columns([0.4, 0.4, 0.2], gap="small")
+                            
+                            # Stack buttons vertically or in a tight grid? 
+                            # User said "buttons are weirdly aligned". 
+                            # Let's do a 2x2 grid for buttons if possible, or just vertical stack.
+                            # Given narrow column, vertical stack might be cleaner or row of icons.
+                            # Previous was: view, calc, copy.
+                            
+                            c_b1, c_b2 = st.columns(2, gap="small")
                             with c_b1:
                                 if st.button("👁️", key=f"btn_card_view_{unique_id}", use_container_width=True, help="View Chart"):
                                     tv_sym = get_tv_symbol({'symbol': row.get('Symbol', '')})
@@ -1594,14 +1605,18 @@ def show_runic_alerts():
                                     except:
                                         st.session_state.calc_entry_input = 0.0
                                     st.rerun()
+                            
+                            # Row 2 for third button (Copy) + Time
+                            c_b3, c_time = st.columns([0.4, 0.6])
                             with c_b3:
                                 trade_str_raw = f"{'LONG' if is_long else 'SHORT'} {asset_name} @ {row.get('Current_Price',0)} | SL {row.get('Stop_Loss','')} | TP {row.get('Take_Profit','')}"
                                 st_copy_to_clipboard(trade_str_raw, "📋", "✅")
-                            
-                            time_val = row.get('Entry_Time', row.get('Signal_Time', 'N/A'))
-                            try: short_time = str(time_val)[5:-3] if len(str(time_val)) > 10 else str(time_val)
-                            except: short_time = str(time_val)
-                            st.markdown(f"<div style='text-align: center; font-size: 0.65rem; color: #00eaff; margin-top: -2px;'>{short_time}</div>", unsafe_allow_html=True)
+                                
+                            with c_time:
+                                time_val = row.get('Entry_Time', row.get('Signal_Time', 'N/A'))
+                                try: short_time = str(time_val)[5:-3] if len(str(time_val)) > 10 else str(time_val)
+                                except: short_time = str(time_val)
+                                st.markdown(f"<div style='text-align: center; font-size: 0.65rem; color: #00eaff; margin-top: 6px;'>{short_time}</div>", unsafe_allow_html=True)
                 
                 st.markdown(f"<div style='text-align: center; color: #888; font-size: 0.8rem; margin-bottom: 5px;'>Page {st.session_state.page_number + 1}/{total_pages}</div>", unsafe_allow_html=True)
                 p_first, p_prev, p_next, p_last = st.columns([0.25, 0.25, 0.25, 0.25], gap="small")
@@ -2691,24 +2706,25 @@ with col_right:
             # Just use a row layout similar to Forex Factory
             # [Name  Time]  [Bar area]
             
+                
             session_html += f"""
-<div class="realm-row" title="{status_text}" style="margin-bottom: 8px; position: relative; height: 30px; display: flex; align-items: center;">
-    <div style="width: 70px; font-size: 0.75rem; font-weight: bold; color: {text_color if not is_active else '#fff'}; text-align: right; margin-right: 10px;">{sess['name']}</div>
+<div class="realm-row" title="{status_text}" style="margin-bottom: 4px; position: relative; height: 22px; display: flex; align-items: center;">
+    <div style="width: 70px; font-size: 0.7rem; font-weight: bold; color: {text_color if not is_active else '#fff'}; text-align: right; margin-right: 10px;">{sess['name']}</div>
     <div style="flex-grow: 1; position: relative; height: 100%; background: #1a1a2e; border-radius: 4px; overflow: hidden;">
         {bars_svg}
-        <div style="position: absolute; top:0; left:5px; font-size: 0.7rem; color: {text_color if is_active else '#888'}; line-height: 30px; font-weight: bold; z-index: 2; text-shadow: 0 1px 3px rgba(0,0,0,0.9);">{status_text if is_active else ''}</div>
+        <div style="position: absolute; top:0; left:5px; font-size: 0.65rem; color: {text_color if is_active else '#888'}; line-height: 22px; font-weight: bold; z-index: 2; text-shadow: 0 1px 3px rgba(0,0,0,0.9);">{status_text if is_active else ''}</div>
     </div>
 </div>
             """
 
         st.markdown(f"""
-<div style="padding: 10px 0;">
+<div style="padding: 2px 0;">
 <!-- Timeline Header 0 - 24 -->
-<div style="display: flex; margin-left: 80px; font-size: 0.6rem; color: #666; margin-bottom: 5px; justify-content: space-between;">
+<div style="display: flex; margin-left: 80px; font-size: 0.6rem; color: #666; margin-bottom: 2px; justify-content: space-between;">
 <span>12AM</span><span>4AM</span><span>8AM</span><span>12PM</span><span>4PM</span><span>8PM</span><span>12AM</span>
 </div>
 {session_html}
-<div style="text-align: center; font-size: 0.7rem; color: #666; margin-top: 5px;">
+<div style="text-align: center; font-size: 0.65rem; color: #666; margin-top: 2px;">
 Current Time: {now_est.strftime('%H:%M')} EST
 </div>
 <div class="realm-overlay"></div>
@@ -2717,8 +2733,8 @@ Current Time: {now_est.strftime('%H:%M')} EST
 .realm-overlay {{
 position: absolute;
 left: calc(80px + (100% - 80px) * ({current_time_pct:.2f}/100));
-top: 40px; 
-bottom: 25px;
+top: 25px; 
+bottom: 15px;
 width: 2px;
 background-color: #ffd700;
 box-shadow: 0 0 5px #ffd700;
@@ -2848,19 +2864,19 @@ pointer-events: none;
             st.markdown(f"""
                 <div style="
                     text-align: center; 
-                    min-height: 210px; 
+                    min-height: 120px; 
                     display: flex; 
                     flex-direction: column; 
-                    justify-content: flex-start;
-                    padding-top: 10px;
-                    margin-bottom: 15px;
+                    justify-content: center;
+                    padding-top: 5px;
+                    margin-bottom: 10px;
                     border-radius: 8px;
                     {oracle_bg}
                 ">
-                    <div style="background: rgba(11, 12, 21, 0.85); padding: 15px; border-radius: 6px; border: 1px solid #4a4a60; margin: 0 15px; box-shadow: 0 0 15px rgba(0,0,0,0.8);">
-                        <div style="font-size: 0.8rem; color: #a0c5e8; margin-bottom: 5px;">NEXT EVENT: <span style="color: #ffd700;">{event_name}</span></div>
-                        <div style="font-size: 0.9rem; color: #ccc; margin-bottom: 5px;">{date_str}</div>
-                        <div style="font-size: 2.2rem; font-weight: bold; color: {time_color}; text-shadow: 0 0 10px {time_color};">
+                    <div style="background: rgba(11, 12, 21, 0.85); padding: 8px; border-radius: 6px; border: 1px solid #4a4a60; margin: 0 10px; box-shadow: 0 0 15px rgba(0,0,0,0.8);">
+                        <div style="font-size: 0.75rem; color: #a0c5e8; margin-bottom: 2px;">NEXT EVENT: <span style="color: #ffd700;">{event_name}</span></div>
+                        <div style="font-size: 0.8rem; color: #ccc; margin-bottom: 2px;">{date_str}</div>
+                        <div style="font-size: 1.6rem; font-weight: bold; color: {time_color}; text-shadow: 0 0 10px {time_color};">
                             {days}d {hours}h {minutes}m
                         </div>
                     </div>
@@ -2868,13 +2884,12 @@ pointer-events: none;
             """, unsafe_allow_html=True)
         else:
             st.markdown(f"""
-                <div style="text-align: center; min-height: 180px; display: flex; flex-direction: column; justify-content: center;">
-                    <div style="font-size: 0.8rem; color: #a0c5e8;">NO UPCOMING EVENTS</div>
-                    <div style="font-size: 2.5rem; font-weight: bold; color: white; text-shadow: 0 0 10px #a0c5e8;">--:--:--</div>
+                <div style="text-align: center; min-height: 120px; display: flex; flex-direction: column; justify-content: center;">
+                    <div style="font-size: 0.75rem; color: #a0c5e8;">NO UPCOMING EVENTS</div>
+                    <div style="font-size: 1.8rem; font-weight: bold; color: white; text-shadow: 0 0 10px #a0c5e8;">--:--:--</div>
                 </div>
             """, unsafe_allow_html=True)
     
-    # 3. Great Wizard
     # 3. Great Sorcerer
     with st.container(border=True):
         st.markdown('<div class="runic-header">GREAT SORCERER</div>', unsafe_allow_html=True)
@@ -2913,19 +2928,19 @@ pointer-events: none;
                 color: #f0e6d2; 
                 text-align: center; 
                 font-style: italic; 
-                line-height: 1.6; 
-                min-height: 222px;
+                line-height: 1.4; 
+                min-height: 140px;
                 display: flex; 
                 align-items: center; 
                 justify-content: center;
-                padding: 15px;
-                margin-top: 15px;
+                padding: 10px;
+                margin-top: 5px;
                 margin-bottom: 5px;
                 border-radius: 8px;
                 text-shadow: 0 2px 4px rgba(0,0,0,0.9);
                 {bg_style}
             ">
-                <div style="background: rgba(11, 12, 21, 0.7); padding: 20px; border: 1px solid #c5a059; border-radius: 2px; box-shadow: 0 0 20px rgba(0,0,0,0.8);">
+                <div style="background: rgba(11, 12, 21, 0.7); padding: 12px; border: 1px solid #c5a059; border-radius: 2px; box-shadow: 0 0 20px rgba(0,0,0,0.8); font-size: 0.9rem;">
                     "{selected_quote}"
                 </div>
             </div>
