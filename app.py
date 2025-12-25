@@ -1528,18 +1528,18 @@ def show_runic_alerts():
                             lbl_pnl = "Net" if st.session_state.get('manual_mode', False) or fee_cost > 0 else "PnL"
                             
                             # Ultra-compact Runic Card Layout
-                            st.markdown(f"""<div style="font-family: 'Lato', sans-serif; padding: 0; min-height: 82px; display: flex; flex-direction: column; justify-content: center;">
+                            st.markdown(f"""<div style="font-family: 'Lato', sans-serif; padding: 2px; display: flex; flex-direction: column; justify-content: center;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; border-bottom: 1px solid #333; padding-bottom: 2px;">
         <div style="font-size: 0.8rem; font-weight: 700; color: #fff; display: flex; align-items: center; white-space: nowrap; overflow: hidden;">
-            <span style="font-size: 0.9rem; margin-right: 3px;">{icon_char}</span>
+            <span style="font-size: 0.85rem; margin-right: 3px;">{icon_char}</span>
             {asset_name} 
-            <span style="color: {direction_color}; margin-left: 3px; font-size: 0.65rem; background: {direction_color}15; padding: 0px 3px; border-radius: 3px;">{action_text}</span>
+            <span style="color: {direction_color}; margin-left: 3px; font-size: 0.6rem; background: {direction_color}10; padding: 0px 2px; border-radius: 2px;">{action_text}</span>
         </div>
         <div style="font-weight: 700; font-size: 0.75rem; color: {pnl_color};">
             {lbl_pnl}: {pnl_display_str}
         </div>
     </div>
-    <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 0px 5px; font-size: 0.7rem; line-height: 1.2;">
+    <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 0px 4px; font-size: 0.7rem; line-height: 1.1;">
         <div style="color: #ccc;">
             <span style="color: #777;">Sig:</span> {row.get('Action')}
         </div>
@@ -1566,8 +1566,6 @@ def show_runic_alerts():
     </div>
 </div>""", unsafe_allow_html=True)
                         with c_btn:
-                            # Vertically center buttons using spacers
-                            st.markdown('<div style="height: 6px;"></div>', unsafe_allow_html=True)
                             
                             unique_id = f"{row['Asset']}_{row.get('Timeframe','')}_{row.get('Entry_Time','')}"
                             unique_id = "".join(c for c in unique_id if c.isalnum() or c in ['_','-'])
@@ -1610,7 +1608,7 @@ def show_runic_alerts():
                                 time_val = row.get('Entry_Time', row.get('Signal_Time', 'N/A'))
                                 try: short_time = str(time_val)[5:-3] if len(str(time_val)) > 10 else str(time_val)
                                 except: short_time = str(time_val)
-                                st.markdown(f"<div style='text-align: center; font-size: 0.6rem; color: #00eaff; margin-top: 6px;'>{short_time}</div>", unsafe_allow_html=True)
+                                st.markdown(f"<div style='text-align: center; font-size: 0.6rem; color: #00eaff; margin-top: 4px;'>{short_time}</div>", unsafe_allow_html=True)
                 
                 st.markdown(f"<div style='text-align: center; color: #888; font-size: 0.8rem; margin-bottom: 5px;'>Page {st.session_state.page_number + 1}/{total_pages}</div>", unsafe_allow_html=True)
                 p_first, p_prev, p_next, p_last = st.columns([0.25, 0.25, 0.25, 0.25], gap="small")
@@ -1722,7 +1720,7 @@ st.markdown("""
         z-index: 1;
     }
 
-    /* Epic Invoke Button */
+    /* Epic Invoke Button (Primary Only) */
     div.stButton > button[kind="primary"] {
         width: 100%;
         height: 65px;
@@ -1742,10 +1740,29 @@ st.markdown("""
         box-shadow: 0 0 30px rgba(197, 160, 89, 0.9);
         color: #fff;
     }
+    
+    /* Transparent Secondary Buttons (Nav & Alerts) */
+    div.stButton > button[kind="secondary"] {
+        height: auto !important;
+        min-height: 30px;
+        padding: 2px 4px !important;
+        background-color: transparent !important;
+        border: 1px solid transparent !important;
+        color: #888 !important;
+        box-shadow: none !important;
+        transition: all 0.2s ease;
+    }
+    div.stButton > button[kind="secondary"]:hover,
+    div.stButton > button[kind="secondary"]:active,
+    div.stButton > button[kind="secondary"]:focus {
+        color: #ffd700 !important;
+        text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
+        border: 1px solid transparent !important;
+        background-color: rgba(255, 255, 255, 0.05) !important;
+    }
 
 
     .runic-header {
-
         text-align: center;
         color: #c5a059;
         font-size: 1rem;
@@ -1917,7 +1934,7 @@ st.markdown("""
     /* Global Compactness Overrides */
     .stVerticalBlockBorderWrapper {
         margin-bottom: 4px !important; 
-        padding: 8px !important;
+        padding: 2px !important; 
     }
     div[data-testid="stVerticalBlock"] {
         gap: 0.2rem !important;
@@ -2099,16 +2116,19 @@ with col_center:
         # Adjusted columns for remaining tabs (History button removed)
         c2, c3, c4, c5 = st.columns([1, 1, 1, 1])
         
-        # History Tab Hidden (Access via Sidebar)
-        # But we still respect the active_tab logic below
+        # Determine labels with indicator
+        lbl_portal = "✨ PORTAL" if st.session_state.active_tab=='PORTAL' else "PORTAL"
+        lbl_shield = "🛡️ SHIELD" if st.session_state.active_tab=='RISK' else "SHIELD"
+        lbl_rules = "📜 RULES" if st.session_state.active_tab=='RULES' else "RULES"
+        lbl_spell = "📘 SPELLBOOK" if st.session_state.active_tab=='SPELLBOOK' else "SPELLBOOK"
+
+        c2.button(lbl_portal, use_container_width=True, type="secondary", on_click=set_tab, args=('PORTAL',))
         
-        c2.button("PORTAL", use_container_width=True, type="primary" if st.session_state.active_tab=='PORTAL' else "secondary", on_click=set_tab, args=('PORTAL',))
+        c3.button(lbl_shield, use_container_width=True, type="secondary", on_click=set_tab, args=('RISK',))
         
-        c3.button("SHIELD", use_container_width=True, type="primary" if st.session_state.active_tab=='RISK' else "secondary", on_click=set_tab, args=('RISK',))
+        c4.button(lbl_rules, use_container_width=True, type="secondary", on_click=set_tab, args=('RULES',))
         
-        c4.button("RULES", use_container_width=True, type="primary" if st.session_state.active_tab=='RULES' else "secondary", on_click=set_tab, args=('RULES',))
-        
-        c5.button("SPELLBOOK", use_container_width=True, type="primary" if st.session_state.active_tab=='SPELLBOOK' else "secondary", on_click=set_tab, args=('SPELLBOOK',))
+        c5.button(lbl_spell, use_container_width=True, type="secondary", on_click=set_tab, args=('SPELLBOOK',))
         
         # Remove standard divider and use negative margin wrapper for tighter fit
         st.markdown('<div style="margin-top: -10px; margin-bottom: -10px;"><hr style="margin: 5px 0; border-color: #333;"></div>', unsafe_allow_html=True)
