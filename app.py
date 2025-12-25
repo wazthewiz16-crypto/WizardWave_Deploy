@@ -1528,26 +1528,24 @@ def show_runic_alerts():
 
                             # --- HTML CARD ---
                             st.markdown(f"""
-<div style="font-family: 'Lato', sans-serif; padding: 0px 2px; display: flex; flex-direction: column; justify-content: center; overflow: hidden;">
-    <!-- HEADER -->
-    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 2px; margin-bottom: 2px;">
-        <div style="display: flex; align-items: center; gap: 4px;">
-            <span style="font-size: 0.95rem; color: #e0e0e0;">{icon_char}</span>
-            <span style="font-weight: 700; font-size: 0.8rem; color: #fff;">{asset_name}</span>
-            <span style="font-size: 0.6rem; font-weight: bold; padding: 0px 3px; border-radius: 2px; background: {direction_color}20; color: {direction_color}; border: 1px solid {direction_color}40;">{action_text}</span>
+<div style="font-family: 'Lato', sans-serif; padding: 2px 0px; display: flex; flex-direction: column; justify-content: center; overflow: hidden;">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.15); padding-bottom: 3px; margin-bottom: 3px;">
+        <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="font-size: 1.0rem; color: #f0f0f0;">{icon_char}</span>
+            <span style="font-weight: 700; font-size: 0.9rem; color: #fff;">{asset_name}</span>
+            <span style="font-size: 0.65rem; font-weight: bold; padding: 1px 4px; border-radius: 3px; background: {direction_color}25; color: {direction_color}; border: 1px solid {direction_color}30;">{action_text}</span>
         </div>
-        <div style="font-family: 'Monospace', monospace; font-size: 0.8rem; font-weight: bold; color: {pnl_color}; text-shadow: 0 0 5px {pnl_color}40;">{pnl_display_str}</div>
+        <div style="font-family: 'Monospace', monospace; font-size: 0.85rem; font-weight: bold; color: {pnl_color};">{pnl_display_str}</div>
     </div>
-    <!-- DATA LINES (3 Lines Max) -->
-    <div style="font-size: 0.65rem; color: #ccc; line-height: 1.25;">
+    <div style="font-size: 0.7rem; color: #ccc; line-height: 1.35;">
         <div style="display: flex; justify-content: space-between;">
-            <span><span style="color:#666">Sig:</span> <span style="font-weight:bold; color:#fff">{row.get('Action')}</span> <span style="color:#444">|</span> <span style="color:#FFB74D">{row.get('Confidence')}</span> <span style="color:#444">|</span> <span style="color:#ff3344; font-weight:bold">{row.get('Timeframe')}</span></span>
+            <span><span style="color:#777">Sig:</span> <span style="font-weight:bold; color:#eee">{row.get('Action')}</span> <span style="color:#555">|</span> <span style="color:#FFB74D">{row.get('Confidence')}</span> <span style="color:#555">|</span> <span style="color:#ff3344; font-weight:bold">{row.get('Timeframe')}</span></span>
         </div>
         <div style="display: flex; justify-content: space-between;">
-             <span><span style="color:#666">Ent:</span> <span style="color:#00ff88; font-family:monospace">{row.get('Entry_Price')}</span> <span style="color:#444">|</span> <span style="color:#666">Now:</span> <span style="color:#ffd700; font-family:monospace">{row.get('Current_Price', 'N/A')}</span></span>
+             <span><span style="color:#777">Ent:</span> <span style="color:#00ff88; font-family:monospace">{row.get('Entry_Price')}</span> <span style="color:#555">|</span> <span style="color:#777">Now:</span> <span style="color:#ffd700; font-family:monospace">{row.get('Current_Price', 'N/A')}</span></span>
         </div>
         <div style="display: flex; justify-content: space-between;">
-            <span><span style="color:#666">TP:</span> {row.get('Take_Profit','')} <span style="color:#444">|</span> <span style="color:#666">SL:</span> <span style="color:#d8b4fe">{row.get('Stop_Loss','')}</span> <span style="color:#444">|</span> <span style="color:#888">{row.get('RR','')}</span></span>
+            <span><span style="color:#777">TP:</span> {row.get('Take_Profit','')} <span style="color:#555">|</span> <span style="color:#777">SL:</span> <span style="color:#d8b4fe">{row.get('Stop_Loss','')}</span> <span style="color:#555">|</span> <span style="color:#888">{row.get('RR','')}</span></span>
         </div>
     </div>
 </div>
@@ -1589,9 +1587,8 @@ def show_runic_alerts():
                                      except: st.session_state.calc_entry_input = 0.0
                                      st.rerun()
                              
-                             # Copy Button Full Width below
-                             trade_str_raw = f"{'LONG' if is_long else 'SHORT'} {asset_name} @ {row.get('Current_Price',0)} | SL {row.get('Stop_Loss','')} | TP {row.get('Take_Profit','')}"
-                             st_copy_to_clipboard(trade_str_raw, "📋", "✅")
+                             # Copy Button Removed
+
 
                 # Pagination (Compact)
                 st.markdown(f"<div style='text-align: center; color: #666; font-size: 0.75rem; margin-top: 5px; margin-bottom: 2px;'>page {st.session_state.page_number + 1} / {total_pages}</div>", unsafe_allow_html=True)
