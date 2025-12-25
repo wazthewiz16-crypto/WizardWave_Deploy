@@ -4,6 +4,7 @@ streamlit
 pandas
 numpy
 numba
+pyperclip
 tqdm
 joblib
 ccxt
