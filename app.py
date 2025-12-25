@@ -1528,7 +1528,7 @@ def show_runic_alerts():
 
                             # --- HTML CARD ---
                             st.markdown(f"""
-<div style="font-family: 'Lato', sans-serif; padding: 2px 0px; display: flex; flex-direction: column; justify-content: center; overflow: hidden;">
+<div style="font-family: 'Lato', sans-serif; padding: 8px 0px 2px 0px; display: flex; flex-direction: column; justify-content: center; overflow: hidden;">
     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.15); padding-bottom: 3px; margin-bottom: 3px;">
         <div style="display: flex; align-items: center; gap: 6px;">
             <span style="font-size: 1.0rem; color: #f0f0f0;">{icon_char}</span>
