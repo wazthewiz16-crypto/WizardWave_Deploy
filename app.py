@@ -497,8 +497,10 @@ def analyze_timeframe(timeframe_label, silent=False):
     def process_asset(asset):
         try:
             # Dynamic Limit for performance
-            # Increase limits to ensure ample history is captured
-            current_limit = 1000  # Default to 1000 bars for all timeframes
+            # Reduce limit for HTF to prevent massive data fetches (e.g. 4000 days)
+            current_limit = 1000
+            if "Day" in timeframe_label:
+                current_limit = 300 # ~300 bars (300 days or 1200 days for 4D) is sufficient
             
             # Fetch Data
             df = fetch_data(asset['symbol'], asset['type'], timeframe=tf_code, limit=current_limit)
@@ -905,10 +907,13 @@ def analyze_timeframe(timeframe_label, silent=False):
             if not silent and progress_bar:
                 progress_bar.progress((i + 1) / len(ASSETS))
             try:
-                res, trade, hist = future.result()
+                # Add timeout to prevent hanging
+                res, trade, hist = future.result(timeout=10)
                 if res: results.append(res)
                 if trade: active_trades.append(trade)
                 if hist: historical_signals.extend(hist)
+            except concurrent.futures.TimeoutError:
+                print(f"Timeout processing asset")
             except Exception:
                 pass
 
