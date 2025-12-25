@@ -2028,6 +2028,59 @@ col_left, col_center, col_right = st.columns([0.25, 0.5, 0.25], gap="small")
 # --- CENTER COLUMN: MAIN PORTAL ---
 with col_center:
     with st.container(border=True):
+        # --- TOP HEADER: MANA & SPELLS ---
+        # Resets Logic (Integrated here)
+        try:
+            now = pd.Timestamp.now()
+            # Daily Reset
+            if now.floor('D') > st.session_state.last_reset_day:
+                st.session_state.spells_day = 2
+                st.session_state.last_reset_day = now.floor('D')
+            # Weekly Reset
+            current_week = now.to_period('W').start_time
+            if current_week > st.session_state.last_reset_week:
+                st.session_state.spells_week = 5
+                st.session_state.last_reset_week = current_week
+        except: pass
+
+        # Layout: [Mana Bar (70%)] [Spells (30%)]
+        c_mana, c_spells = st.columns([0.7, 0.3], gap="medium")
+        
+        with c_mana:
+             st.markdown('<div class="runic-header" style="text-align: left; margin-top: 0;">MANA POOL</div>', unsafe_allow_html=True)
+             mana_pct = max(0, min(100, (st.session_state.mana / 425) * 100))
+             st.markdown(f"""
+                <div style="background-color: #0b0c15; border: 1px solid #444; border-radius: 6px; height: 22px; margin-bottom: 2px; position: relative; box-shadow: inset 0 0 10px #000; margin-top: 5px;">
+                    <div style="
+                        background: linear-gradient(90deg, #00eaff 0%, #00ff88 100%);
+                        width: {mana_pct}%; 
+                        height: 100%; 
+                        border-radius: 5px; 
+                        box-shadow: 0 0 15px rgba(0, 255, 136, 0.6); 
+                        transition: width 0.5s ease-out;
+                    "></div>
+                    <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; text-shadow: 0 1px 4px black; letter-spacing: 1px; font-size: 0.8rem;">
+                        {st.session_state.mana} / 425
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+
+        with c_spells:
+            st.markdown('<div class="runic-header" style="text-align: right; margin-top: 0;">SPELLS</div>', unsafe_allow_html=True)
+            s_day = st.session_state.spells_day
+            s_week = st.session_state.spells_week
+            st.markdown(f"""
+                <div class="spell-card-container" style="margin-top: 5px; margin-bottom: 0;">
+                    <div class="spell-card spell-card-day" style="padding: 1px 4px; font-size: 0.75rem;">
+                        Day: <span class="spell-value">{s_day}</span>
+                    </div>
+                    <div class="spell-card spell-card-week" style="padding: 1px 4px; font-size: 0.75rem;">
+                        Week: <span class="spell-value">{s_week}</span>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+        
+        st.markdown("---") # Divider before Navbar
         # Interactive Navbar
         if 'active_tab' not in st.session_state: st.session_state.active_tab = 'PORTAL'
         
@@ -2880,90 +2933,7 @@ pointer-events: none;
 
 # --- LEFT COLUMN: MANA, SPELLS, ALERTS ---
 with col_left:
-    # 1. Mana Pool
-    with st.container(border=True):
-        st.markdown('<div class="runic-header">MANA POOL</div>', unsafe_allow_html=True)
-        
-        # Calculate Percentage
-        mana_pct = max(0, min(100, (st.session_state.mana / 425) * 100))
-        
-        st.markdown(f"""
-            <div style="background-color: #0b0c15; border: 1px solid #444; border-radius: 6px; height: 22px; margin-bottom: 2px; position: relative; box-shadow: inset 0 0 10px #000;">
-                <div style="
-                    background: linear-gradient(90deg, #00eaff 0%, #00ff88 100%);
-                    width: {mana_pct}%; 
-                    height: 100%; 
-                    border-radius: 5px; 
-                    box-shadow: 0 0 15px rgba(0, 255, 136, 0.6); 
-                    transition: width 0.5s ease-out;
-                "></div>
-                <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; text-shadow: 0 1px 4px black; letter-spacing: 1px;">
-                    {st.session_state.mana} / 425
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        # Compact Buttons in One Line (CSS Injection for small buttons)
-        # Compact Buttons in One Line (CSS Injection for small buttons AND Multiselect Tags)
-        st.markdown("""
-            <style>
-            /* Compact Buttons */
-            div[data-testid="stColumn"] button {
-                padding: 0px 2px !important;
-                min-height: 0px !important;
-                height: 28px !important;
-                font-size: 0.7rem !important;
-                line-height: 1 !important;
-            }
-            /* Compact Multiselect Tags */
-            span[data-baseweb="tag"] {
-                font-size: 0.65rem !important;
-                padding: 0px 4px !important;
-                height: 20px !important;
-                margin-top: 2px !important;
-                margin-bottom: 2px !important;
-            }
-            </style>
-        """, unsafe_allow_html=True)
-
-
-
-    # 2. Spells Left & Reset Logic
-    # Check Resets
-    try:
-        now = pd.Timestamp.now()
-        # Daily Reset
-        if now.floor('D') > st.session_state.last_reset_day:
-            st.session_state.spells_day = 2
-            st.session_state.last_reset_day = now.floor('D')
-            
-        # Weekly Reset
-        current_week = now.to_period('W').start_time
-        if current_week > st.session_state.last_reset_week:
-            st.session_state.spells_week = 5
-            st.session_state.last_reset_week = current_week
-    except:
-        pass # Handle potential timestamp errors gracefully
-
-    with st.container(border=True):
-        st.markdown('<div class="runic-header">SPELLS LEFT</div>', unsafe_allow_html=True)
-        
-        # Custom HTML for Spells
-        s_day = st.session_state.spells_day
-        s_week = st.session_state.spells_week
-        
-        st.markdown(f"""
-            <div class="spell-card-container">
-                <div class="spell-card spell-card-day">
-                    <span class="spell-icon">⚡</span>
-                    Day: <span class="spell-value">{s_day}</span>
-                </div>
-                <div class="spell-card spell-card-week">
-                    <span class="spell-icon">⚡</span>
-                    Week: <span class="spell-value">{s_week}</span>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
+    # 1. Runic Trade Alerts (Mana/Spells moved to Center)
     
     # 3. Runic Trade Alerts
     show_runic_alerts()
