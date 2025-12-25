@@ -1377,6 +1377,15 @@ def process_discord_alerts(df):
 
 @st.fragment(run_every=120)
 def show_runic_alerts():
+    # --- Execution Settings ---
+    with st.expander("⚙️ Execution Settings", expanded=False):
+        c_s1, c_s2 = st.columns(2)
+        with c_s1:
+            st.session_state.manual_mode = st.toggle("Manual Mode", value=st.session_state.get('manual_mode', False), help="Filters out 15m timeframe and requires >60% Confidence.")
+        with c_s2:
+            fee_input = st.number_input("Round-Trip Cost (%)", min_value=0.0, max_value=5.0, value=st.session_state.get('est_fee_pct', 0.2), step=0.05, help="Est. Fees + Slippage for Entry & Exit combined.")
+            st.session_state.est_fee_pct = fee_input
+
     # Header Row with Refresh Button
     with st.container(border=True):
         # Adjusted layout for Mobile Optimization
@@ -1447,6 +1456,19 @@ def show_runic_alerts():
             if show_take_only and 'Action' in df_display.columns:
                 df_display = df_display[df_display['Action'].str.contains("TAKE")]
             
+            # --- Manual Mode Filters ---
+            if st.session_state.get('manual_mode', False):
+                # 1. Filter out 15m
+                df_display = df_display[~df_display['Timeframe'].isin(['15m', '15 Minutes'])]
+                
+                # 2. Filter Low Confidence (< 60%)
+                def parse_conf(x):
+                    try: return float(str(x).replace('%',''))
+                    except: return 0.0
+                
+                if 'Confidence' in df_display.columns:
+                    df_display = df_display[df_display['Confidence'].apply(parse_conf) >= 60.0]
+            
             if selected_short:
                 df_display = df_display[df_display['Timeframe'].isin(selected_short)]
             else:
@@ -1479,8 +1501,21 @@ def show_runic_alerts():
                             elif "ETH" in asset_name: icon_char = "Ξ"
                             elif "SOL" in asset_name: icon_char = "◎"
                             action_text = "BULL" if is_long else "BEAR"
-                            pnl_val = row.get('PnL (%)', '0.00%')
-                            pnl_color = "#00ff88" if not str(pnl_val).startswith("-") else "#ff3344"
+                            
+                            # Net PnL Calculation
+                            raw_pnl_str = str(row.get('PnL (%)', '0.00%'))
+                            try:
+                                raw_pnl_val = float(raw_pnl_str.replace('%',''))
+                            except:
+                                raw_pnl_val = 0.0
+                                
+                            fee_cost = st.session_state.get('est_fee_pct', 0.2)
+                            net_pnl_val = raw_pnl_val - fee_cost
+                            
+                            pnl_display_str = f"{net_pnl_val:.2f}%"
+                            pnl_color = "#00ff88" if net_pnl_val >= 0 else "#ff3344"
+                            
+                            lbl_pnl = "Net" if st.session_state.get('manual_mode', False) or fee_cost > 0 else "PnL"
                             
                             st.markdown(f"""
                                 <div style="display: flex; align-items: flex-start; margin-top: -10px;">
@@ -1488,7 +1523,7 @@ def show_runic_alerts():
                                     <div style="flex-grow: 1;">
                                         <div style="font-weight: bold; font-size: 0.9rem; color: #e0e0e0; display: flex; justify-content: space-between;">
                                             <span>{asset_name} <span style="color:{direction_color}; font-size: 0.8rem;">{action_text}</span></span>
-                                            <span style="color: {pnl_color};">{pnl_val}</span>
+                                            <span style="color: {pnl_color}; font-size: 0.85rem;">{lbl_pnl}: {pnl_display_str}</span>
                                         </div>
                                         <div style="font-size: 0.75rem; color: #aaa; margin-top: 2px;">
                                             {row.get('Action')} | <span style="color: #FFB74D;">Conf: {row.get('Confidence')}</span> | <span style="color: #ff3344; font-weight: bold;">{row.get('Timeframe')}</span>
@@ -1533,6 +1568,11 @@ def show_runic_alerts():
                                     except:
                                         st.session_state.calc_entry_input = 0.0
                                     st.rerun()
+                            
+                            # Copy-Trade Helper
+                            trade_str = f"{'LONG' if is_long else 'SHORT'} {asset_name} @ {row.get('Current_Price',0)} | SL {row.get('Stop_Loss','')} | TP {row.get('Take_Profit','')}"
+                            st.code(trade_str, language="text")
+                            
                             time_val = row.get('Entry_Time', row.get('Signal_Time', 'N/A'))
                             try: short_time = str(time_val)[5:-3] if len(str(time_val)) > 10 else str(time_val)
                             except: short_time = str(time_val)
