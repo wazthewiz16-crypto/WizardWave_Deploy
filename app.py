@@ -1528,8 +1528,8 @@ def show_runic_alerts():
 
                             # --- HTML CARD ---
                             st.markdown(f"""
-<div style="font-family: 'Lato', sans-serif; padding: 12px 4px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 4px; min-height: 90px; display: flex; flex-direction: column; justify-content: center;">
-    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px; margin-bottom: 6px;">
+<div style="font-family: 'Lato', sans-serif; padding: 16px 4px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 4px; min-height: 110px; display: flex; flex-direction: column; justify-content: center;">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 10px;">
         <div style="display: flex; align-items: center; gap: 8px;">
             <span style="font-size: 1.1rem; color: #f0f0f0;">{icon_char}</span>
             <span style="font-weight: 700; font-size: 0.95rem; color: #fff;">{asset_name}</span>
@@ -1537,7 +1537,7 @@ def show_runic_alerts():
         </div>
         <div style="font-family: 'Monospace', monospace; font-size: 0.9rem; font-weight: bold; color: {pnl_color};">{pnl_display_str}</div>
     </div>
-    <div style="font-size: 0.75rem; color: #ccc; line-height: 1.6;">
+    <div style="font-size: 0.75rem; color: #ccc; line-height: 1.8;">
         <div style="display: flex; justify-content: space-between;">
             <span><span style="color:#777">Sig:</span> <span style="font-weight:bold; color:#eee">{row.get('Action')}</span> <span style="color:#555">|</span> <span style="color:#FFB74D">{row.get('Confidence')}</span> <span style="color:#555">|</span> <span style="color:#ff3344; font-weight:bold">{row.get('Timeframe')}</span></span>
         </div>
