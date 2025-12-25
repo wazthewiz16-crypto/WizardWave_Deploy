@@ -1714,17 +1714,17 @@ st.markdown("""
     /* Epic Invoke Button (Primary Only) */
     div.stButton > button[kind="primary"] {
         width: 100%;
-        height: 65px;
+        height: 60px;
         background: linear-gradient(135deg, #c5a059 0%, #8a6e3c 100%);
         color: #000;
         font-family: 'Cinzel', serif;
-        font-size: 2.1rem;
+        font-size: 2.4rem;
         font-weight: bold;
         border: 2px solid #ffd700;
         box-shadow: 0 0 20px rgba(197, 160, 89, 0.6);
         transition: all 0.3s ease;
         text-transform: uppercase;
-        letter-spacing: 4px;
+        letter-spacing: 3px;
     }
     div.stButton > button[kind="primary"]:hover {
         transform: scale(1.02);
