@@ -1499,135 +1499,131 @@ def show_runic_alerts():
                 
                 for index, row in current_batch.iterrows():
                     with st.container(border=True):
-                        # Force fixed height for uniformity (CSS hack via markdown if needed, or just consistent content)
-                        # We use a slight ratio adjust for better button alignment
-                        c_content, c_btn = st.columns([0.82, 0.18])
+                        # --- NEW "DATAPAD" RUNIC CARD DESIGN ---
+                        # Split: Content (85%) | Buttons (15%)
+                        c_content, c_btn = st.columns([0.85, 0.15])
+                        
                         with c_content:
                             is_long = "LONG" in row.get('Type', '')
                             direction_color = "#00ff88" if is_long else "#ff3344"
                             asset_name = row['Asset']
+                            # Compact Icon logic
                             icon_char = "⚡"
                             if "BTC" in asset_name: icon_char = "₿"
                             elif "ETH" in asset_name: icon_char = "Ξ"
                             elif "SOL" in asset_name: icon_char = "◎"
+                            elif "XAU" in asset_name or "Gold" in asset_name: icon_char = "🥇"
+                            elif "XAG" in asset_name or "Silver" in asset_name: icon_char = "🥈"
+                            
                             action_text = "BULL" if is_long else "BEAR"
                             
-                            # Net PnL Calculation
+                            # Net PnL
                             raw_pnl_str = str(row.get('PnL (%)', '0.00%'))
-                            try:
-                                raw_pnl_val = float(raw_pnl_str.replace('%',''))
-                            except:
-                                raw_pnl_val = 0.0
-                                
+                            try: raw_pnl_val = float(raw_pnl_str.replace('%',''))
+                            except: raw_pnl_val = 0.0
                             fee_cost = st.session_state.get('est_fee_pct', 0.2)
                             net_pnl_val = raw_pnl_val - fee_cost
-                            
                             pnl_display_str = f"{net_pnl_val:.2f}%"
                             pnl_color = "#00ff88" if net_pnl_val >= 0 else "#ff3344"
-                            
                             lbl_pnl = "Net" if st.session_state.get('manual_mode', False) or fee_cost > 0 else "PnL"
-                            
-                            # Ultra-compact Runic Card Layout
-                            st.markdown(f"""<div style="font-family: 'Lato', sans-serif; padding: 2px; display: flex; flex-direction: column; justify-content: center;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; border-bottom: 1px solid #333; padding-bottom: 2px;">
-        <div style="font-size: 0.8rem; font-weight: 700; color: #fff; display: flex; align-items: center; white-space: nowrap; overflow: hidden;">
-            <span style="font-size: 0.85rem; margin-right: 3px;">{icon_char}</span>
-            {asset_name} 
-            <span style="color: {direction_color}; margin-left: 3px; font-size: 0.6rem; background: {direction_color}10; padding: 0px 2px; border-radius: 2px;">{action_text}</span>
-        </div>
-        <div style="font-weight: 700; font-size: 0.75rem; color: {pnl_color};">
-            {lbl_pnl}: {pnl_display_str}
-        </div>
-    </div>
-    <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 0px 4px; font-size: 0.7rem; line-height: 1.1;">
-        <div style="color: #ccc;">
-            <span style="color: #777;">Sig:</span> {row.get('Action')}
-        </div>
-        <div style="text-align: right; color: #ccc;">
-            <span style="color: #777;">Conf:</span> <span style="color: #FFB74D; font-weight: bold;">{row.get('Confidence')}</span>
-            <span style="color: #444;">|</span>
-            <span style="color: #ff3344; font-weight: bold;">{row.get('Timeframe')}</span>
-        </div>
-        <div style="color: #ccc;">
-                <span style="color: #777;">Ent:</span> <span style="color: #00ff88;">{row.get('Entry_Price')}</span>
-        </div>
-        <div style="text-align: right; color: #ccc;">
-                <span style="color: #777;">Now:</span> <span style="color: #ffd700;">{row.get('Current_Price', 'N/A')}</span>
-        </div>
-        <div style="color: #ccc;">
-            <span style="color: #777;">TP:</span> {row.get('Take_Profit', 'N/A')}
-        </div>
-        <div style="text-align: right; color: #ccc;">
-            <span style="color: #777;">SL:</span> <span style="color: #d8b4fe;">{row.get('Stop_Loss', 'N/A')}</span>
-        </div>
-        <div style="grid-column: 1 / -1; margin-top: 1px; border-top: 1px dashed #333; padding-top: 1px; font-size: 0.65rem; color: #666; text-align: right;">
-                R/R: {row.get('RR', 'N/A')}
-        </div>
-    </div>
-</div>""", unsafe_allow_html=True)
-                        with c_btn:
-                            
-                            unique_id = f"{row['Asset']}_{row.get('Timeframe','')}_{row.get('Entry_Time','')}"
-                            unique_id = "".join(c for c in unique_id if c.isalnum() or c in ['_','-'])
-                            
-                            c_b1, c_b2 = st.columns(2, gap="small")
-                            with c_b1:
-                                if st.button("👁️", key=f"btn_card_view_{unique_id}", use_container_width=True, help="View Chart"):
-                                    tv_sym = get_tv_symbol({'symbol': row.get('Symbol', '')})
-                                    try: tv_int = get_tv_interval(row['Timeframe'])
-                                    except: tv_int = '60'
-                                    st.session_state.active_tv_symbol = tv_sym
-                                    st.session_state.active_tv_interval = tv_int
-                                    st.session_state.active_signal = row.to_dict()
-                                    st.session_state.active_view_mode = 'details'
-                                    st.rerun()
-                            with c_b2:
-                                if st.button("🧮", key=f"btn_card_calc_{unique_id}", use_container_width=True, help="Position Calculator"):
-                                    tv_sym = get_tv_symbol({'symbol': row.get('Symbol', '')})
-                                    try: tv_int = get_tv_interval(row['Timeframe'])
-                                    except: tv_int = '60'
-                                    st.session_state.active_tv_symbol = tv_sym
-                                    st.session_state.active_tv_interval = tv_int
-                                    st.session_state.active_signal = row.to_dict()
-                                    st.session_state.active_view_mode = 'calculator' 
-                                    st.session_state.active_tab = 'RISK' 
-                                    try:
-                                        ep = float(str(row['Entry_Price']).replace(',',''))
-                                        st.session_state.calc_entry_input = ep
-                                    except:
-                                        st.session_state.calc_entry_input = 0.0
-                                    st.rerun()
-                            
-                            # Row 2 for third button (Copy) + Time
-                            c_b3, c_time = st.columns([0.45, 0.55])
-                            with c_b3:
-                                trade_str_raw = f"{'LONG' if is_long else 'SHORT'} {asset_name} @ {row.get('Current_Price',0)} | SL {row.get('Stop_Loss','')} | TP {row.get('Take_Profit','')}"
-                                st_copy_to_clipboard(trade_str_raw, "📋", "✅")
+
+                            # --- HTML CARD ---
+                            st.markdown(f"""
+                            <div style="font-family: 'Lato', sans-serif; padding: 2px 4px; display: flex; flex-direction: column; justify-content: center; min-height: 85px;">
+                                <!-- HEADER ROW -->
+                                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 3px; margin-bottom: 3px;">
+                                    <div style="display: flex; align-items: center; gap: 6px;">
+                                        <span style="font-size: 1.1rem; color: #e0e0e0;">{icon_char}</span>
+                                        <span style="font-weight: 700; font-size: 0.9rem; color: #fff; letter-spacing: 0.5px;">{asset_name}</span>
+                                        <span style="font-size: 0.65rem; font-weight: bold; padding: 1px 4px; border-radius: 3px; background: {direction_color}20; color: {direction_color}; border: 1px solid {direction_color}40;">{action_text}</span>
+                                    </div>
+                                    <div style="font-family: 'Monospace', monospace; font-size: 0.85rem; font-weight: bold; color: {pnl_color}; text-shadow: 0 0 5px {pnl_color}40;">
+                                        {pnl_display_str}
+                                    </div>
+                                </div>
                                 
-                            with c_time:
-                                time_val = row.get('Entry_Time', row.get('Signal_Time', 'N/A'))
-                                try: short_time = str(time_val)[5:-3] if len(str(time_val)) > 10 else str(time_val)
-                                except: short_time = str(time_val)
-                                st.markdown(f"<div style='text-align: center; font-size: 0.6rem; color: #00eaff; margin-top: 4px;'>{short_time}</div>", unsafe_allow_html=True)
-                
-                st.markdown(f"<div style='text-align: center; color: #888; font-size: 0.8rem; margin-bottom: 5px;'>Page {st.session_state.page_number + 1}/{total_pages}</div>", unsafe_allow_html=True)
-                p_first, p_prev, p_next, p_last = st.columns([0.25, 0.25, 0.25, 0.25], gap="small")
-                with p_first:
-                    if st.button("⏮", key="first_main", disabled=(st.session_state.page_number == 0), use_container_width=True, help="First Page"):
-                        st.session_state.page_number = 0
-                        st.rerun()
-                with p_prev:
-                    if st.button("◀", key="prev_main", disabled=(st.session_state.page_number == 0), use_container_width=True, help="Previous"):
-                        st.session_state.page_number -= 1
-                        st.rerun()
-                with p_next:
-                    if st.button("▶", key="next_main", disabled=(st.session_state.page_number >= total_pages - 1), use_container_width=True, help="Next"):
-                        st.session_state.page_number += 1
-                        st.rerun()
-                with p_last:
-                    if st.button("⏭", key="last_main", disabled=(st.session_state.page_number >= total_pages - 1), use_container_width=True, help="Last Page"):
-                        st.session_state.page_number = total_pages - 1
-                        st.rerun()
+                                <!-- DETAILS GRID -->
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px; font-size: 0.75rem; color: #ccc;">
+                                    
+                                    <!-- Signal Info -->
+                                    <div style="display: flex; justify-content: space-between;">
+                                        <span style="color: #666;">Signal:</span>
+                                        <span style="color: #fff; font-weight: bold;">{row.get('Action')}</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between;">
+                                        <span style="color: #666;">Conf:</span>
+                                        <span><span style="color: #FFB74D; font-weight: bold;">{row.get('Confidence')}</span> <span style="color:#444">|</span> <span style="color: #ff3344; font-weight: bold;">{row.get('Timeframe')}</span></span>
+                                    </div>
+
+                                    <!-- Price Info -->
+                                    <div style="display: flex; justify-content: space-between;">
+                                        <span style="color: #666;">Entry:</span>
+                                        <span style="color: #00ff88; font-family: monospace;">{row.get('Entry_Price')}</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between;">
+                                        <span style="color: #666;">Now:</span>
+                                        <span style="color: #ffd700; font-family: monospace;">{row.get('Current_Price', 'N/A')}</span>
+                                    </div>
+
+                                    <!-- TP/SL Info -->
+                                    <div style="grid-column: 1 / -1; display: flex; justify-content: space-between; border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 2px; padding-top: 2px;">
+                                        <div><span style="color: #666;">TP:</span> <span style="color: #ddd;">{row.get('Take_Profit', 'N/A')}</span></div>
+                                        <div><span style="color: #666;">SL:</span> <span style="color: #d8b4fe;">{row.get('Stop_Loss', 'N/A')}</span></div>
+                                    </div>
+                                </div>
+                                
+                                <!-- FOOTER -->
+                                <div style="display: flex; justify-content: space-between; margin-top: 2px; font-size: 0.65rem; color: #555;">
+                                    <span>R/R: <span style="color: #888;">{row.get('RR', 'N/A')}</span></span>
+                                    <span>{str(row.get('Entry_Time', ''))[5:-3]}</span>
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        
+                        with c_btn:
+                             unique_id = f"{row['Asset']}_{row.get('Timeframe','')}_{row.get('Entry_Time','')}"
+                             unique_id = "".join(c for c in unique_id if c.isalnum() or c in ['_','-'])
+                             
+                             # Vertical Functional Strip
+                             # Use small vertical spacing
+                             st.markdown('<div style="height: 4px;"></div>', unsafe_allow_html=True)
+                             
+                             if st.button("👁️", key=f"btn_v_{unique_id}", use_container_width=True, help="View"):
+                                 tv_sym = get_tv_symbol({'symbol': row.get('Symbol', '')})
+                                 try: tv_int = get_tv_interval(row['Timeframe'])
+                                 except: tv_int = '60'
+                                 st.session_state.active_tv_symbol = tv_sym
+                                 st.session_state.active_tv_interval = tv_int
+                                 st.session_state.active_signal = row.to_dict()
+                                 st.session_state.active_view_mode = 'details'
+                                 st.rerun()
+
+                             if st.button("🧮", key=f"btn_c_{unique_id}", use_container_width=True, help="Calc"):
+                                 tv_sym = get_tv_symbol({'symbol': row.get('Symbol', '')})
+                                 try: tv_int = get_tv_interval(row['Timeframe'])
+                                 except: tv_int = '60'
+                                 st.session_state.active_tv_symbol = tv_sym
+                                 st.session_state.active_tv_interval = tv_int
+                                 st.session_state.active_signal = row.to_dict()
+                                 st.session_state.active_view_mode = 'calculator' 
+                                 st.session_state.active_tab = 'RISK' 
+                                 try:
+                                     ep = float(str(row['Entry_Price']).replace(',',''))
+                                     st.session_state.calc_entry_input = ep
+                                 except: st.session_state.calc_entry_input = 0.0
+                                 st.rerun()
+                                 
+                             # Clipboard Button logic
+                             trade_str_raw = f"{'LONG' if is_long else 'SHORT'} {asset_name} @ {row.get('Current_Price',0)} | SL {row.get('Stop_Loss','')} | TP {row.get('Take_Profit','')}"
+                             st_copy_to_clipboard(trade_str_raw, "📋", "✅")
+
+                # Pagination (Compact)
+                st.markdown(f"<div style='text-align: center; color: #666; font-size: 0.75rem; margin-top: 5px; margin-bottom: 2px;'>page {st.session_state.page_number + 1} / {total_pages}</div>", unsafe_allow_html=True)
+                p1, p2, p3, p4 = st.columns(4, gap="small")
+                p1.button("⏮", key="p_f", disabled=(st.session_state.page_number==0), use_container_width=True, on_click=lambda: setattr(st.session_state, 'page_number', 0))
+                p2.button("◀", key="p_p", disabled=(st.session_state.page_number==0), use_container_width=True, on_click=lambda: setattr(st.session_state, 'page_number', st.session_state.page_number - 1))
+                p3.button("▶", key="p_n", disabled=(st.session_state.page_number>=total_pages-1), use_container_width=True, on_click=lambda: setattr(st.session_state, 'page_number', st.session_state.page_number + 1))
+                p4.button("⏭", key="p_l", disabled=(st.session_state.page_number>=total_pages-1), use_container_width=True, on_click=lambda: setattr(st.session_state, 'page_number', total_pages - 1))
         else:
             st.info("No active signals.")
 
