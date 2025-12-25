@@ -1735,8 +1735,8 @@ st.markdown("""
     /* Transparent Secondary Buttons (Nav & Alerts) */
     div.stButton > button[kind="secondary"] {
         height: auto !important;
-        min-height: 20px;
-        padding: 2px 4px !important;
+        min-height: 15px;
+        padding: 2px 3px !important;
         background-color: transparent !important;
         border: 1px solid transparent !important;
         color: #888 !important;
@@ -1818,7 +1818,7 @@ st.markdown("""
     /* Spell Cards Styling */
     .spell-card-container {
         display: flex;
-        gap: 6px;
+        gap: 5px;
         justify-content: center;
         margin-bottom: 8px;
         margin-top: 5px;
@@ -1871,9 +1871,9 @@ st.markdown("""
     /* Arcane Portal Header */
     .arcane-header-container {
         text-align: center;
-        margin-bottom: 5px;
+        margin-bottom: 4px;
         position: relative;
-        padding: 5px 0;
+        padding: 3px 0;
         background: radial-gradient(circle at center, rgba(11, 12, 21, 0) 0%, rgba(11, 12, 21, 0.8) 100%);
         border-bottom: 2px solid transparent; 
         border-image: linear-gradient(90deg, transparent, #c5a059, transparent) 1;
