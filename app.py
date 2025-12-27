@@ -1385,14 +1385,7 @@ def process_discord_alerts(df):
 
 @st.fragment(run_every=120)
 def show_runic_alerts():
-    # --- Execution Settings ---
-    with st.expander("⚙️ Execution Settings", expanded=False):
-        c_s1, c_s2 = st.columns(2)
-        with c_s1:
-            st.session_state.manual_mode = st.toggle("Manual Mode", value=st.session_state.get('manual_mode', False), help="Filters out 15m timeframe and requires >60% Confidence.")
-        with c_s2:
-            fee_input = st.number_input("Round-Trip Cost (%)", min_value=0.0, max_value=5.0, value=st.session_state.get('est_fee_pct', 0.2), step=0.05, help="Est. Fees + Slippage for Entry & Exit combined.")
-            st.session_state.est_fee_pct = fee_input
+    # --- Execution Settings Removed ---
 
     # Header Row with Refresh Button
     with st.container(border=True):
@@ -1527,8 +1520,18 @@ def show_runic_alerts():
                             lbl_pnl = "Net" if st.session_state.get('manual_mode', False) or fee_cost > 0 else "PnL"
 
                             # --- HTML CARD ---
+                            # formatting entry time
+                            try:
+                                et_str = str(row.get('Entry_Time', ''))
+                                # Try to extract HH:MM if regular format, or just display
+                                if len(et_str) > 16:
+                                    et_disp = et_str[11:16] # HH:MM from ISO
+                                else:
+                                    et_disp = et_str[-8:-3] if len(et_str) > 8 else et_str
+                            except: et_disp = ""
+
                             st.markdown(f"""
-<div style="font-family: 'Lato', sans-serif; padding: 12px 4px 8px 4px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 14px; min-height: 100px; display: flex; flex-direction: column; justify-content: center;">
+<div style="font-family: 'Lato', sans-serif; padding: 12px 4px 8px 4px; min-height: 100px; display: flex; flex-direction: column; justify-content: center;">
     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 10px;">
         <div style="display: flex; align-items: center; gap: 8px;">
             <span style="font-size: 1.1rem; color: #f0f0f0;">{icon_char}</span>
@@ -1545,7 +1548,7 @@ def show_runic_alerts():
              <span><span style="color:#777">Ent:</span> <span style="color:#00ff88; font-family:monospace">{row.get('Entry_Price')}</span> <span style="color:#555">|</span> <span style="color:#777">Now:</span> <span style="color:#ffd700; font-family:monospace">{row.get('Current_Price', 'N/A')}</span></span>
         </div>
         <div style="display: flex; justify-content: space-between;">
-            <span><span style="color:#777">TP:</span> {row.get('Take_Profit','')} <span style="color:#555">|</span> <span style="color:#777">SL:</span> <span style="color:#d8b4fe">{row.get('Stop_Loss','')}</span> <span style="color:#555">|</span> <span style="color:#888">{row.get('RR','')}</span></span>
+            <span><span style="color:#777">TP:</span> {row.get('Take_Profit','')} <span style="color:#555">|</span> <span style="color:#777">SL:</span> <span style="color:#d8b4fe">{row.get('Stop_Loss','')}</span> <span style="color:#555">|</span> <span style="color:#999">🕒 {et_disp}</span></span>
         </div>
     </div>
 </div>
@@ -1587,7 +1590,8 @@ def show_runic_alerts():
                                      except: st.session_state.calc_entry_input = 0.0
                                      st.rerun()
                              
-                             # Copy Button Removed
+                             # Full Width Separator below the columns
+                        st.markdown("<div style='border-bottom: 1px solid rgba(255,255,255,0.15); margin-top: 5px; margin-bottom: 5px;'></div>", unsafe_allow_html=True)
 
 
                 # Pagination (Compact)
