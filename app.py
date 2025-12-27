@@ -1523,11 +1523,15 @@ def show_runic_alerts():
                             # formatting entry time
                             try:
                                 et_str = str(row.get('Entry_Time', ''))
-                                # Try to extract HH:MM if regular format, or just display
-                                if len(et_str) > 16:
-                                    et_disp = et_str[11:16] # HH:MM from ISO
+                                # Try to extract full date-time if ISO format (YYYY-MM-DDT...), or just display what we have
+                                # Expected format: 2025-12-25 14:30:00 or similar
+                                if len(et_str) > 10:
+                                    # Just take MM-DD HH:MM
+                                    # Assuming YYYY-MM-DD HH:MM:SS format
+                                    # 5:10 is MM-DD, 11:16 is HH:MM
+                                    et_disp = f"{et_str[5:10]} {et_str[11:16]}"
                                 else:
-                                    et_disp = et_str[-8:-3] if len(et_str) > 8 else et_str
+                                    et_disp = et_str
                             except: et_disp = ""
 
                             st.markdown(f"""
@@ -1591,7 +1595,7 @@ def show_runic_alerts():
                                      st.rerun()
                              
                              # Full Width Separator below the columns
-                        st.markdown("<div style='border-bottom: 1px solid rgba(255,255,255,0.15); margin-top: 5px; margin-bottom: 5px;'></div>", unsafe_allow_html=True)
+                        st.markdown("<div style='border-bottom: 1px solid rgba(255,255,255,0.15); margin-top: 5px; margin-bottom: 0px;'></div>", unsafe_allow_html=True)
 
 
                 # Pagination (Compact)
