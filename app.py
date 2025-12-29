@@ -803,20 +803,21 @@ def analyze_timeframe(timeframe_label, silent=False):
                            status = "HIT SL 🔴"
                            exit_trade = True
                            
-                   if exit_trade:
-                       trades.append({
-                            "_sort_key": entry_time,
-                            "Asset": asset['name'],
-                            "Timeframe": short_tf,
-                            "Time": format_time(entry_time),
-                            "Type": f"{position} {'🟢' if position == 'LONG' else '🔴'}",
-                            "Price": entry_price,
-                            "Confidence": f"{entry_conf:.0%}",
-                            "Model": "✅",
-                            "Return_Pct": pnl, 
-                            "SL_Pct": curr_sl_pct,
-                            "Status": status
-                       })
+                       if exit_trade:
+                           trades.append({
+                                "_sort_key": entry_time,
+                                "Asset": asset['name'],
+                                "Timeframe": short_tf,
+                                "Time": format_time(entry_time),
+                                "Exit Time": format_time(idx),
+                                "Type": f"{position} {'🟢' if position == 'LONG' else '🔴'}",
+                                "Price": entry_price,
+                                "Confidence": f"{entry_conf:.0%}",
+                                "Model": "✅",
+                                "Return_Pct": pnl, 
+                                "SL_Pct": curr_sl_pct,
+                                "Status": status
+                           })
                        position = None
 
                    # --- ENTRY & REVERSAL LOGIC ---
@@ -843,6 +844,7 @@ def analyze_timeframe(timeframe_label, silent=False):
                                     "Asset": asset['name'],
                                     "Timeframe": short_tf,
                                     "Time": format_time(entry_time),
+                                    "Exit Time": format_time(idx),
                                     "Type": f"{position} {'🟢' if position == 'LONG' else '🔴'}",
                                     "Price": entry_price,
                                     "Confidence": f"{entry_conf:.0%}",
@@ -895,6 +897,7 @@ def analyze_timeframe(timeframe_label, silent=False):
                                 "Asset": asset['name'],
                                 "Timeframe": short_tf,
                                 "Time": format_time(entry_time),
+                                "Exit Time": format_time(idx),
                                 "Type": f"{position} {'🟢' if position == 'LONG' else '🔴'}",
                                 "Price": entry_price,
                                 "Confidence": f"{entry_conf:.0%}",
@@ -921,6 +924,7 @@ def analyze_timeframe(timeframe_label, silent=False):
                         "Asset": asset['name'],
                         "Timeframe": short_tf,
                         "Time": format_time(entry_time),
+                        "Exit Time": "-",
                         "Type": f"{position} {'🟢' if position == 'LONG' else '🔴'}",
                         "Price": entry_price,
                         "Confidence": f"{entry_conf:.0%}",
@@ -2294,7 +2298,7 @@ with col_center:
 
                  # Simplify cols
                  if not filtered_df.empty:
-                     display_cols = ['Time', 'Asset', 'Timeframe', 'Type', 'Confidence', 'Price', 'Return_Pct', 'Status']
+                     display_cols = ['Time', 'Asset', 'Timeframe', 'Type', 'Confidence', 'Price', 'Exit Time', 'Return_Pct', 'Status']
                      # Fill Status if missing
                      if 'Status' not in filtered_df.columns:
                          filtered_df['Status'] = 'CLOSED'
