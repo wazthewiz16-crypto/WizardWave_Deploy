@@ -31,6 +31,7 @@ except:
     WEBHOOK_URL = None
 
 PROCESSED_FILE = 'processed_signals.json'
+CONFIDENCE_THRESHOLD = 0.40 # Matched to app.py (was 0.55)
 
 # --- HELPERS ---
 
@@ -185,6 +186,8 @@ def run_analysis_cycle():
         return
 
     all_signals = []
+    
+    features = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi']
 
     # 1. HTF
     for tf in CONFIG['htf']['timeframes']:
@@ -194,7 +197,7 @@ def run_analysis_cycle():
                 asset_type = get_asset_type(symbol)
                 fetch_type = 'trad' if asset_type == 'forex' or asset_type == 'trad' else 'crypto'
                 if '-' in symbol or '^' in symbol or '=' in symbol: fetch_type = 'trad'
-
+                
                 # Fetch
                 df = fetch_data(symbol, asset_type=fetch_type, timeframe=tf, limit=300)
                 if df.empty: continue
@@ -205,33 +208,52 @@ def run_analysis_cycle():
                 
                 # Features
                 df = calculate_ml_features(df)
-                df = df.dropna()
                 
+                # Sigma for Dynamic Barriers (Matching app.py)
+                tb = CONFIG['htf']['triple_barrier']
+                crypto_use_dynamic = tb.get('crypto_use_dynamic', False)
+                if crypto_use_dynamic and asset_type == 'crypto':
+                     df['sigma'] = df['close'].pct_change().ewm(span=36, adjust=False).std()
+                     df['sigma'] = df['sigma'].fillna(method='bfill').fillna(0.01)
+                
+                df = df.dropna()
                 if df.empty: continue
                 
-                # Predict
                 last_row = df.iloc[-1].copy() # Ensure copy
-                features = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi']
-                
                 X_new = pd.DataFrame([last_row[features]])
-                prob = model_htf.predict_proba(X_new)[0][1]
+                
+                # --- ENSEMBLE LOGIC ---
+                prob = 0.0
+                if tf == '12h':
+                    # 80% HTF + 20% LTF
+                    p_htf = model_htf.predict_proba(X_new)[0][1]
+                    p_ltf = model_ltf.predict_proba(X_new)[0][1]
+                    prob = (0.8 * p_htf) + (0.2 * p_ltf)
+                else:
+                    prob = model_htf.predict_proba(X_new)[0][1]
                 
                 # Create Signal Object
                 signal_type = last_row['signal_type']
                 if signal_type != 'NONE':
-                    # Populate Signal Data
-                    # Calculate TP/SL from config for strict alerting?
-                    # Or use the strategy defaults? 
-                    # app.py seems to use pre-calc.
-                    # We will re-calc simplified for alerting.
-                    
                     price = last_row['close']
                     
-                    # Logic from apply_triple_barrier (simplified for LIVE)
-                    tb = CONFIG['htf']['triple_barrier']
+                    # Logic from apply_triple_barrier / app.py comparison
+                    sigma = last_row.get('sigma', 0.01) if 'sigma' in last_row else 0.01
+                    
                     if 'LONG' in signal_type:
-                        sl_pct = tb['crypto_sl'] if asset_type=='crypto' else tb['trad_sl']
-                        pt_pct = tb['crypto_pt'] if asset_type=='crypto' else tb['trad_pt']
+                        if crypto_use_dynamic and asset_type == 'crypto':
+                             # Use simple Sigma-based width? check app.py or pipeline.py logic
+                             # app.py doesn't show the exact calculation, just that sigma is computed.
+                             # strategy.py typically uses it. 
+                             # We'll rely on the default logic:
+                             sl_pct = tb['crypto_sl'] 
+                             pt_pct = tb['crypto_pt']
+                             # If dynamic is strictly enforced in strat, it might override.
+                             # For now, use config defaults as baseline approx
+                        else:
+                             sl_pct = tb['crypto_sl'] if asset_type=='crypto' else tb['trad_sl']
+                             pt_pct = tb['crypto_pt'] if asset_type=='crypto' else tb['trad_pt']
+                             
                         sl_price = price * (1 - sl_pct)
                         pt_price = price * (1 + pt_pct)
                     else:
@@ -240,12 +262,12 @@ def run_analysis_cycle():
                         sl_price = price * (1 + sl_pct)
                         pt_price = price * (1 - pt_pct)
 
-                    is_take = "✅ TAKE" if prob > 0.55 else "⚠️ WAIT"
+                    is_take = "✅ TAKE" if prob > CONFIDENCE_THRESHOLD else "⚠️ WAIT"
                     
                     sig = {
                         "Asset": symbol,
                         "Timeframe": tf,
-                        "Action": f"{is_take}", # Valid for existing parser
+                        "Action": f"{is_take}",
                         "Type": "LONG" if "LONG" in signal_type else "SHORT",
                         "Signal": signal_type,
                         "Entry_Price": price,
@@ -273,45 +295,43 @@ def run_analysis_cycle():
                 df = fetch_data(symbol, asset_type=fetch_type, timeframe=tf, limit=300)
                 if df.empty: continue
 
-                strat = WizardScalpStrategy()
+                # Modified to match app.py: Lookback=8
+                strat = WizardScalpStrategy(lookback=8)
                 df = strat.apply(df)
                 df = calculate_ml_features(df)
+                
+                # Sigma
+                tb = CONFIG['ltf']['triple_barrier']
+                crypto_use_dynamic = tb.get('crypto_use_dynamic', False)
+                if crypto_use_dynamic and asset_type == 'crypto':
+                     df['sigma'] = df['close'].pct_change().ewm(span=36, adjust=False).std()
+                     df['sigma'] = df['sigma'].fillna(method='bfill').fillna(0.01)
+
                 df = df.dropna()
                 
                 if df.empty: continue
 
                 last_row = df.iloc[-1].copy()
-                features = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi']
                 X_new = pd.DataFrame([last_row[features]])
                 prob = model_ltf.predict_proba(X_new)[0][1]
                 
                 signal_type = last_row['signal_type']
                 if signal_type != 'NONE':
                     price = last_row['close']
-                    tb = CONFIG['ltf']['triple_barrier']
                     
-                    # Logic for LTF (Dynamic Handling)
-                    is_crypto_dynamic = (asset_type == 'crypto' and tb.get('crypto_use_dynamic', False))
-                    sigma = last_row.get('sigma', 0.01) # Usually calculated in pipeline
-                    
-                    # Need to calc sigma if missing
-                    # Or just use static fallback for robustness
-                    if 'sigma' not in last_row:
-                        # Simple ATR aprox or fallback
-                        sl_pct = tb['crypto_sl'] 
-                        pt_pct = tb['crypto_pt']
-                    else:
-                         sl_pct = tb['crypto_sl'] # Placeholder if dynamic not fully implemented here
-                         pt_pct = tb['crypto_pt']
-                    
+                    # Logic for LTF
                     if 'LONG' in signal_type:
-                        sl_price = price * (1 - sl_pct)
-                        pt_price = price * (1 + pt_pct)
+                         sl_pct = tb['crypto_sl'] if asset_type=='crypto' else tb['trad_sl']
+                         pt_pct = tb['crypto_pt'] if asset_type=='crypto' else tb['trad_pt']
+                         sl_price = price * (1 - sl_pct)
+                         pt_price = price * (1 + pt_pct)
                     else:
+                        sl_pct = tb['crypto_sl'] if asset_type=='crypto' else tb['trad_sl']
+                        pt_pct = tb['crypto_pt'] if asset_type=='crypto' else tb['trad_pt']
                         sl_price = price * (1 + sl_pct)
                         pt_price = price * (1 - pt_pct)
 
-                    is_take = "✅ TAKE" if prob > 0.55 else "⚠️ WAIT"
+                    is_take = "✅ TAKE" if prob > CONFIDENCE_THRESHOLD else "⚠️ WAIT"
 
                     sig = {
                         "Asset": symbol,
@@ -342,6 +362,7 @@ def run_analysis_cycle():
 if __name__ == "__main__":
     print("🔮 WizardWave Signal Monitor Started...")
     print(f"Webhook URL: {WEBHOOK_URL} (Loaded)")
+    print(f"Threshold: {CONFIDENCE_THRESHOLD*100}%")
     
     while True:
         try:

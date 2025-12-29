@@ -10,6 +10,51 @@ from st_copy_to_clipboard import st_copy_to_clipboard
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.simplefilter(action='ignore', category=ResourceWarning)
 
+import subprocess
+import sys
+import os
+
+# --- AUTO-START BACKGROUND MONITOR ---
+def ensure_monitor_running():
+    """Starts the separate monitor_signals.py script if not already running."""
+    pid_file = "monitor.pid"
+    
+    if os.path.exists(pid_file):
+        try:
+            with open(pid_file, "r") as f:
+                pid = int(f.read().strip())
+            
+            # Check if process is running (Windows/Unix compatible check)
+            os.kill(pid, 0) 
+            # If we get here, it is running
+            return 
+        except (OSError, ValueError):
+            # Process dead or file corrupt
+            pass
+    
+    # Start the Monitor
+    try:
+        # Windows: CREATE_NO_WINDOW = 0x08000000 to avoid popup
+        # This allows it to run silently in the background
+        creation_flags = 0x08000000 if os.name == 'nt' else 0
+        
+        process = subprocess.Popen(
+            [sys.executable, "monitor_signals.py"],
+            cwd=os.getcwd(),
+            creationflags=creation_flags
+        )
+        
+        with open(pid_file, "w") as f:
+            f.write(str(process.pid))
+            
+        print(f"Started Background Monitor (PID: {process.pid})")
+        
+    except Exception as e:
+        print(f"Failed to auto-start monitor: {e}")
+
+# Run the check immediately on app load
+ensure_monitor_running()
+
 # --- Thread Manager for Background Fetching ---
 class GlobalRunManager:
     def __init__(self):
