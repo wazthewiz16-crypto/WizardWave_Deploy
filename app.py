@@ -567,18 +567,13 @@ def analyze_timeframe(timeframe_label, silent=False):
                 df_strat['sigma'] = df_strat['sigma'].fillna(method='bfill').fillna(0.01)
             
             if model:
-                # Load features dynamically based on training
-                # Default to old list if file missing
-                default_feats = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi']
+                # Hardcoded Feature Lists (Matches Trained Models)
+                # HTF Features: Dropped correlated ones
+                features_htf_list = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi', 'mango_d1_dist']
+                # LTF Features: Kept all
+                features_ltf_list = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi', 'mango_d1_dist', 'mango_d2_dist', 'upper_zone_dist', 'lower_zone_dist']
                 
-                features_file = f"features_{group}.json"
-                features = default_feats
-                
-                if os.path.exists(features_file):
-                    try:
-                        with open(features_file, 'r') as f:
-                            features = json.load(f)
-                    except: pass
+                features = features_ltf_list if group == 'ltf' else features_htf_list
                 
                 # --- ENSEMBLE LOGIC (12 Hours) ---
                 if timeframe_label == "12 Hours":
@@ -627,7 +622,12 @@ def analyze_timeframe(timeframe_label, silent=False):
                 df_strat['model_prob'] = 0.0
 
             # --- Check Active Trade ---
+            # --- Check Active Trade ---
             active_trade_data = None
+            
+            # Define threshold in outer scope for closure access (Fixes NameError)
+            threshold = 0.60 if group == 'ltf' else 0.45 
+            
             trade = strat.get_active_trade(df_strat)
             
             if trade:
