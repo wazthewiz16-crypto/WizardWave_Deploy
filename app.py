@@ -849,7 +849,7 @@ def analyze_timeframe(timeframe_label, silent=False):
                                    last_close_pnl = (close - entry_price) / entry_price
                                else:
                                    last_close_pnl = (entry_price - close) / entry_price
-                                   
+                                    
                                 # Safety: If PnL exceeds SL, cap it (assume SL hit during move)
                                 status_label = "FLIP 🔄"
                                 if last_close_pnl < -curr_sl_pct:
