@@ -1569,7 +1569,7 @@ def show_runic_alerts():
                              br1_c1, br1_c2 = st.columns([0.5, 0.5], gap="small")
                              
                              with br1_c1:
-                                 if st.button("👁️", key=f"btn_v_{unique_id}", use_container_width=True, help="View"):
+                                 if st.button("👁️", key=f"btn_v_{unique_id}", use_container_width=True, help="View", type="tertiary"):
                                      tv_sym = get_tv_symbol({'symbol': row.get('Symbol', '')})
                                      try: tv_int = get_tv_interval(row['Timeframe'])
                                      except: tv_int = '60'
@@ -1579,7 +1579,7 @@ def show_runic_alerts():
                                      st.session_state.active_view_mode = 'details'
                                      st.rerun()
                              with br1_c2:
-                                 if st.button("🧮", key=f"btn_c_{unique_id}", use_container_width=True, help="Calc"):
+                                 if st.button("🧮", key=f"btn_c_{unique_id}", use_container_width=True, help="Calc", type="tertiary"):
                                      tv_sym = get_tv_symbol({'symbol': row.get('Symbol', '')})
                                      try: tv_int = get_tv_interval(row['Timeframe'])
                                      except: tv_int = '60'
