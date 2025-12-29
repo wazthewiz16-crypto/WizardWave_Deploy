@@ -277,7 +277,8 @@ def run_analysis_cycle():
                         sl_price = price * (1 + sl_pct)
                         pt_price = price * (1 - pt_pct)
 
-                    is_take = "✅ TAKE" if prob > CONFIDENCE_THRESHOLD else "⚠️ WAIT"
+                    threshold = 0.45 # HTF Threshold
+                    is_take = "✅ TAKE" if prob > threshold else "⚠️ WAIT"
                     
                     sig = {
                         "Asset": symbol,
@@ -346,7 +347,8 @@ def run_analysis_cycle():
                         sl_price = price * (1 + sl_pct)
                         pt_price = price * (1 - pt_pct)
 
-                    is_take = "✅ TAKE" if prob > CONFIDENCE_THRESHOLD else "⚠️ WAIT"
+                    threshold = 0.60 # LTF Threshold
+                    is_take = "✅ TAKE" if prob > threshold else "⚠️ WAIT"
 
                     sig = {
                         "Asset": symbol,

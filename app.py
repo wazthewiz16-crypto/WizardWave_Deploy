@@ -645,7 +645,7 @@ def analyze_timeframe(timeframe_label, silent=False):
                 
                 # Check Labels
                 is_trad = asset['type'] == 'trad'
-                threshold = 0.40 # Optimized Threshold
+                threshold = 0.60 if group == 'ltf' else 0.45 # Strict Thresholds (LTF adjusted for higher sensitivity)
                 rec_action = "✅ TAKE" if entry_conf > threshold else "❌ SKIP"
                 
                 type_display = f"⬆️ {trade['Position']}" if trade['Position'] == 'LONG' else f"⬇️ {trade['Position']}"
@@ -833,7 +833,7 @@ def analyze_timeframe(timeframe_label, silent=False):
 
                    # --- ENTRY & REVERSAL LOGIC ---
                    # Only take filtered signals
-                   if model_prob > 0.40:
+                   if model_prob > threshold:
                        new_pos = None
                        if 'LONG' in signal:
                            new_pos = 'LONG'
