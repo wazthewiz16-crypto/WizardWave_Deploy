@@ -850,20 +850,26 @@ def analyze_timeframe(timeframe_label, silent=False):
                                else:
                                    last_close_pnl = (entry_price - close) / entry_price
                                    
-                               trades.append({
-                                    "_sort_key": entry_time,
-                                    "Asset": asset['name'],
-                                    "Timeframe": short_tf,
-                                    "Time": format_time(entry_time),
-                                    "Exit Time": format_time(idx),
-                                    "Type": f"{position} {'🟢' if position == 'LONG' else '🔴'}",
-                                    "Price": entry_price,
-                                    "Confidence": f"{entry_conf:.0%}",
-                                    "Model": "✅",
-                                    "Return_Pct": last_close_pnl, 
-                                    "SL_Pct": curr_sl_pct,
-                                    "Status": "FLIP 🔄"
-                               })
+                                # Safety: If PnL exceeds SL, cap it (assume SL hit during move)
+                                status_label = "FLIP 🔄"
+                                if last_close_pnl < -curr_sl_pct:
+                                    last_close_pnl = -curr_sl_pct
+                                    status_label = "HIT SL 🔴"
+                                   
+                                trades.append({
+                                     "_sort_key": entry_time,
+                                     "Asset": asset['name'],
+                                     "Timeframe": short_tf,
+                                     "Time": format_time(entry_time),
+                                     "Exit Time": format_time(idx),
+                                     "Type": f"{position} {'🟢' if position == 'LONG' else '🔴'}",
+                                     "Price": entry_price,
+                                     "Confidence": f"{entry_conf:.0%}",
+                                     "Model": "✅",
+                                     "Return_Pct": last_close_pnl, 
+                                     "SL_Pct": curr_sl_pct,
+                                     "Status": status_label
+                                })
                                # Prepare for new entry
                                position = None 
                            
