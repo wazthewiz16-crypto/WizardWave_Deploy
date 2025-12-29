@@ -2177,14 +2177,14 @@ with col_center:
         # Determine labels with indicator
         lbl_portal = "✨ PORTAL" if st.session_state.active_tab=='PORTAL' else "PORTAL"
         lbl_shield = "🛡️ SHIELD" if st.session_state.active_tab=='RISK' else "SHIELD"
-        lbl_rules = "📜 RULES" if st.session_state.active_tab=='RULES' else "RULES"
+        lbl_rules = "📜 SCRIPTURE" if st.session_state.active_tab=='SCRIPTURE' else "SCRIPTURE"
         lbl_spell = "📘 SPELLBOOK" if st.session_state.active_tab=='SPELLBOOK' else "SPELLBOOK"
 
         c2.button(lbl_portal, use_container_width=True, type="secondary", on_click=set_tab, args=('PORTAL',))
         
         c3.button(lbl_shield, use_container_width=True, type="secondary", on_click=set_tab, args=('RISK',))
         
-        c4.button(lbl_rules, use_container_width=True, type="secondary", on_click=set_tab, args=('RULES',))
+        c4.button(lbl_rules, use_container_width=True, type="secondary", on_click=set_tab, args=('SCRIPTURE',))
         
         c5.button(lbl_spell, use_container_width=True, type="secondary", on_click=set_tab, args=('SPELLBOOK',))
         
@@ -2192,7 +2192,7 @@ with col_center:
         st.markdown('<div style="margin-top: -10px; margin-bottom: -10px;"><hr style="margin: 5px 0; border-color: #333;"></div>', unsafe_allow_html=True)
         
         if st.session_state.active_tab == 'HISTORY':
-             st.markdown("### 📜 Signal History & Verification")
+             st.markdown("### 📜 Signal History")
              
              hist_df = st.session_state.get('runic_history_df', pd.DataFrame())
 
@@ -2210,6 +2210,8 @@ with col_center:
                      show_24h_only = st.checkbox("Show last 24 Hours Only", value=False)
                      # Toggle for 7 Days Only
                      show_7d_only = st.checkbox("Show last 7 Days Only", value=True)
+                     # Toggle for 30 Days Only
+                     show_30d_only = st.checkbox("Show last 30 Days Only", value=False)
                      # Toggle for Open Trades Only (New)
                      show_open_only = st.checkbox("Show Open Trades Only", value=False)
                  
@@ -2219,6 +2221,9 @@ with col_center:
                      filtered_df = hist_df[hist_df['_sort_key'] >= cutoff].copy()
                  elif show_7d_only:
                      cutoff = pd.Timestamp.now(tz='UTC') - pd.Timedelta(days=7)
+                     filtered_df = hist_df[hist_df['_sort_key'] >= cutoff].copy()
+                 elif show_30d_only:
+                     cutoff = pd.Timestamp.now(tz='UTC') - pd.Timedelta(days=30)
                      filtered_df = hist_df[hist_df['_sort_key'] >= cutoff].copy()
                  else:
                      filtered_df = hist_df.copy()
@@ -2285,6 +2290,7 @@ with col_center:
                  pnl_label = "PnL Sum (All Time)"
                  if show_24h_only: pnl_label = "PnL Sum (24hrs)"
                  elif show_7d_only: pnl_label = "PnL Sum (7 Days)"
+                 elif show_30d_only: pnl_label = "PnL Sum (30 Days)"
                  
                  m1.metric(pnl_label, f"{total_ret:.2%}")
                  m2.metric("Trades", total_trades)
@@ -2457,7 +2463,7 @@ with col_center:
              # Placeholder for future "Spellbook" features (Journal, logs, etc)
              st.info("The Grimoire is open. Future enchantments pending.")
 
-        elif st.session_state.active_tab == 'RULES':
+        elif st.session_state.active_tab == 'SCRIPTURE':
             st.markdown("""
             ### 📜 The Code of the Wizard
             
