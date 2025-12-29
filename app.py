@@ -2207,13 +2207,18 @@ with col_center:
                  opt_col1, opt_col2 = st.columns([0.4, 0.6])
                  with opt_col1:
                      # Toggle for 24H Only
-                     show_24h_only = st.checkbox("Show last 24 Hours Only", value=True)
+                     show_24h_only = st.checkbox("Show last 24 Hours Only", value=False)
+                     # Toggle for 7 Days Only
+                     show_7d_only = st.checkbox("Show last 7 Days Only", value=True)
                      # Toggle for Open Trades Only (New)
                      show_open_only = st.checkbox("Show Open Trades Only", value=False)
                  
-                 # 1. Filter Time (Last 24h)
+                 # 1. Filter Time
                  if show_24h_only:
                      cutoff = pd.Timestamp.now(tz='UTC') - pd.Timedelta(hours=24)
+                     filtered_df = hist_df[hist_df['_sort_key'] >= cutoff].copy()
+                 elif show_7d_only:
+                     cutoff = pd.Timestamp.now(tz='UTC') - pd.Timedelta(days=7)
                      filtered_df = hist_df[hist_df['_sort_key'] >= cutoff].copy()
                  else:
                      filtered_df = hist_df.copy()
@@ -2276,7 +2281,12 @@ with col_center:
                  
                  # Metrics
                  m1, m2, m3 = st.columns(3)
-                 m1.metric("PnL Sum (24hrs)", f"{total_ret:.2%}")
+                 
+                 pnl_label = "PnL Sum (All Time)"
+                 if show_24h_only: pnl_label = "PnL Sum (24hrs)"
+                 elif show_7d_only: pnl_label = "PnL Sum (7 Days)"
+                 
+                 m1.metric(pnl_label, f"{total_ret:.2%}")
                  m2.metric("Trades", total_trades)
                  m3.metric("Win Rate", f"{win_rate:.0%}")
                  
