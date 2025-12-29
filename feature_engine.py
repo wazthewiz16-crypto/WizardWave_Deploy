@@ -105,7 +105,35 @@ def calculate_ml_features(df):
     else:
         df['mfi'] = 50
 
+    # --- WIZARD INDICATOR FEATURES (User Requested) ---
+    # Normalize absolute levels to relative distances for ML stability
+    
+    # Mango D1
+    if 'mango_d1' in df.columns:
+        df['mango_d1_dist'] = (df['close'] - df['mango_d1']) / df['close']
+    else:
+        df['mango_d1_dist'] = 0.0
+
+    # Mango D2
+    if 'mango_d2' in df.columns:
+        df['mango_d2_dist'] = (df['close'] - df['mango_d2']) / df['close']
+    else:
+        df['mango_d2_dist'] = 0.0
+
+    # Upper Bid Zone
+    if 'zone_upper' in df.columns:
+        df['upper_zone_dist'] = (df['close'] - df['zone_upper']) / df['close']
+    else:
+        df['upper_zone_dist'] = 0.0
+
+    # Lower Bid Zone
+    if 'zone_lower' in df.columns:
+        df['lower_zone_dist'] = (df['close'] - df['zone_lower']) / df['close']
+    else:
+        df['lower_zone_dist'] = 0.0
+
     # Fill any remaining NaNs (e.g. at start of dataframe)
     df.fillna(0, inplace=True)
     
     return df
+

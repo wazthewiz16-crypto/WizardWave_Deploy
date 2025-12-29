@@ -567,7 +567,18 @@ def analyze_timeframe(timeframe_label, silent=False):
                 df_strat['sigma'] = df_strat['sigma'].fillna(method='bfill').fillna(0.01)
             
             if model:
-                features = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi']
+                # Load features dynamically based on training
+                # Default to old list if file missing
+                default_feats = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi']
+                
+                features_file = f"features_{group}.json"
+                features = default_feats
+                
+                if os.path.exists(features_file):
+                    try:
+                        with open(features_file, 'r') as f:
+                            features = json.load(f)
+                    except: pass
                 
                 # --- ENSEMBLE LOGIC (12 Hours) ---
                 if timeframe_label == "12 Hours":

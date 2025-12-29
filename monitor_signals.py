@@ -187,7 +187,22 @@ def run_analysis_cycle():
 
     all_signals = []
     
-    features = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi']
+    default_features = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi']
+
+    # Load Dynamic Features
+    htf_features = default_features
+    if os.path.exists('features_htf.json'):
+        try:
+            with open('features_htf.json', 'r') as f:
+                htf_features = json.load(f)
+        except: pass
+
+    ltf_features = default_features
+    if os.path.exists('features_ltf.json'):
+        try:
+            with open('features_ltf.json', 'r') as f:
+                ltf_features = json.load(f)
+        except: pass
 
     # 1. HTF
     for tf in CONFIG['htf']['timeframes']:
@@ -220,7 +235,7 @@ def run_analysis_cycle():
                 if df.empty: continue
                 
                 last_row = df.iloc[-1].copy() # Ensure copy
-                X_new = pd.DataFrame([last_row[features]])
+                X_new = pd.DataFrame([last_row[htf_features]])
                 
                 # --- ENSEMBLE LOGIC ---
                 prob = 0.0
@@ -312,7 +327,7 @@ def run_analysis_cycle():
                 if df.empty: continue
 
                 last_row = df.iloc[-1].copy()
-                X_new = pd.DataFrame([last_row[features]])
+                X_new = pd.DataFrame([last_row[ltf_features]])
                 prob = model_ltf.predict_proba(X_new)[0][1]
                 
                 signal_type = last_row['signal_type']
