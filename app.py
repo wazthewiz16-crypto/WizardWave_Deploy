@@ -1553,17 +1553,16 @@ def show_runic_alerts():
 <span style="font-size: 1.1rem; color: #f0f0f0;">{icon_char}</span>
 <span style="font-weight: 800; font-size: 0.95rem; color: #fff;">{asset_name}</span>
 <span style="font-size: 0.65rem; font-weight: bold; padding: 1px 5px; border-radius: 4px; background: {direction_color}25; color: {direction_color}; border: 1px solid {direction_color}30;">{action_text}</span>
-<span style="font-size: 0.65rem; color: #aaa; margin-left: 5px;">| {pnl_display_str}</span>
+<span style="font-size: 0.75rem; font-weight: bold; color: {pnl_color}; margin-left: 5px;">{pnl_display_str}</span>
 </div>
+<div style="font-size: 0.8rem; font-weight: bold; color: #ff3344;">{row.get('Timeframe')}</div>
 </div>
 <div style="font-size: 0.75rem; color: #ccc; line-height: 1.5;">
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
 <div><span style="color:#777">Sig:</span> <span style="font-weight:bold; color:#eee">{row.get('Action')}</span> <span style="color:#FFB74D">{row.get('Confidence')}</span></div>
-<div style="text-align: right;"><span style="color:#777">Ent:</span> <span style="color:#00ff88; font-family:monospace">{row.get('Entry_Price')}</span></div>
+<div style="text-align: right;"><span style="color:#777">Ent:</span> <span style="color:#00ff88; font-family:monospace">{row.get('Entry_Price')}</span> <span style="color:#555">|</span> <span style="color:#777">Now:</span> <span style="color:#ffd700; font-family:monospace">{row.get('Current_Price', 'N/A')}</span></div>
 <div><span style="color:#777">TP:</span> <span style="color:#eee">{row.get('Take_Profit')}</span> <span style="color:#777">SL:</span> <span style="color:#d8b4fe">{row.get('Stop_Loss')}</span></div>
-<div style="text-align: right;"><span style="color:#777">Now:</span> <span style="color:#ffd700; font-family:monospace">{row.get('Current_Price', 'N/A')}</span></div>
-<div><span style="color:#888; font-size: 0.7rem;">🕒 {et_disp}</span></div>
-<div style="text-align: right;"><span style="color:#666; font-size:0.7rem;">{row.get('Timeframe')}</span></div>
+<div style="text-align: right;"><span style="color:#888; font-size: 0.7rem;">🕒 {et_disp}</span></div>
 </div>
 </div>
 </div>
