@@ -34,14 +34,14 @@ def get_asset_type(symbol):
         
     return 'trad'
 
-def apply_triple_barrier(df, symbol, tf, group_config):
+def apply_triple_barrier(df, symbol, tf, model_config):
     """
-    Applies Triple Barrier Method to label signals based on group config.
+    Applies Triple Barrier Method to label signals based on model config.
     """
     labels = []
     
     asset_type = get_asset_type(symbol)
-    tb_config = group_config['triple_barrier']
+    tb_config = model_config['triple_barrier']
     
     # Get PT/SL based on Asset Type
     if asset_type == 'crypto':
@@ -54,29 +54,27 @@ def apply_triple_barrier(df, symbol, tf, group_config):
         pt = tb_config['trad_pt']
         sl = tb_config['trad_sl']
     
-    
-    # Weight
-    weights_map = group_config.get('weights', {})
-    sample_weight = weights_map.get(tf, 1.0)
+    # Weight - simplified, 1.0 for single TF models
+    sample_weight = 1.0
     
     # Calculate Volatility (Sigma) if needed for Dynamic Barrier
-    # Optimization: Only strictly needed for Crypto if configured, but calculating for all is fast and safe.
-    if tb_config.get('crypto_use_dynamic', False) or tb_config.get('use_dynamic_barrier', False):
+    if tb_config.get('crypto_use_dynamic', False):
          df['sigma'] = df['close'].pct_change().ewm(span=36, adjust=False).std()
          df['sigma'] = df['sigma'].fillna(method='bfill').fillna(0.01)
     
     # Time Limit Calculation
-    if tb_config.get('use_dynamic_barrier', False) and 'dynamic_time_limit_bars' in tb_config:
-        time_limit = tb_config['dynamic_time_limit_bars']
-    elif 'time_limit_bars' in tb_config:
+    if 'time_limit_bars' in tb_config:
         time_limit = tb_config['time_limit_bars']
-    else:
-        # Convert days to bars (Legacy HTF logic)
-        days = tb_config.get('time_limit_days', 40)
+    elif 'time_limit_days' in tb_config:
+        # Fallback for legacy support if needed, though we moved to bars
+        days = tb_config['time_limit_days']
         if tf == '1d': bars_per_day = 1
         elif tf == '4d': bars_per_day = 0.25
-        else: bars_per_day = 1 # Fallback
+        elif tf == '1h': bars_per_day = 24 # Crude approx
+        else: bars_per_day = 1 
         time_limit = int(days * bars_per_day)
+    else:
+        time_limit = 20 # Default
         
     time_limit = max(1, time_limit)
     
@@ -92,7 +90,6 @@ def apply_triple_barrier(df, symbol, tf, group_config):
         entry_price = row['close']
         
         # Determine Direction
-        # Both strategies use similar naming conventions or substrings
         if 'LONG' in signal_type:
             direction = 1
         else: # SHORT
@@ -135,9 +132,6 @@ def apply_triple_barrier(df, symbol, tf, group_config):
                  hit_pt = future_window['low'] <= pt_price
                  hit_sl = future_window['high'] >= sl_price
                  
-             # Store dynamic PT/SL for debugging/logic if needed across loop
-             # (not needed for triple barrier outcome, just calc)
-             
         else:
              # Static Fixed %
              if direction == 1:
@@ -151,8 +145,6 @@ def apply_triple_barrier(df, symbol, tf, group_config):
                  hit_pt = future_window['low'] <= pt_price
                  hit_sl = future_window['high'] >= sl_price
                  
-
-            
         first_pt = hit_pt.idxmax() if hit_pt.any() else None
         first_sl = hit_sl.idxmax() if hit_sl.any() else None
         
@@ -194,12 +186,12 @@ def apply_triple_barrier(df, symbol, tf, group_config):
         
     return pd.DataFrame(labels)
 
-def train_model(group_key, group_config):
-    print(f"\n=== Training Model for {group_key.upper()} ===")
+def train_model(model_name, model_config):
+    print(f"\n=== Training Model: {model_name} ===")
     all_signals = []
     
-    timeframes = group_config['timeframes']
-    strat_name = group_config['strategy']
+    timeframes = model_config['timeframes']
+    strat_name = model_config['strategy']
     
     for symbol in config['assets']:
         for tf in timeframes:
@@ -212,34 +204,34 @@ def train_model(group_key, group_config):
                     fetch_type = get_asset_type(symbol)
                 
                 # Fetch
-                df = fetch_data(symbol, asset_type=fetch_type, timeframe=tf, limit=config['lookback_candles'])
+                df = fetch_data(symbol, asset_type=fetch_type, timeframe=tf, limit=config.get('lookback_candles', 300))
                 if df.empty: continue
                 
                 # Apply Strategy
                 if strat_name == "WizardWave":
                     strat = WizardWaveStrategy()
                 else:
-                    strat = WizardScalpStrategy() # Default Low TF settings
+                    strat = WizardScalpStrategy(lookback=8) # Default Low TF
                     
                 df = strat.apply(df)
                 
                 # Label
-                labeled = apply_triple_barrier(df, symbol, tf, group_config)
+                labeled = apply_triple_barrier(df, symbol, tf, model_config)
                 all_signals.append(labeled)
                 
             except Exception as e:
                 print(f"Error {symbol} {tf}: {e}")
                 
     if not all_signals:
-        print(f"No signals for {group_key}.")
+        print(f"No signals for {model_name}.")
         return
 
     full_dataset = pd.concat(all_signals, ignore_index=True)
     full_dataset.dropna(inplace=True)
     print(f"Total Signals: {len(full_dataset)}")
     
-    if len(full_dataset) < 50:
-        print("Not enough data.")
+    if len(full_dataset) < 10: # Lowered threshold for specific TF training
+        print(f"Not enough data ({len(full_dataset)}) to train {model_name}.")
         return
 
     # Train
@@ -252,14 +244,14 @@ def train_model(group_key, group_config):
     
     clf = RandomForestClassifier(
         n_estimators=config['model']['n_estimators'],
-        max_depth=config['model']['max_depth'], # Use updated depth
+        max_depth=config['model']['max_depth'],
         random_state=42,
         class_weight='balanced'
     )
     
     clf.fit(X, y, sample_weight=w)
     
-    model_file = group_config['model_file']
+    model_file = model_config['model_file']
     joblib.dump(clf, model_file)
     print(f"Saved {model_file}")
     
@@ -268,11 +260,9 @@ def train_model(group_key, group_config):
     print(f"Training Accuracy: {accuracy_score(y, preds):.2f}")
 
 def run_pipeline():
-    # Train HTF
-    train_model('htf', config['htf'])
-    
-    # Train LTF
-    train_model('ltf', config['ltf'])
+    models = config.get('models', {})
+    for name, conf in models.items():
+        train_model(name, conf)
 
 if __name__ == "__main__":
     run_pipeline()

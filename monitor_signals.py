@@ -31,7 +31,6 @@ except:
     WEBHOOK_URL = None
 
 PROCESSED_FILE = 'processed_signals.json'
-CONFIDENCE_THRESHOLD = 0.40 # Matched to app.py (was 0.55)
 
 # --- HELPERS ---
 
@@ -111,7 +110,7 @@ def send_discord_alert(webhook_url, signal_data):
 def process_alerts(df):
     """Checks for new signals and sends alerts."""
     if not WEBHOOK_URL:
-        print("No Webhook URL found.")
+        # print("No Webhook URL found.")
         return
 
     MAX_ALERT_AGE_HOURS = 3
@@ -137,7 +136,7 @@ def process_alerts(df):
                 entry_dt = pd.to_datetime(entry_time_str)
                 if entry_dt.tzinfo is None:
                     # Assume EST/New York if naive, or UTC -> convert
-                    entry_dt = entry_dt.tz_localize('America/New_York', ambiguous='infer') # Approximation for now
+                    entry_dt = entry_dt.tz_localize('America/New_York', ambiguous='infer') 
                 
                 # Compare
                 if (now_est - entry_dt).total_seconds() > (MAX_ALERT_AGE_HOURS * 3600):
@@ -178,196 +177,127 @@ def run_analysis_cycle():
     print(f"Starting Analysis Cycle at {datetime.now()}")
     
     # Load Models
-    try:
-        model_htf = joblib.load(CONFIG['htf']['model_file'])
-        model_ltf = joblib.load(CONFIG['ltf']['model_file'])
-    except Exception as e:
-        print(f"Error loading models: {e}")
+    loaded_models = {}
+    models_config = CONFIG.get('models', {})
+    
+    for name, conf in models_config.items():
+        try:
+            if os.path.exists(conf['model_file']):
+                loaded_models[name] = joblib.load(conf['model_file'])
+            else:
+                pass # print(f"Model file not found: {conf['model_file']}")
+        except Exception as e:
+            print(f"Error loading model {name}: {e}")
+
+    if not loaded_models:
+        print("No models loaded. Please ensure pipeline has been run.")
         return
 
     all_signals = []
     
-    default_features = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi']
-
-    # Load Dynamic Features
-    htf_features = default_features
-    if os.path.exists('features_htf.json'):
-        try:
-            with open('features_htf.json', 'r') as f:
-                htf_features = json.load(f)
-        except: pass
-
-    ltf_features = default_features
-    if os.path.exists('features_ltf.json'):
-        try:
-            with open('features_ltf.json', 'r') as f:
-                ltf_features = json.load(f)
-        except: pass
-
-    # 1. HTF
-    for tf in CONFIG['htf']['timeframes']:
-        for symbol in CONFIG['assets']:
-            try:
-                # Determine Fetch Type
-                asset_type = get_asset_type(symbol)
-                fetch_type = 'trad' if asset_type == 'forex' or asset_type == 'trad' else 'crypto'
-                if '-' in symbol or '^' in symbol or '=' in symbol: fetch_type = 'trad'
-                
-                # Fetch
-                df = fetch_data(symbol, asset_type=fetch_type, timeframe=tf, limit=300)
-                if df.empty: continue
-
-                # Strategy
-                strat = WizardWaveStrategy()
-                df = strat.apply(df)
-                
-                # Features
-                df = calculate_ml_features(df)
-                
-                # Sigma for Dynamic Barriers (Matching app.py)
-                tb = CONFIG['htf']['triple_barrier']
-                crypto_use_dynamic = tb.get('crypto_use_dynamic', False)
-                if crypto_use_dynamic and asset_type == 'crypto':
-                     df['sigma'] = df['close'].pct_change().ewm(span=36, adjust=False).std()
-                     df['sigma'] = df['sigma'].fillna(method='bfill').fillna(0.01)
-                
-                df = df.dropna()
-                if df.empty: continue
-                
-                last_row = df.iloc[-1].copy() # Ensure copy
-                X_new = pd.DataFrame([last_row[htf_features]])
-                
-                # --- ENSEMBLE LOGIC ---
-                prob = 0.0
-                if tf == '12h':
-                    # 80% HTF + 20% LTF
-                    p_htf = model_htf.predict_proba(X_new)[0][1]
-                    p_ltf = model_ltf.predict_proba(X_new)[0][1]
-                    prob = (0.8 * p_htf) + (0.2 * p_ltf)
-                else:
-                    prob = model_htf.predict_proba(X_new)[0][1]
-                
-                # Create Signal Object
-                signal_type = last_row['signal_type']
-                if signal_type != 'NONE':
-                    price = last_row['close']
-                    
-                    # Logic from apply_triple_barrier / app.py comparison
-                    sigma = last_row.get('sigma', 0.01) if 'sigma' in last_row else 0.01
-                    
-                    if 'LONG' in signal_type:
-                        if crypto_use_dynamic and asset_type == 'crypto':
-                             # Use simple Sigma-based width? check app.py or pipeline.py logic
-                             # app.py doesn't show the exact calculation, just that sigma is computed.
-                             # strategy.py typically uses it. 
-                             # We'll rely on the default logic:
-                             sl_pct = tb['crypto_sl'] 
-                             pt_pct = tb['crypto_pt']
-                             # If dynamic is strictly enforced in strat, it might override.
-                             # For now, use config defaults as baseline approx
-                        else:
-                             sl_pct = tb['crypto_sl'] if asset_type=='crypto' else tb['trad_sl']
-                             pt_pct = tb['crypto_pt'] if asset_type=='crypto' else tb['trad_pt']
-                             
-                        sl_price = price * (1 - sl_pct)
-                        pt_price = price * (1 + pt_pct)
-                    else:
-                        sl_pct = tb['crypto_sl'] if asset_type=='crypto' else tb['trad_sl']
-                        pt_pct = tb['crypto_pt'] if asset_type=='crypto' else tb['trad_pt']
-                        sl_price = price * (1 + sl_pct)
-                        pt_price = price * (1 - pt_pct)
-
-                    threshold = 0.45 # HTF Threshold
-                    is_take = "✅ TAKE" if prob > threshold else "⚠️ WAIT"
-                    
-                    sig = {
-                        "Asset": symbol,
-                        "Timeframe": tf,
-                        "Action": f"{is_take}",
-                        "Type": "LONG" if "LONG" in signal_type else "SHORT",
-                        "Signal": signal_type,
-                        "Entry_Price": price,
-                        "Current_Price": price,
-                        "Entry_Time": str(last_row.name), # Index is timestamp
-                        "Confidence": f"{prob*100:.1f}%",
-                        "Confidence_Score": prob*100,
-                        "Take_Profit": round(pt_price, 4),
-                        "Stop_Loss": round(sl_price, 4)
-                    }
-                    all_signals.append(sig)
+    # Iterate through each model configuration
+    for model_name, model_conf in models_config.items():
+        if model_name not in loaded_models:
+            continue
             
-            except Exception as e:
-                # print(f"Error HTF {symbol} {tf}: {e}")
-                pass
-
-    # 2. LTF
-    for tf in CONFIG['ltf']['timeframes']:
-        for symbol in CONFIG['assets']:
-            try:
-                asset_type = get_asset_type(symbol)
-                fetch_type = 'trad' if asset_type == 'forex' or asset_type == 'trad' else 'crypto'
-                if '-' in symbol or '^' in symbol or '=' in symbol: fetch_type = 'trad'
-
-                df = fetch_data(symbol, asset_type=fetch_type, timeframe=tf, limit=300)
-                if df.empty: continue
-
-                # Modified to match app.py: Lookback=8
-                strat = WizardScalpStrategy(lookback=8)
-                df = strat.apply(df)
-                df = calculate_ml_features(df)
-                
-                # Sigma
-                tb = CONFIG['ltf']['triple_barrier']
-                crypto_use_dynamic = tb.get('crypto_use_dynamic', False)
-                if crypto_use_dynamic and asset_type == 'crypto':
-                     df['sigma'] = df['close'].pct_change().ewm(span=36, adjust=False).std()
-                     df['sigma'] = df['sigma'].fillna(method='bfill').fillna(0.01)
-
-                df = df.dropna()
-                
-                if df.empty: continue
-
-                last_row = df.iloc[-1].copy()
-                X_new = pd.DataFrame([last_row[ltf_features]])
-                prob = model_ltf.predict_proba(X_new)[0][1]
-                
-                signal_type = last_row['signal_type']
-                if signal_type != 'NONE':
-                    price = last_row['close']
+        model = loaded_models[model_name]
+        timeframes = model_conf['timeframes']
+        strat_name = model_conf['strategy']
+        tb = model_conf['triple_barrier']
+        conf_threshold = model_conf.get('confidence_threshold', 0.50)
+        
+        # Default Features
+        features_list = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi']
+        
+        for tf in timeframes:
+            for symbol in CONFIG['assets']:
+                try:
+                    # Asset Type
+                    asset_type = get_asset_type(symbol)
+                    fetch_type = 'trad' if asset_type == 'forex' or asset_type == 'trad' else 'crypto'
+                    if '-' in symbol or '^' in symbol or '=' in symbol: fetch_type = 'trad'
                     
-                    # Logic for LTF
-                    if 'LONG' in signal_type:
-                         sl_pct = tb['crypto_sl'] if asset_type=='crypto' else tb['trad_sl']
-                         pt_pct = tb['crypto_pt'] if asset_type=='crypto' else tb['trad_pt']
-                         sl_price = price * (1 - sl_pct)
-                         pt_price = price * (1 + pt_pct)
+                    # Fetch
+                    df = fetch_data(symbol, asset_type=fetch_type, timeframe=tf, limit=300)
+                    if df.empty: continue
+                    
+                    # Strategy
+                    if strat_name == "WizardWave":
+                        strat = WizardWaveStrategy()
                     else:
-                        sl_pct = tb['crypto_sl'] if asset_type=='crypto' else tb['trad_sl']
-                        pt_pct = tb['crypto_pt'] if asset_type=='crypto' else tb['trad_pt']
-                        sl_price = price * (1 + sl_pct)
-                        pt_price = price * (1 - pt_pct)
+                        strat = WizardScalpStrategy(lookback=8)
+                    
+                    df = strat.apply(df)
+                    df = calculate_ml_features(df)
+                    
+                    # Sigma for Dynamic Barriers
+                    crypto_use_dynamic = tb.get('crypto_use_dynamic', False)
+                    if crypto_use_dynamic and asset_type == 'crypto':
+                         df['sigma'] = df['close'].pct_change().ewm(span=36, adjust=False).std()
+                         df['sigma'] = df['sigma'].fillna(method='bfill').fillna(0.01)
+                    
+                    df = df.dropna()
+                    if df.empty: continue
+                    
+                    last_row = df.iloc[-1].copy()
+                    
+                    # Predict
+                    X_new = pd.DataFrame([last_row[features_list]])
+                    prob = model.predict_proba(X_new)[0][1]
+                    
+                    signal_type = last_row['signal_type']
+                    if signal_type != 'NONE':
+                        price = last_row['close']
+                        
+                        # TP/SL Calculation
+                        if 'LONG' in signal_type:
+                            if crypto_use_dynamic and asset_type == 'crypto':
+                                  sigma = last_row.get('sigma', 0.01)
+                                  k_pt = tb.get('crypto_dyn_pt_k', 0.5)
+                                  k_sl = tb.get('crypto_dyn_sl_k', 0.5)
+                                  pt_pct = k_pt * sigma
+                                  sl_pct = k_sl * sigma
+                            else:
+                                 sl_pct = tb['crypto_sl'] if asset_type=='crypto' else tb.get('forex_sl' if asset_type=='forex' else 'trad_sl', 0.01)
+                                 pt_pct = tb['crypto_pt'] if asset_type=='crypto' else tb.get('forex_pt' if asset_type=='forex' else 'trad_pt', 0.02)
+                                 
+                            sl_price = price * (1 - sl_pct)
+                            pt_price = price * (1 + pt_pct)
+                        else: # SHORT
+                            if crypto_use_dynamic and asset_type == 'crypto':
+                                  sigma = last_row.get('sigma', 0.01)
+                                  k_pt = tb.get('crypto_dyn_pt_k', 0.5)
+                                  k_sl = tb.get('crypto_dyn_sl_k', 0.5)
+                                  pt_pct = k_pt * sigma
+                                  sl_pct = k_sl * sigma
+                            else:
+                                sl_pct = tb['crypto_sl'] if asset_type=='crypto' else tb.get('forex_sl' if asset_type=='forex' else 'trad_sl', 0.01)
+                                pt_pct = tb['crypto_pt'] if asset_type=='crypto' else tb.get('forex_pt' if asset_type=='forex' else 'trad_pt', 0.02)
 
-                    threshold = 0.60 # LTF Threshold
-                    is_take = "✅ TAKE" if prob > threshold else "⚠️ WAIT"
+                            sl_price = price * (1 + sl_pct)
+                            pt_price = price * (1 - pt_pct)
 
-                    sig = {
-                        "Asset": symbol,
-                        "Timeframe": tf,
-                        "Action": f"{is_take}",
-                        "Type": "LONG" if "LONG" in signal_type else "SHORT",
-                        "Signal": signal_type,
-                        "Entry_Price": price,
-                        "Current_Price": price,
-                        "Entry_Time": str(last_row.name),
-                        "Confidence": f"{prob*100:.1f}%",
-                        "Confidence_Score": prob*100,
-                        "Take_Profit": round(pt_price, 4),
-                        "Stop_Loss": round(sl_price, 4)
-                    }
-                    all_signals.append(sig)
+                        is_take = "✅ TAKE" if prob > conf_threshold else "⚠️ WAIT"
+                        
+                        sig = {
+                            "Asset": symbol,
+                            "Timeframe": tf,
+                            "Action": f"{is_take}",
+                            "Type": "LONG" if "LONG" in signal_type else "SHORT",
+                            "Signal": signal_type,
+                            "Entry_Price": price,
+                            "Current_Price": price,
+                            "Entry_Time": str(last_row.name),
+                            "Confidence": f"{prob*100:.1f}%",
+                            "Confidence_Score": prob*100,
+                            "Take_Profit": round(pt_price, 4),
+                            "Stop_Loss": round(sl_price, 4)
+                        }
+                        
+                        all_signals.append(sig)
 
-            except Exception as e:
-                pass
+                except Exception as e:
+                    pass
 
     # Process
     if all_signals:
@@ -379,7 +309,6 @@ def run_analysis_cycle():
 if __name__ == "__main__":
     print("🔮 WizardWave Signal Monitor Started...")
     print(f"Webhook URL: {WEBHOOK_URL} (Loaded)")
-    print(f"Threshold: {CONFIDENCE_THRESHOLD*100}%")
     
     while True:
         try:
