@@ -28,7 +28,7 @@
             ],
             "strategy": "WizardWave",
             "model_file": "model_4d.pkl",
-            "confidence_threshold": 0.40,
+            "confidence_threshold": 0.30,
             "triple_barrier": {
                 "time_limit_bars": 15,
                 "crypto_pt": 0.14,
@@ -45,7 +45,7 @@
             ],
             "strategy": "WizardWave",
             "model_file": "model_1d.pkl",
-            "confidence_threshold": 0.40,
+            "confidence_threshold": 0.30,
             "triple_barrier": {
                 "time_limit_bars": 21,
                 "crypto_pt": 0.09,
@@ -62,7 +62,7 @@
             ],
             "strategy": "WizardWave",
             "model_file": "model_12h.pkl",
-            "confidence_threshold": 0.42,
+            "confidence_threshold": 0.30,
             "triple_barrier": {
                 "time_limit_bars": 24,
                 "crypto_pt": 0.06,
@@ -79,7 +79,7 @@
             ],
             "strategy": "WizardWave",
             "model_file": "model_4h.pkl",
-            "confidence_threshold": 0.42,
+            "confidence_threshold": 0.30,
             "triple_barrier": {
                 "time_limit_bars": 12,
                 "crypto_pt": 0.04,
@@ -96,7 +96,7 @@
             ],
             "strategy": "WizardScalp",
             "model_file": "model_1h.pkl",
-            "confidence_threshold": 0.45,
+            "confidence_threshold": 0.30,
             "triple_barrier": {
                 "time_limit_bars": 24,
                 "crypto_pt": 0.02,
@@ -116,7 +116,7 @@
             ],
             "strategy": "WizardScalp",
             "model_file": "model_15m.pkl",
-            "confidence_threshold": 0.45,
+            "confidence_threshold": 0.30,
             "triple_barrier": {
                 "time_limit_bars": 12,
                 "crypto_pt": 0.015,
