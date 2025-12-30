@@ -700,7 +700,7 @@ def analyze_timeframe(timeframe_label, silent=False):
             # --- Collect Historical Signals & Simulate PnL ---
             
             # Helper to run stateful simulation on the history
-            def simulate_history_stateful(df, asset_type):
+            def simulate_history_stateful(df, asset_type, threshold_val=0.40):
                trades = []
                position = None
                entry_price = 0.0
@@ -709,8 +709,14 @@ def analyze_timeframe(timeframe_label, silent=False):
                sl_price = 0.0
                
                if asset_type == 'crypto':
-                   curr_tp_pct = tp_crypto
-                   curr_sl_pct = sl_crypto
+                   if crypto_use_dynamic:
+                       # Estimate dynamic mean for history (simplified)
+                       # Or just use the current config logic for approximate history
+                       curr_tp_pct = tp_crypto 
+                       curr_sl_pct = sl_crypto
+                   else:
+                       curr_tp_pct = tp_crypto
+                       curr_sl_pct = sl_crypto
                elif asset_type == 'forex':
                    curr_tp_pct = tp_forex
                    curr_sl_pct = sl_forex
@@ -719,14 +725,13 @@ def analyze_timeframe(timeframe_label, silent=False):
                    curr_sl_pct = sl_trad
                
                # Iterate through all bars
-               # Assumes df is sorted by time
-               # print(f"DEBUGGING HIST: {asset['name']} - {len(df)} rows. Last: {df.index[-1]}")
-               for int_idx, (idx, row) in enumerate(df.iterrows()):
+               for idx, row in df.iterrows():
                    close = row['close']
                    high = row['high']
                    low = row['low']
                    signal = row['signal_type']
                    model_prob = row.get('model_prob', 0.0)
+                   int_idx = df.index.get_loc(idx)
                    
                    # --- EXIT LOGIC ---
                    exit_trade = False
@@ -757,27 +762,28 @@ def analyze_timeframe(timeframe_label, silent=False):
                            status = "HIT SL 🔴"
                            exit_trade = True
                            
-                       if exit_trade:
-                           trades.append({
-                                "_sort_key": entry_time,
-                                "Asset": asset['name'],
-                                "Timeframe": short_tf,
-                                "Time": format_time(entry_time),
-                                "Exit Time": format_time(idx),
-                                "Type": f"{position} {'🟢' if position == 'LONG' else '🔴'}",
-                                "Price": entry_price,
-                                "Confidence": f"{entry_conf:.0%}",
-                                "Model": "✅",
-                                "Return_Pct": pnl, 
-                                "SL_Pct": curr_sl_pct,
-                                "Status": status
-                           })
+                   if exit_trade:
+                       trades.append({
+                            "_sort_key": entry_time,
+                            "Asset": asset['name'],
+                            "Timeframe": short_tf,
+                            "Time": format_time(entry_time),
+                            "Exit Time": format_time(idx),
+                            "Type": f"{position} {'🟢' if position == 'LONG' else '🔴'}",
+                            "Price": entry_price,
+                            "Confidence": f"{entry_conf:.0%}",
+                            "Model": "✅",
+                            "Return_Pct": pnl, 
+                            "SL_Pct": curr_sl_pct,
+                            "Status": status
+                       })
                        position = None
 
                    # --- ENTRY & REVERSAL LOGIC ---
                    # Only take filtered signals
-                   if model_prob > threshold:
+                   if model_prob > threshold_val:
                        new_pos = None
+                       # Check Strategy Output strings
                        if 'LONG' in signal:
                            new_pos = 'LONG'
                        elif 'SHORT' in signal:
@@ -881,10 +887,11 @@ def analyze_timeframe(timeframe_label, silent=False):
                         "Status": "OPEN"
                     })
 
+
                return trades
 
             # Run simulation on FULL fetched history (not just tail)
-            asset_history = simulate_history_stateful(df_strat, asset['type'])
+            asset_history = simulate_history_stateful(df_strat, asset['type'], threshold_val=threshold)
             
             return result_data, active_trade_data, asset_history
             
