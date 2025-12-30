@@ -1464,18 +1464,7 @@ def show_runic_alerts():
         with c_btn:
             refresh_click = st.button("↻", key="refresh_top", help="Refresh", use_container_width=True)
             
-    # --- Debug Sidebar ---
-    with st.sidebar.expander("Debug Info", expanded=False):
-        st.write(f"CWD: {os.getcwd()}")
-        st.write("Model Files:")
-        st.write([f for f in os.listdir('.') if f.endswith('.pkl')])
-        st.write("Loaded Models:")
-        st.write(list(models.keys()))
-        st.write(f"Assets: {len(ASSETS)}")
-        if st.button("Run Pipeline Manually"):
-            import pipeline
-            pipeline.run_pipeline()
-            st.success("Pipeline Run Initiated!")
+
 
     # --- Render Active List Helper ---
     def render_active_list(combined_active):
@@ -2073,6 +2062,20 @@ st.components.v1.html("""
   </script>
 </div>
 """, height=81, scrolling=False)
+
+# --- Debug Sidebar (Safe Location) --- 
+with st.sidebar.expander("Debug Info", expanded=False):
+    st.write(f"CWD: {os.getcwd()}")
+    st.write("Model Files:")
+    st.write([f for f in os.listdir('.') if f.endswith('.pkl')])
+    st.write("Loaded Models:")
+    if 'models' in globals():
+        st.write(list(models.keys()))
+    st.write(f"Assets: {len(ASSETS)}")
+    if st.button("Run Pipeline Manually"):
+        import pipeline
+        pipeline.run_pipeline()
+        st.success("Pipeline Run Initiated!")
 
 # Layout Columns
 col_left, col_center, col_right = st.columns([0.25, 0.5, 0.25], gap="small")
