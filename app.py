@@ -460,11 +460,17 @@ def analyze_timeframe(timeframe_label, silent=False):
     # Map label to model code
     tf_map_code = {
         "15 Minutes": "15m",
+        "15m": "15m",
         "1 Hour": "1h",
+        "1H": "1h",
         "4 Hours": "4h",
+        "4H": "4h",
         "12 Hours": "12h",
+        "12H": "12h",
         "1 Day": "1d",
-        "4 Days": "4d"
+        "1D": "1d",
+        "4 Days": "4d",
+        "4D": "4d"
     }
     tf_code = tf_map_code.get(timeframe_label, "1d")
 
@@ -2239,10 +2245,10 @@ with col_center:
                  with st.expander("🛡️ Current Strategy Parameters", expanded=True):
                      sys_c1, sys_c2 = st.columns(2)
                      
-                     # HTF (Swing)
+                     # HTF (Swing - 1D)
                      with sys_c1:
-                        htf_c = config['htf']['triple_barrier']
-                        st.caption(f"**HTF (Swing)** | Timeout: {htf_c['time_limit_days']} Days")
+                        htf_c = config['models']['1d']['triple_barrier']
+                        st.caption(f"**Swing (1D)** | Timeout: {htf_c.get('time_limit_bars', 21)} Bars")
                         # Format for display
                         st.markdown(f"""
                         - **Crypto:** TP `{htf_c['crypto_pt']:.1%}` / SL `{htf_c['crypto_sl']:.1%}`
@@ -2250,10 +2256,10 @@ with col_center:
                         - **Forex:**  TP `{htf_c['forex_pt']:.1%}` / SL `{htf_c['forex_sl']:.1%}`
                         """)
                      
-                     # LTF (Scalp)
+                     # LTF (Scalp - 15m)
                      with sys_c2:
-                        ltf_c = config['ltf']['triple_barrier']
-                        st.caption(f"**LTF (Scalp)** | Timeout: {ltf_c['time_limit_bars']} Bars")
+                        ltf_c = config['models']['15m']['triple_barrier']
+                        st.caption(f"**Scalp (15m)** | Timeout: {ltf_c.get('time_limit_bars', 12)} Bars")
                         
                         if ltf_c.get('crypto_use_dynamic'):
                             c_str = f"⚡ *Dynamic* (σ x {ltf_c.get('crypto_dyn_pt_k')})"
