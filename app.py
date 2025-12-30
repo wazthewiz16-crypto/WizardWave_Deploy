@@ -381,22 +381,21 @@ if state_needs_update:
 # --- ML Model Integration ---
 @st.cache_resource(ttl=3600) # Add TTL to prevent stale models
 def load_ml_models_v2():
-    """Load both HTF and LTF models"""
-    models = {'htf': None, 'ltf': None}
-    try:
-        models['htf'] = joblib.load('model_htf.pkl')
-    except Exception as e:
-        print(f"Error loading HTF model: {e}")
-        
-    try:
-        models['ltf'] = joblib.load('model_ltf.pkl')
-    except Exception as e:
-        print(f"Error loading LTF model: {e}")
-
-    try:
-        models['mtf'] = joblib.load('model_mtf.pkl')
-    except:
-        models['mtf'] = None # Graceful fallback if not trained yet
+    """Load all 6 specific timeframe models"""
+    models = {}
+    model_keys = ["4d", "1d", "12h", "4h", "1h", "15m"]
+    
+    for key in model_keys:
+        try:
+            filename = f"model_{key}.pkl"
+            if os.path.exists(filename):
+                models[key] = joblib.load(filename)
+            else:
+                print(f"Model file {filename} not found.")
+                models[key] = None
+        except Exception as e:
+            print(f"Error loading {key} model: {e}")
+            models[key] = None
         
     return models
 
@@ -451,7 +450,6 @@ if 'active_tv_symbol' not in st.session_state:
     st.session_state.active_tv_symbol = "COINBASE:BTCUSD"
 
 
-
 models = load_ml_models_v2()
 
 def analyze_timeframe(timeframe_label, silent=False):
@@ -459,30 +457,19 @@ def analyze_timeframe(timeframe_label, silent=False):
     active_trades = []
     historical_signals = [] # Store all historical signals found
     
-    if timeframe_label == "15 Minutes":
-        tf_code = "15m"
-        group = 'ltf'
-    elif timeframe_label == "1 Hour":
-        tf_code = "1h"
-        group = 'ltf'
-    elif timeframe_label == "4 Hours":
-        tf_code = "4h"
-        group = 'mtf'
-    elif timeframe_label == "12 Hours":
-        tf_code = "12h"
-        group = 'mtf'
-    elif timeframe_label == "1 Day":
-        tf_code = "1d"
-        group = 'htf'
-    elif timeframe_label == "4 Days":
-        tf_code = "4d"
-        group = 'htf'
-    else:
-        tf_code = "1d"
-        group = 'htf'
+    # Map label to model code
+    tf_map_code = {
+        "15 Minutes": "15m",
+        "1 Hour": "1h",
+        "4 Hours": "4h",
+        "12 Hours": "12h",
+        "1 Day": "1d",
+        "4 Days": "4d"
+    }
+    tf_code = tf_map_code.get(timeframe_label, "1d")
 
-    # Shorten Timeframe Label
-    tf_map = {
+    # Shorten Timeframe Label for display
+    tf_display_map = {
         "15 Minutes": "15m",
         "1 Hour": "1H",
         "4 Hours": "4H",
@@ -490,90 +477,57 @@ def analyze_timeframe(timeframe_label, silent=False):
         "1 Day": "1D",
         "4 Days": "4D"
     }
-    short_tf = tf_map.get(timeframe_label, timeframe_label)
+    short_tf = tf_display_map.get(timeframe_label, timeframe_label)
 
-    # Strategy & Config Selection
-    # Strategy & Config Selection
-    if group == 'ltf':
-        strat = WizardScalpStrategy(lookback=8, sensitivity=1.0) # Use simple lookback for LTF (e.g. 8)
-        model = models['ltf']
-        
-        # Load optimized params from config
-        tb = config['ltf']['triple_barrier']
-        tp_crypto = tb.get('crypto_pt', 0.015)
-        sl_crypto = tb.get('crypto_sl', 0.005)
-        tp_trad = tb.get('trad_pt', 0.005)
-        sl_trad = tb.get('trad_sl', 0.002)
-        tp_forex = tb.get('forex_pt', 0.003)
-        sl_forex = tb.get('forex_sl', 0.009)
-        
-        # Dynamic barrier config
-        crypto_use_dynamic = tb.get('crypto_use_dynamic', False)
-        crypto_dyn_pt_k = tb.get('crypto_dyn_pt_k', 0.5)
-        crypto_dyn_sl_k = tb.get('crypto_dyn_sl_k', 0.5)
-        
-    elif group == 'mtf':
+    # Get Config for this model
+    model_config = config.get('models', {}).get(tf_code, {})
+    if not model_config:
+        if not silent: st.error(f"Configuration missing for {tf_code}")
+        return None, None, None
+
+    # Determine Strategy
+    strat_name = model_config.get('strategy', 'WizardWave')
+    
+    if strat_name == 'WizardScalp':
+        strat = WizardScalpStrategy(lookback=8, sensitivity=1.0)
+    else:
         strat = WizardWaveStrategy(
-            lookback=lookback, # Uses global lookback (20)
+            lookback=lookback, 
             sensitivity=sensitivity, 
             cloud_spread=cloud_spread, 
             zone_pad_pct=zone_pad 
         )
-        model = models['mtf']
         
-        # Load params from config (section 'mtf')
-        tb = config['mtf']['triple_barrier']
-        tp_crypto = tb.get('crypto_pt', 0.07)
-        sl_crypto = tb.get('crypto_sl', 0.04)
-        tp_trad = tb.get('trad_pt', 0.04)
-        sl_trad = tb.get('trad_sl', 0.02)
-        tp_forex = tb.get('forex_pt', 0.01)
-        sl_forex = tb.get('forex_sl', 0.005)
-        
-        # Dynamic barrier config (Usually False for MTF fixed targets)
-        crypto_use_dynamic = tb.get('crypto_use_dynamic', False)
-        crypto_dyn_pt_k = tb.get('crypto_dyn_pt_k', 0.5)
-        crypto_dyn_sl_k = tb.get('crypto_dyn_sl_k', 0.5)
+    model = models.get(tf_code)
+    
+    # Triple Barrier Config
+    tb = model_config.get('triple_barrier', {})
+    
+    tp_crypto = tb.get('crypto_pt', 0.02)
+    sl_crypto = tb.get('crypto_sl', 0.01)
+    tp_trad = tb.get('trad_pt', 0.01)
+    sl_trad = tb.get('trad_sl', 0.005)
+    tp_forex = tb.get('forex_pt', 0.005)
+    sl_forex = tb.get('forex_sl', 0.005)
 
-    else: # HTF
-        strat = WizardWaveStrategy(
-            lookback=lookback, # Uses global `lookback`
-            sensitivity=sensitivity, # Uses global `sensitivity`
-            cloud_spread=cloud_spread, # Uses global `cloud_spread`
-            zone_pad_pct=zone_pad # Uses global `zone_pad`
-        )
-        model = models['htf'] # Default to HTF model
-        
-        # Load optimized params from config
-        tb = config['htf']['triple_barrier']
-        tp_crypto = tb.get('crypto_pt', 0.14)
-        sl_crypto = tb.get('crypto_sl', 0.04)
-        tp_trad = tb.get('trad_pt', 0.07)
-        sl_trad = tb.get('trad_sl', 0.03)
-        tp_forex = tb.get('forex_pt', 0.02)
-        sl_forex = tb.get('forex_sl', 0.035)
-
-        # Dynamic barrier config (HTF defaults to False usually)
-        crypto_use_dynamic = tb.get('crypto_use_dynamic', False)
-        crypto_dyn_pt_k = tb.get('crypto_dyn_pt_k', 0.5)
-        crypto_dyn_sl_k = tb.get('crypto_dyn_sl_k', 0.5)
+    crypto_use_dynamic = tb.get('crypto_use_dynamic', False)
+    crypto_dyn_pt_k = tb.get('crypto_dyn_pt_k', 0.5)
+    crypto_dyn_sl_k = tb.get('crypto_dyn_sl_k', 0.5)
+    
+    threshold = model_config.get('confidence_threshold', 0.50)
 
     progress_bar = st.progress(0) if not silent else None
     status_text = st.empty() if not silent else None
-    if timeframe_label == "4 Days":
-        if not silent and status_text:
-            status_text.text(f"[{timeframe_label}] Fetching data for {len(ASSETS)} assets... (Local Cache Active)")
-    else:
-        if not silent and status_text:
-            status_text.text(f"[{timeframe_label}] Fetching data for {len(ASSETS)} assets...")
+    
+    if not silent and status_text:
+        status_text.text(f"[{timeframe_label}] Fetching data for {len(ASSETS)} assets...")
 
     def process_asset(asset):
         try:
-            # Dynamic Limit for performance
-            # Reduce limit for HTF to prevent massive data fetches (e.g. 4000 days)
+            # Dynamic Limit
             current_limit = 1000
             if "Day" in timeframe_label:
-                current_limit = 300 # ~300 bars (300 days or 1200 days for 4D) is sufficient
+                current_limit = 300 
             
             # Fetch Data
             df = fetch_data(asset['symbol'], asset['type'], timeframe=tf_code, limit=current_limit)
@@ -589,60 +543,33 @@ def analyze_timeframe(timeframe_label, silent=False):
             
             # --- Calculate Sigma for Dynamic Barriers ---
             if crypto_use_dynamic and asset['type'] == 'crypto':
-                # Match pipeline.py: ewm(span=36).std()
                 df_strat['sigma'] = df_strat['close'].pct_change().ewm(span=36, adjust=False).std()
-                # Fill NaNs
                 df_strat['sigma'] = df_strat['sigma'].fillna(method='bfill').fillna(0.01)
             
             if model:
-                # Hardcoded Feature Lists (Matches Trained Models)
-                # HTF Features: Dropped correlated ones
-                features_htf_list = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi', 'mango_d1_dist']
-                # LTF Features: Kept all
-                features_ltf_list = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi', 'mango_d1_dist', 'mango_d2_dist', 'upper_zone_dist', 'lower_zone_dist']
+                # Standard Features List
+                features_list = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi']
+                # Check for correlated features if needed, but we'll stick to the base list provided in config/monitor
                 
-                features = features_ltf_list if group == 'ltf' else features_htf_list
+                # Predict for CURRENT candle
+                # Ensure input has correct features
+                # Missing columns fill?
+                for f in features_list:
+                    if f not in df_strat.columns:
+                        df_strat[f] = 0
                 
-                # --- ENSEMBLE LOGIC (12 Hours) ---
-                if timeframe_label == "12 Hours":
-                    # Combined Model: 80% HTF + 20% LTF
-                    m_htf = models['htf']
-                    m_ltf = models['ltf']
-                    
-                    # 1. Current Candle
-                    last_fts = df_strat.iloc[[-1]][features]
-                    p_htf = m_htf.predict_proba(last_fts)[0][1]
-                    p_ltf = m_ltf.predict_proba(last_fts)[0][1]
-                    prob = (0.8 * p_htf) + (0.2 * p_ltf)
-                    
-                    # 2. Historical Prediction
-                    df_clean = df_strat.dropna()
-                    if not df_clean.empty:
-                        all_p_htf = m_htf.predict_proba(df_clean[features])[:, 1]
-                        all_p_ltf = m_ltf.predict_proba(df_clean[features])[:, 1]
-                        # Vectorized Weighting
-                        df_strat.loc[df_clean.index, 'model_prob'] = (0.8 * all_p_htf) + (0.2 * all_p_ltf)
-                    else:
-                        df_strat['model_prob'] = 0.0
-                    
+                last_features = df_strat.iloc[[-1]][features_list]
+                prob = model.predict_proba(last_features)[0][1] # Prob of Class 1 (Good)
+                
+                # Predict for ALL rows (for history)
+                df_clean = df_strat.dropna()
+                if not df_clean.empty:
+                    all_probs = model.predict_proba(df_clean[features_list])[:, 1]
+                    df_strat.loc[df_clean.index, 'model_prob'] = all_probs
                 else:
-                    # --- STANDARD SINGLE MODEL ---
-                    # Predict for CURRENT candle
-                    last_features = df_strat.iloc[[-1]][features]
-                    prob = model.predict_proba(last_features)[0][1] # Prob of Class 1 (Good)
-                    
-                    # Predict for ALL rows (for history)
-                    # Ensure no NaNs
-                    df_clean = df_strat.dropna()
-                    if not df_clean.empty:
-                        all_probs = model.predict_proba(df_clean[features])[:, 1]
-                        # Map back to original index
-                        df_strat.loc[df_clean.index, 'model_prob'] = all_probs
-                    else:
-                        df_strat['model_prob'] = 0.0
-                
-                # Explicitly set probability for the last row (calculated separately above)
-                # This ensures the active forming candle is included in history simulation
+                    df_strat['model_prob'] = 0.0
+            
+                # Explicitly set probability for the last row
                 if not df_strat.empty:
                      df_strat.loc[df_strat.index[-1], 'model_prob'] = prob
             else:
@@ -650,13 +577,7 @@ def analyze_timeframe(timeframe_label, silent=False):
                 df_strat['model_prob'] = 0.0
 
             # --- Check Active Trade ---
-            # --- Check Active Trade ---
             active_trade_data = None
-            
-            # Define threshold in outer scope for closure access (Fixes NameError)
-            if group == 'ltf': threshold = 0.35
-            elif group == 'mtf': threshold = 0.38
-            else: threshold = 0.28 
             
             trade = strat.get_active_trade(df_strat)
             
@@ -667,17 +588,11 @@ def analyze_timeframe(timeframe_label, silent=False):
 
                 # Get confidence at ENTRY time
                 try:
-                    # Find probability at entry time
                     entry_idx = df_strat.index.get_loc(ts)
                     entry_conf = df_strat.iloc[entry_idx]['model_prob']
                 except:
-                    entry_conf = prob # Fallback to current if entry index fail
+                    entry_conf = prob 
                 
-                # Check Labels
-                is_trad = asset['type'] == 'trad'
-                if group == 'ltf': threshold = 0.35
-                elif group == 'mtf': threshold = 0.38
-                else: threshold = 0.28
                 rec_action = "✅ TAKE" if entry_conf > threshold else "❌ SKIP"
                 
                 type_display = f"⬆️ {trade['Position']}" if trade['Position'] == 'LONG' else f"⬇️ {trade['Position']}"
@@ -687,12 +602,10 @@ def analyze_timeframe(timeframe_label, silent=False):
                 s_lower = asset['symbol'].lower()
                 n_lower = asset['name'].lower()
                 
-                # High Precision Assets
                 high_prec_keywords = ['doge', 'ada', 'xrp', 'link', 'arb', 'algo', 'matic', 'ftm']
                 if any(k in s_lower or k in n_lower for k in high_prec_keywords):
                     decimals = 4
                 
-                # Forex 
                 if '=x' in s_lower:
                     if 'jpy' in s_lower:
                         decimals = 2
@@ -700,16 +613,17 @@ def analyze_timeframe(timeframe_label, silent=False):
                         decimals = 5
                         
                 # Calculate TP/SL Prices
-                # Use Closure Variables
                 a_type = asset['type']
+                curr_tp = 0.0
+                curr_sl = 0.0
+                
                 if a_type == 'crypto':
                     if crypto_use_dynamic:
-                        # Dynamic Volatility Based
                         try:
-                            # entry_idx is calculated earlier
+                            entry_idx = df_strat.index.get_loc(ts)
                             sigma_val = df_strat['sigma'].iloc[entry_idx]
                         except:
-                            sigma_val = 0.01 # Fallback
+                            sigma_val = 0.01 
                         
                         curr_tp = sigma_val * crypto_dyn_pt_k
                         curr_sl = sigma_val * crypto_dyn_sl_k
@@ -735,11 +649,11 @@ def analyze_timeframe(timeframe_label, silent=False):
                 active_trade_data = {
                     "_sort_key": sort_ts,
                     "Asset": asset['name'],
-                    "Symbol": asset['symbol'], # Store raw symbol
+                    "Symbol": asset['symbol'],
                     "Type": type_display,
                     "Timeframe": short_tf,
                     "Entry_Time": ts_str,
-                    "Signal_Time": ts_str, # Redundant but safe
+                    "Signal_Time": ts_str,
                     "Entry_Price": f"{ep:.{decimals}f}",
                     "Take_Profit": f"{tp_price:.{decimals}f}",
                     "Stop_Loss": f"{sl_price:.{decimals}f}",
@@ -748,12 +662,10 @@ def analyze_timeframe(timeframe_label, silent=False):
                     "PnL (%)": f"{trade['PnL (%)']:.2f}%",
                     "Confidence": f"{entry_conf:.0%}",
                     "Action": rec_action,
-                    "Signal": trade['Position'] # Map Position to Signal column for frontend
+                    "Signal": trade['Position']
                 }
 
                 # --- VALIDATE: Verify trade hasn't already closed ---
-                # Check price action SUBSEQUENT to entry to see if TP or SL was hit.
-                # Only check bars strictly AFTER the entry time.
                 future_price_action = df_strat.loc[df_strat.index > ts]
                 
                 if not future_price_action.empty:
@@ -785,7 +697,6 @@ def analyze_timeframe(timeframe_label, silent=False):
                 "Time": ts_str
             }
             
-            # --- Collect Historical Signals & Simulate PnL ---
             # --- Collect Historical Signals & Simulate PnL ---
             
             # Helper to run stateful simulation on the history
@@ -916,21 +827,8 @@ def analyze_timeframe(timeframe_label, silent=False):
                    # --- TIME LIMIT CHECK ---
                    if position is not None:
                        # Determine Limit based on TF
-                       is_ltf = short_tf in ['15m', '15 Minutes']
-                       
-                       # Hardcoded limits from config to match strategy logic
-                       # LTF: 36 bars, HTF: ~40 days? (HTF is day/4h, 40 days is huge)
-                       # Let's use config values if possible, else defaults
-                       if is_ltf:
-                           limit = 36
-                       else:
-                           # HTF Limit: 40 Days. 
-                           # If 1H bars: 40 * 24 = 960 bars
-                           # If 4H bars: 40 * 6 = 240 bars
-                           # If 1D bars: 40 bars
-                           if '1H' in short_tf or '1 Hour' in short_tf: limit = 40 * 24
-                           elif '4H' in short_tf or '4 Hours' in short_tf: limit = 40 * 6
-                           else: limit = 40
+                       # Use config values if possible
+                       limit = tb.get('time_limit_bars', 24)
                        
                        bars_held = int_idx - entry_int_idx
                        if bars_held >= limit:
