@@ -528,8 +528,16 @@ def analyze_timeframe(timeframe_label, silent=False):
     if not silent and status_text:
         status_text.text(f"[{timeframe_label}] Fetching data for {len(ASSETS)} assets...")
 
+    def log_debug(msg):
+        try:
+            with open("debug_signal_log.txt", "a", encoding="utf-8") as f:
+                f.write(f"{datetime.now()} - {msg}\n")
+        except: pass
+
     def process_asset(asset):
         try:
+            # log_debug(f"Processing {asset['symbol']} for {tf_code}")
+            
             # Dynamic Limit
             current_limit = 1000
             if "Day" in timeframe_label:
@@ -539,6 +547,7 @@ def analyze_timeframe(timeframe_label, silent=False):
             df = fetch_data(asset['symbol'], asset['type'], timeframe=tf_code, limit=current_limit)
             
             if df.empty:
+                log_debug(f"EMPTY DATA for {asset['symbol']} {tf_code}")
                 return None, None, None
             
             # Apply Strategy
@@ -552,35 +561,38 @@ def analyze_timeframe(timeframe_label, silent=False):
                 df_strat['sigma'] = df_strat['close'].pct_change().ewm(span=36, adjust=False).std()
                 df_strat['sigma'] = df_strat['sigma'].fillna(method='bfill').fillna(0.01)
             
+            prob = 0.0
             if model:
                 # Standard Features List
                 features_list = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi']
-                # Check for correlated features if needed, but we'll stick to the base list provided in config/monitor
                 
+                # Check for feature columns presence
+                missing_feats = [f for f in features_list if f not in df_strat.columns]
+                if missing_feats:
+                    log_debug(f"Missing features {asset['symbol']}: {missing_feats}")
+                    for f in missing_feats: df_strat[f] = 0
+
                 # Predict for CURRENT candle
-                # Ensure input has correct features
-                # Missing columns fill?
-                for f in features_list:
-                    if f not in df_strat.columns:
-                        df_strat[f] = 0
-                
                 last_features = df_strat.iloc[[-1]][features_list]
                 prob = model.predict_proba(last_features)[0][1] # Prob of Class 1 (Good)
                 
                 # Predict for ALL rows (for history)
+                # Initialize column with 0.0 first to handle dropped NaNs
+                df_strat['model_prob'] = 0.0
+                
                 df_clean = df_strat.dropna()
                 if not df_clean.empty:
                     all_probs = model.predict_proba(df_clean[features_list])[:, 1]
                     df_strat.loc[df_clean.index, 'model_prob'] = all_probs
-                else:
-                    df_strat['model_prob'] = 0.0
             
                 # Explicitly set probability for the last row
                 if not df_strat.empty:
                      df_strat.loc[df_strat.index[-1], 'model_prob'] = prob
+                     # log_debug(f"{asset['symbol']} {tf_code} PROB: {prob:.4f} (Thresh: {threshold})")
             else:
                 prob = 0.0
                 df_strat['model_prob'] = 0.0
+                log_debug(f"NO MODEL LOADED for {tf_code}")
 
             # --- Check Active Trade ---
             active_trade_data = None
@@ -790,9 +802,9 @@ def analyze_timeframe(timeframe_label, silent=False):
                    if model_prob > threshold_val:
                        new_pos = None
                        # Check Strategy Output strings
-                       if 'LONG' in signal:
+                       if 'LONG_ZONE' in signal or 'LONG_REV' in signal or 'SCALP_LONG' in signal:
                            new_pos = 'LONG'
-                       elif 'SHORT' in signal:
+                       elif 'SHORT_ZONE' in signal or 'SHORT_REV' in signal or 'SCALP_SHORT' in signal:
                            new_pos = 'SHORT'
                            
                        if new_pos:
@@ -2152,7 +2164,7 @@ with col_center:
                      # Toggle for 24H Only
                      show_24h_only = st.checkbox("Show last 24 Hours Only", value=False)
                      # Toggle for 7 Days Only
-                     show_7d_only = st.checkbox("Show last 7 Days Only", value=True)
+                     show_7d_only = st.checkbox("Show last 7 Days Only", value=False)
                      # Toggle for 30 Days Only
                      show_30d_only = st.checkbox("Show last 30 Days Only", value=False)
                      # Toggle for Open Trades Only (New)
