@@ -54,7 +54,8 @@ def get_data_for_training(config, mode='htf'):
                 if df.empty: continue
                 
                 # Apply Strategy
-                if mode == 'htf':
+                # Apply Strategy
+                if mode in ['htf', 'mtf']:
                     strat = WizardWaveStrategy()
                 else:
                     strat = WizardScalpStrategy(lookback=8)
@@ -62,11 +63,29 @@ def get_data_for_training(config, mode='htf'):
                 df = strat.apply(df)
                 df = calculate_ml_features(df)
                 
-                # Labeling (Simple Lookahead)
-                # Horizon: 12 bars?
-                horizon = 12
-                df['future_close'] = df['close'].shift(-horizon)
-                df['target'] = (df['future_close'] > df['close']).astype(int) # Simple Bullish Target
+                # Labeling (Profit-First Target)
+                if mode == 'htf':
+                    horizon = 48
+                    reward_mult = 3.5
+                    risk_mult = 1.0
+                elif mode == 'mtf':
+                    horizon = 24
+                    reward_mult = 1.75
+                    risk_mult = 1.0
+                else: # ltf
+                    horizon = 12
+                    reward_mult = 2.0
+                    risk_mult = 1.0
+
+                if 'atr_pct' not in df.columns: df['atr_pct'] = 0.01
+                
+                reward_thresh = df['atr_pct'] * reward_mult
+                risk_thresh = df['atr_pct'] * risk_mult
+                
+                df['future_ret'] = (df['close'].shift(-horizon) - df['close']) / df['close']
+                df['future_min_ret'] = (df['low'].rolling(horizon).min().shift(-horizon) - df['close']) / df['close']
+                
+                df['target'] = ((df['future_ret'] > reward_thresh) & (df['future_min_ret'] > -risk_thresh)).astype(int)
                 
                 # Drop NaNs
                 df = df.dropna()
@@ -130,7 +149,7 @@ def run_experiment():
     
     results = {}
     
-    for mode in ['htf', 'ltf']:
+    for mode in ['htf', 'mtf', 'ltf']:
         # 1. Get Data
         X, y = get_data_for_training(config, mode)
         if X is None:
@@ -178,7 +197,7 @@ def run_experiment():
     
     # Overwrite Production Models
     print("Deploying models...")
-    for mode in ['htf', 'ltf']:
+    for mode in ['htf', 'mtf', 'ltf']:
         if os.path.exists(f"model_{mode}_v2.pkl"):
             # Backup
             if os.path.exists(f"model_{mode}.pkl"):

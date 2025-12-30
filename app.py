@@ -392,6 +392,11 @@ def load_ml_models_v2():
         models['ltf'] = joblib.load('model_ltf.pkl')
     except Exception as e:
         print(f"Error loading LTF model: {e}")
+
+    try:
+        models['mtf'] = joblib.load('model_mtf.pkl')
+    except:
+        models['mtf'] = None # Graceful fallback if not trained yet
         
     return models
 
@@ -462,10 +467,10 @@ def analyze_timeframe(timeframe_label, silent=False):
         group = 'ltf'
     elif timeframe_label == "4 Hours":
         tf_code = "4h"
-        group = 'ltf'
+        group = 'mtf'
     elif timeframe_label == "12 Hours":
         tf_code = "12h"
-        group = 'htf'
+        group = 'mtf'
     elif timeframe_label == "1 Day":
         tf_code = "1d"
         group = 'htf'
@@ -507,6 +512,29 @@ def analyze_timeframe(timeframe_label, silent=False):
         crypto_dyn_pt_k = tb.get('crypto_dyn_pt_k', 0.5)
         crypto_dyn_sl_k = tb.get('crypto_dyn_sl_k', 0.5)
         
+    elif group == 'mtf':
+        strat = WizardWaveStrategy(
+            lookback=lookback, # Uses global lookback (20)
+            sensitivity=sensitivity, 
+            cloud_spread=cloud_spread, 
+            zone_pad_pct=zone_pad 
+        )
+        model = models['mtf']
+        
+        # Load params from config (section 'mtf')
+        tb = config['mtf']['triple_barrier']
+        tp_crypto = tb.get('crypto_pt', 0.07)
+        sl_crypto = tb.get('crypto_sl', 0.04)
+        tp_trad = tb.get('trad_pt', 0.04)
+        sl_trad = tb.get('trad_sl', 0.02)
+        tp_forex = tb.get('forex_pt', 0.01)
+        sl_forex = tb.get('forex_sl', 0.005)
+        
+        # Dynamic barrier config (Usually False for MTF fixed targets)
+        crypto_use_dynamic = tb.get('crypto_use_dynamic', False)
+        crypto_dyn_pt_k = tb.get('crypto_dyn_pt_k', 0.5)
+        crypto_dyn_sl_k = tb.get('crypto_dyn_sl_k', 0.5)
+
     else: # HTF
         strat = WizardWaveStrategy(
             lookback=lookback, # Uses global `lookback`
@@ -626,7 +654,9 @@ def analyze_timeframe(timeframe_label, silent=False):
             active_trade_data = None
             
             # Define threshold in outer scope for closure access (Fixes NameError)
-            threshold = 0.60 if group == 'ltf' else 0.45 
+            if group == 'ltf': threshold = 0.35
+            elif group == 'mtf': threshold = 0.38
+            else: threshold = 0.28 
             
             trade = strat.get_active_trade(df_strat)
             
@@ -645,7 +675,9 @@ def analyze_timeframe(timeframe_label, silent=False):
                 
                 # Check Labels
                 is_trad = asset['type'] == 'trad'
-                threshold = 0.60 if group == 'ltf' else 0.45 # Strict Thresholds (LTF adjusted for higher sensitivity)
+                if group == 'ltf': threshold = 0.35
+                elif group == 'mtf': threshold = 0.38
+                else: threshold = 0.28
                 rec_action = "✅ TAKE" if entry_conf > threshold else "❌ SKIP"
                 
                 type_display = f"⬆️ {trade['Position']}" if trade['Position'] == 'LONG' else f"⬇️ {trade['Position']}"
