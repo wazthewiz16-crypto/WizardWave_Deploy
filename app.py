@@ -594,33 +594,208 @@ def analyze_timeframe(timeframe_label, silent=False):
                 df_strat['model_prob'] = 0.0
                 log_debug(f"NO MODEL LOADED for {tf_code}")
 
-            # --- Check Active Trade ---
+            # --- Collect Historical Signals & Simulate PnL ---
+            
+            # Helper to run stateful simulation on the history
+            def simulate_history_stateful(df, asset_type, threshold_val=0.40):
+               trades = []
+               position = None
+               entry_price = 0.0
+               entry_time = None
+               entry_conf = 0.0
+               sl_price = 0.0
+               
+               if asset_type == 'crypto':
+                   if crypto_use_dynamic:
+                       curr_tp_pct = tp_crypto 
+                       curr_sl_pct = sl_crypto
+                   else:
+                       curr_tp_pct = tp_crypto
+                       curr_sl_pct = sl_crypto
+               elif asset_type == 'forex':
+                   curr_tp_pct = tp_forex
+                   curr_sl_pct = sl_forex
+               else:
+                   curr_tp_pct = tp_trad
+                   curr_sl_pct = sl_trad
+               
+               # Iterate through all bars
+               for idx, row in df.iterrows():
+                   close = row['close']
+                   high = row['high']
+                   low = row['low']
+                   signal = row['signal_type']
+                   model_prob = row.get('model_prob', 0.0)
+                   int_idx = df.index.get_loc(idx)
+                   
+                   # --- EXIT LOGIC ---
+                   exit_trade = False
+                   pnl = 0.0
+                   status = ""
+                   
+                   if position == 'LONG':
+                       # Check TP
+                       if high >= entry_price * (1 + curr_tp_pct):
+                           pnl = curr_tp_pct
+                           status = "HIT TP 🟢"
+                           exit_trade = True
+                       # Check SL
+                       elif low <= entry_price * (1 - curr_sl_pct):
+                           pnl = -curr_sl_pct
+                           status = "HIT SL 🔴"
+                           exit_trade = True
+
+                   elif position == 'SHORT':
+                       # Check TP
+                       if low <= entry_price * (1 - curr_tp_pct):
+                           pnl = curr_tp_pct
+                           status = "HIT TP 🟢"
+                           exit_trade = True
+                       # Check SL
+                       elif high >= entry_price * (1 + curr_sl_pct):
+                           pnl = -curr_sl_pct
+                           status = "HIT SL 🔴"
+                           exit_trade = True
+                           
+                   if exit_trade:
+                       trades.append({
+                            "_sort_key": entry_time,
+                            "Asset": asset['name'],
+                            "Timeframe": short_tf,
+                            "Time": format_time(entry_time),
+                            "Exit Time": format_time(idx),
+                            "Type": f"{position} {'🟢' if position == 'LONG' else '🔴'}",
+                            "Price": entry_price,
+                            "Confidence": f"{entry_conf:.0%}",
+                            "Model": "✅",
+                            "Return_Pct": pnl, 
+                            "SL_Pct": curr_sl_pct,
+                            "Status": status
+                       })
+                       position = None
+
+                   # --- ENTRY & REVERSAL LOGIC ---
+                   # Only take filtered signals
+                   if model_prob > threshold_val:
+                       new_pos = None
+                       if 'LONG_ZONE' in signal or 'LONG_REV' in signal or 'SCALP_LONG' in signal:
+                           new_pos = 'LONG'
+                       elif 'SHORT_ZONE' in signal or 'SHORT_REV' in signal or 'SCALP_SHORT' in signal:
+                           new_pos = 'SHORT'
+                           
+                       if new_pos:
+                           if position is not None and position != new_pos:
+                               last_close_pnl = 0.0
+                               if position == 'LONG':
+                                   last_close_pnl = (close - entry_price) / entry_price
+                               else:
+                                   last_close_pnl = (entry_price - close) / entry_price
+                                   
+                               status_label = "FLIP 🔄"
+                               if last_close_pnl < -curr_sl_pct:
+                                   last_close_pnl = -curr_sl_pct
+                                   status_label = "HIT SL 🔴"
+                                   
+                               trades.append({
+                                    "_sort_key": entry_time,
+                                    "Asset": asset['name'],
+                                    "Timeframe": short_tf,
+                                    "Time": format_time(entry_time),
+                                    "Exit Time": format_time(idx),
+                                    "Type": f"{position} {'🟢' if position == 'LONG' else '🔴'}",
+                                    "Price": entry_price,
+                                    "Confidence": f"{entry_conf:.0%}",
+                                    "Model": "✅",
+                                    "Return_Pct": last_close_pnl, 
+                                    "SL_Pct": curr_sl_pct,
+                                    "Status": status_label
+                               })
+                               position = None 
+                           
+                           if position is None:
+                               position = new_pos
+                               entry_price = close
+                               entry_time = idx
+                               entry_int_idx = int_idx
+                               entry_conf = model_prob
+
+                   # --- TIME LIMIT CHECK ---
+                   if position is not None:
+                       limit = tb.get('time_limit_bars', 24)
+                       bars_held = int_idx - entry_int_idx
+                       if bars_held >= limit:
+                           tl_pnl = 0.0
+                           if position == 'LONG':
+                               tl_pnl = (close - entry_price) / entry_price
+                           else:
+                               tl_pnl = (entry_price - close) / entry_price
+                               
+                           trades.append({
+                                "_sort_key": entry_time,
+                                "Asset": asset['name'],
+                                "Timeframe": short_tf,
+                                "Time": format_time(entry_time),
+                                "Exit Time": format_time(idx),
+                                "Type": f"{position} {'🟢' if position == 'LONG' else '🔴'}",
+                                "Price": entry_price,
+                                "Confidence": f"{entry_conf:.0%}",
+                                "Model": "✅",
+                                "Return_Pct": tl_pnl, 
+                                "SL_Pct": curr_sl_pct,
+                                "Status": "TIME LIMIT ⌛"
+                           })
+                           position = None
+                               
+               # --- END OF LOOP ---
+               if position is not None:
+                    last_price = df.iloc[-1]['close']
+                    if position == 'LONG':
+                        pnl = (last_price - entry_price) / entry_price
+                    else:
+                        pnl = (entry_price - last_price) / entry_price
+                        
+                    trades.append({
+                        "_sort_key": entry_time,
+                        "Asset": asset['name'],
+                        "Timeframe": short_tf,
+                        "Time": format_time(entry_time),
+                        "Exit Time": "-",
+                        "Type": f"{position} {'🟢' if position == 'LONG' else '🔴'}",
+                        "Price": entry_price,
+                        "Confidence": f"{entry_conf:.0%}",
+                        "Model": "✅",
+                        "Return_Pct": pnl, 
+                        "SL_Pct": curr_sl_pct,
+                        "Status": "OPEN"
+                    })
+
+               return trades
+
+            # Run simulation FIRST on full history
+            asset_history = simulate_history_stateful(df_strat, asset['type'], threshold_val=threshold)
+            
+            # --- Check Active Trade Strategy (Prioritize OPEN history) ---
             active_trade_data = None
             
-            trade = strat.get_active_trade(df_strat)
-            
-            if trade:
-                ts = trade['Entry Time']
-                ts_str = format_time(ts)
-                sort_ts = ts if not pd.isna(ts) else pd.Timestamp.min.tz_localize('UTC')
+            # Logic: If last trade in history is "OPEN", that is our active trade.
+            if asset_history and asset_history[-1]['Status'] == 'OPEN':
+                last_open = asset_history[-1]
+                ts = last_open['_sort_key']
+                
+                # Format TS relative to EST (Fix Future Time Issue)
+                if ts.tzinfo:
+                     ts_est = ts.tz_convert('America/New_York')
+                else:
+                     ts_est = ts.tz_localize('UTC').tz_convert('America/New_York')
+                     
+                ts_str = ts_est.strftime('%Y-%m-%d %H:%M:%S')
 
-                # Get confidence at ENTRY time
-                try:
-                    entry_idx = df_strat.index.get_loc(ts)
-                    entry_conf = df_strat.iloc[entry_idx]['model_prob']
-                except:
-                    entry_conf = prob 
-                
-                rec_action = "✅ TAKE" if entry_conf > threshold else "❌ SKIP"
-                
-                type_display = f"⬆️ {trade['Position']}" if trade['Position'] == 'LONG' else f"⬇️ {trade['Position']}"
-                
                 # Determine Decimal Precision
                 decimals = 2
                 s_lower = asset['symbol'].lower()
                 n_lower = asset['name'].lower()
                 
-                high_prec_keywords = ['doge', 'ada', 'xrp', 'link', 'arb', 'algo', 'matic', 'ftm']
+                high_prec_keywords = ['doge', 'ada', 'xrp', 'link', 'arb', 'algo', 'matic', 'ftm', 'aud']
                 if any(k in s_lower or k in n_lower for k in high_prec_keywords):
                     decimals = 4
                 
@@ -629,19 +804,28 @@ def analyze_timeframe(timeframe_label, silent=False):
                         decimals = 2
                     else:
                         decimals = 5
-                        
-                # Calculate TP/SL Prices
+
+                # Reconstruct Active Trade Data Object
+                # Need TP/SL prices. They are derived from entry price in simulation logic but not stored in dict unless I change simulate_history.
+                # I can recalculate them or assume they are implicit.
+                # For display, we want explicit TP/SL.
+                
+                # Recalculate TP/SL for display (using same logic as loop)
+                # Need to know if crypto dynamic was used.
+                
+                # ... Retrieve params ...
                 a_type = asset['type']
                 curr_tp = 0.0
                 curr_sl = 0.0
                 
                 if a_type == 'crypto':
                     if crypto_use_dynamic:
+                        # Find sigma at ENTRY time
                         try:
+                            # ts is exact index
                             entry_idx = df_strat.index.get_loc(ts)
                             sigma_val = df_strat['sigma'].iloc[entry_idx]
-                        except:
-                            sigma_val = 0.01 
+                        except: sigma_val = 0.01 
                         
                         curr_tp = sigma_val * crypto_dyn_pt_k
                         curr_sl = sigma_val * crypto_dyn_sl_k
@@ -654,52 +838,38 @@ def analyze_timeframe(timeframe_label, silent=False):
                 else: # trad
                     curr_tp = tp_trad
                     curr_sl = sl_trad
+                    
+                ep = last_open['Price']
                 
-                ep = trade['Entry Price']
+                pos_raw = 'LONG' if 'LONG' in last_open['Type'] else 'SHORT'
                 
-                if trade['Position'] == 'LONG':
+                if pos_raw == 'LONG':
                     tp_price = ep * (1 + curr_tp)
                     sl_price = ep * (1 - curr_sl)
                 else:
                     tp_price = ep * (1 - curr_tp)
                     sl_price = ep * (1 + curr_sl)
+                    
+                rec_action = f"✅ TAKE" # By definition if it's open in history it passed threshold
 
                 active_trade_data = {
-                    "_sort_key": sort_ts,
-                    "Asset": asset['name'],
+                    "_sort_key": ts, # Keep raw for sorting
+                    "Asset": last_open['Asset'],
                     "Symbol": asset['symbol'],
-                    "Type": type_display,
-                    "Timeframe": short_tf,
-                    "Entry_Time": ts_str,
+                    "Type": last_open['Type'],
+                    "Timeframe": last_open['Timeframe'],
+                    "Entry_Time": ts_str, # EST String
                     "Signal_Time": ts_str,
                     "Entry_Price": f"{ep:.{decimals}f}",
                     "Take_Profit": f"{tp_price:.{decimals}f}",
                     "Stop_Loss": f"{sl_price:.{decimals}f}",
                     "RR": f"{(abs(tp_price - ep) / abs(ep - sl_price) if abs(ep - sl_price) > 0 else 0):.2f}R",
                     "Current_Price": f"{df_strat.iloc[-1]['close']:.{decimals}f}",
-                    "PnL (%)": f"{trade['PnL (%)']:.2f}%",
-                    "Confidence": f"{entry_conf:.0%}",
+                    "PnL (%)": f"{last_open['Return_Pct']:.2%}",
+                    "Confidence": last_open['Confidence'],
                     "Action": rec_action,
-                    "Signal": trade['Position']
+                    "Signal": pos_raw
                 }
-
-                # --- VALIDATE: Verify trade hasn't already closed ---
-                future_price_action = df_strat.loc[df_strat.index > ts]
-                
-                if not future_price_action.empty:
-                    hit_tp = False
-                    hit_sl = False
-                    
-                    if trade['Position'] == 'LONG':
-                        hit_tp = (future_price_action['high'] >= tp_price).any()
-                        hit_sl = (future_price_action['low'] <= sl_price).any()
-                    elif trade['Position'] == 'SHORT':
-                        hit_tp = (future_price_action['low'] <= tp_price).any()
-                        hit_sl = (future_price_action['high'] >= sl_price).any()
-                        
-                    if hit_tp or hit_sl:
-                        # Trade has already closed in history!
-                        active_trade_data = None
 
             # --- Latest Candle Status ---
             current = df_strat.iloc[-1]
