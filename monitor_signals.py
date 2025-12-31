@@ -3,6 +3,7 @@ import json
 import os
 import joblib
 import pandas as pd
+pd.set_option('future.no_silent_downcasting', True)
 import random
 import urllib.request
 from datetime import datetime

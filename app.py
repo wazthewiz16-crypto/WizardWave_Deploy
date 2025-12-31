@@ -9,6 +9,7 @@ import warnings
 from st_copy_to_clipboard import st_copy_to_clipboard
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.simplefilter(action='ignore', category=ResourceWarning)
+pd.set_option('future.no_silent_downcasting', True)
 
 import subprocess
 import sys
