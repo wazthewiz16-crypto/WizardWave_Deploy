@@ -1336,9 +1336,9 @@ def process_discord_alerts(df):
 
         processed_file = 'processed_signals.json'
         
-        # Max Age for Alert (e.g. 3 hours). 
+        # Max Age for Alert (e.g. 1.5 hours). 
         # Prevents flooding old alerts if app restarts.
-        MAX_ALERT_AGE_HOURS = 3
+        MAX_ALERT_AGE_HOURS = 1.5
         now_est = pd.Timestamp.now(tz='America/New_York')
 
         for _, row in df.iterrows():
@@ -1362,11 +1362,16 @@ def process_discord_alerts(df):
 
                 # 3. Freshness Check
                 try:
-                    entry_dt = pd.to_datetime(entry_time_str).tz_localize('America/New_York')
+                    # Handle already timezone-aware logic if needed
+                    if isinstance(row.get('Entry_Time'), pd.Timestamp) and row.get('Entry_Time').tzinfo:
+                         entry_dt = row.get('Entry_Time').tz_convert('America/New_York')
+                    else:
+                         entry_dt = pd.to_datetime(entry_time_str).tz_localize('America/New_York')
+                    
                     if (now_est - entry_dt).total_seconds() > (MAX_ALERT_AGE_HOURS * 3600):
                         continue # Too old
                 except:
-                    pass # Proceed if check fails (fallback)
+                    continue # Skip if date parsing fails to be safe
 
                 # 4. ATOMIC CHECK-AND-SEND
                 # Add random jitter to desynchronize multiple tabs checking at exact same millisecond
