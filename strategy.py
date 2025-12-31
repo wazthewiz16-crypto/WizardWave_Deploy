@@ -72,8 +72,8 @@ class WizardWaveStrategy:
         # Trend Flip Logic
         # Need shifted series for previous value
         # shift(1) means previous row
-        df['prev_is_bullish'] = df['is_bullish'].shift(1).fillna(False)
-        df['prev_is_bearish'] = df['is_bearish'].shift(1).fillna(False)
+        df['prev_is_bullish'] = df['is_bullish'].shift(1).fillna(False).astype(bool)
+        df['prev_is_bearish'] = df['is_bearish'].shift(1).fillna(False).astype(bool)
 
         df['trend_flip_bull'] = df['is_bullish'] & (~df['prev_is_bullish'])
         df['trend_flip_bear'] = df['is_bearish'] & (~df['prev_is_bearish'])

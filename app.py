@@ -559,7 +559,7 @@ def analyze_timeframe(timeframe_label, silent=False):
             # --- Calculate Sigma for Dynamic Barriers ---
             if crypto_use_dynamic and asset['type'] == 'crypto':
                 df_strat['sigma'] = df_strat['close'].pct_change().ewm(span=36, adjust=False).std()
-                df_strat['sigma'] = df_strat['sigma'].fillna(method='bfill').fillna(0.01)
+                df_strat['sigma'] = df_strat['sigma'].bfill().fillna(0.01)
             
             prob = 0.0
             if model:
@@ -2513,7 +2513,7 @@ with col_center:
                              "Type": st.column_config.TextColumn("Signal Type"),
                              "Timeframe": st.column_config.TextColumn("TF"),
                          },
-                         use_container_width=True,
+                         width="stretch",
                          hide_index=True
                      )
                  else:

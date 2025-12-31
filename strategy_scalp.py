@@ -70,8 +70,9 @@ class WizardScalpStrategy:
         df['is_below_cloud'] = close < df['cloud_bottom']
         
         # Flip Detection
-        df['prev_above'] = df['is_above_cloud'].shift(1).fillna(False)
-        df['prev_below'] = df['is_below_cloud'].shift(1).fillna(False)
+        # Flip Detection
+        df['prev_above'] = df['is_above_cloud'].shift(1).fillna(False).astype(bool)
+        df['prev_below'] = df['is_below_cloud'].shift(1).fillna(False).astype(bool)
         
         df['bull_cross'] = df['is_above_cloud'] & (~df['prev_above'])
         df['bear_cross'] = df['is_below_cloud'] & (~df['prev_below'])

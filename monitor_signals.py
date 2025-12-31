@@ -234,7 +234,7 @@ def run_analysis_cycle():
                     crypto_use_dynamic = tb.get('crypto_use_dynamic', False)
                     if crypto_use_dynamic and asset_type == 'crypto':
                          df['sigma'] = df['close'].pct_change().ewm(span=36, adjust=False).std()
-                         df['sigma'] = df['sigma'].fillna(method='bfill').fillna(0.01)
+                         df['sigma'] = df['sigma'].bfill().fillna(0.01)
                     
                     df = df.dropna()
                     if df.empty: continue
