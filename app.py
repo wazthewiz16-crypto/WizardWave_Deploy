@@ -668,7 +668,7 @@ def analyze_timeframe(timeframe_label, silent=False):
                             "Price": entry_price,
                             "Confidence": f"{entry_conf:.0%}",
                             "Model": "✅",
-                            "Return_Pct": pnl, 
+                            "Return_Pct": pnl - 0.002, # Deduct 0.2% fee
                             "SL_Pct": curr_sl_pct,
                             "Status": status
                        })
@@ -706,7 +706,7 @@ def analyze_timeframe(timeframe_label, silent=False):
                                     "Price": entry_price,
                                     "Confidence": f"{entry_conf:.0%}",
                                     "Model": "✅",
-                                    "Return_Pct": last_close_pnl, 
+                                    "Return_Pct": last_close_pnl - 0.002, # Deduct 0.2% fee
                                     "SL_Pct": curr_sl_pct,
                                     "Status": status_label
                                })
@@ -740,7 +740,7 @@ def analyze_timeframe(timeframe_label, silent=False):
                                 "Price": entry_price,
                                 "Confidence": f"{entry_conf:.0%}",
                                 "Model": "✅",
-                                "Return_Pct": tl_pnl, 
+                                "Return_Pct": tl_pnl - 0.002, # Deduct 0.2% fee
                                 "SL_Pct": curr_sl_pct,
                                 "Status": "TIME LIMIT ⌛"
                            })
