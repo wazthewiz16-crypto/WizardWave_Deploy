@@ -128,7 +128,7 @@ def run_runic_analysis():
         thread_manager.update_progress(95)
         
         # --- CLS Strategy Scan ---
-        _, a_cls, _ = analyze_cls_strategy(silent=True)
+        _, a_cls, h_cls = analyze_cls_strategy(silent=True)
         thread_manager.update_progress(98)
         
         # Aggregate History
@@ -139,6 +139,7 @@ def run_runic_analysis():
         if h12h: all_history.extend(h12h)
         if h1d: all_history.extend(h1d)
         if h4d: all_history.extend(h4d)
+        if h_cls: all_history.extend(h_cls)
         
         history_df = pd.DataFrame()
         if all_history:
@@ -1012,7 +1013,8 @@ def analyze_timeframe(timeframe_label, silent=False):
                                     "Model": "✅",
                                     "Return_Pct": last_close_pnl, 
                                     "SL_Pct": curr_sl_pct,
-                                    "Status": status_label
+                                    "Status": status_label,
+                                    "Strategy": strat_name
                                })
                                # Prepare for new entry
                                position = None 
@@ -1052,7 +1054,8 @@ def analyze_timeframe(timeframe_label, silent=False):
                                 "Model": "✅",
                                 "Return_Pct": tl_pnl, 
                                 "SL_Pct": curr_sl_pct,
-                                "Status": "TIME LIMIT ⌛"
+                                "Status": "TIME LIMIT ⌛",
+                                "Strategy": strat_name
                            })
                            position = None
                                
@@ -1079,7 +1082,8 @@ def analyze_timeframe(timeframe_label, silent=False):
                         "Model": "✅",
                         "Return_Pct": pnl, 
                         "SL_Pct": curr_sl_pct,
-                        "Status": "OPEN"
+                        "Status": "OPEN",
+                        "Strategy": strat_name
                     })
 
 
@@ -1127,6 +1131,7 @@ def analyze_timeframe(timeframe_label, silent=False):
 def analyze_cls_strategy(silent=False):
     """
     Runs CLS Strategy for TradFi Assets on Daily/Hourly MTF.
+    Includes Historical Simulation.
     """
     status = None
     if not silent: 
@@ -1134,6 +1139,7 @@ def analyze_cls_strategy(silent=False):
         status.text("Scanning Daily CLS Ranges...")
         
     active_trades = []
+    historical_signals = []
     
     # Filter TradFi Assets (Forex + Trad)
     tradfi_assets = [a for a in ASSETS if a['type'] == 'trad' or a['type'] == 'forex']
@@ -1147,13 +1153,14 @@ def analyze_cls_strategy(silent=False):
             df_htf = fetch_data(asset['symbol'], 'trad', '1d', 500)
             df_ltf = fetch_data(asset['symbol'], 'trad', '1h', 400)
             
-            if df_htf.empty or df_ltf.empty: return None
+            if df_htf.empty or df_ltf.empty: return None, []
             
             df = cls_strat.apply_mtf(df_htf, df_ltf)
-            if df.empty or 'signal_type' not in df.columns: return None
+            if df.empty or 'signal_type' not in df.columns: return None, []
             
             # --- Check Active Trade ---
             last = df.iloc[-1]
+            active_trade = None
             s_type = last['signal_type']
             
             if isinstance(s_type, str) and "CLS" in s_type:
@@ -1161,12 +1168,10 @@ def analyze_cls_strategy(silent=False):
                 tp = last['target_price']
                 sl = last['stop_loss']
                 
-                # Format for Display
                 pos = "LONG" if "LONG" in s_type else "SHORT"
                 color_icon = "🟢" if "LONG" in s_type else "🔴"
                 
-                # Active Signal Object
-                trade = {
+                active_trade = {
                     "_sort_key": last.name,
                     "Asset": asset['name'],
                     "Timeframe": "1H",
@@ -1179,21 +1184,106 @@ def analyze_cls_strategy(silent=False):
                     "Take Profit": round(tp, 4) if pd.notna(tp) else 0,
                     "Strategy": "Daily CLS Range"
                 }
-                return trade
+
+            # --- Simulate History ---
+            hist_trades = []
+            # Find past signals
+            # Filter rows with "CLS" in signal_type
+            
+            # We iterate to find outcomes
+            # Use 'signal_type' column
+            sig_rows = df[df['signal_type'].astype(str).str.contains("CLS", na=False)]
+            
+            for idx, row in sig_rows.iterrows():
+                
+                entry_time = row.name
+                entry_price = row['close']
+                tp = row['target_price']
+                sl = row['stop_loss']
+                
+                if pd.isna(tp) or pd.isna(sl): continue
+                
+                pos_type = "LONG" if "LONG" in row['signal_type'] else "SHORT"
+                
+                # Check Outcome
+                outcome_status = "OPEN"
+                pnl = 0.0
+                exit_time_str = "-"
+                
+                # Look forward
+                # Slice future
+                future_df = df.loc[entry_time:].iloc[1:] # strictly after
+                
+                for _, f_row in future_df.iterrows():
+                    h = f_row['high']
+                    l = f_row['low']
+                    
+                    if pos_type == "LONG":
+                        if l <= sl:
+                            outcome_status = "HIT SL 🔴"
+                            pnl = (sl - entry_price) / entry_price
+                            exit_time_str = str(f_row.name)
+                            break
+                        if h >= tp:
+                            outcome_status = "HIT TP 🟢"
+                            pnl = (tp - entry_price) / entry_price
+                            exit_time_str = str(f_row.name)
+                            break
+                    else: # SHORT
+                        if h >= sl:
+                            outcome_status = "HIT SL 🔴"
+                            pnl = (entry_price - sl) / entry_price
+                            exit_time_str = str(f_row.name)
+                            break
+                        if l <= tp:
+                            outcome_status = "HIT TP 🟢"
+                            pnl = (entry_price - tp) / entry_price
+                            exit_time_str = str(f_row.name)
+                            break
+                
+                # If still open and not the last bar, calculate floating PnL
+                if outcome_status == "OPEN":
+                    curr_price = df.iloc[-1]['close']
+                    if pos_type == "LONG": pnl = (curr_price - entry_price) / entry_price
+                    else: pnl = (entry_price - curr_price) / entry_price
+                
+                # Deduct fee 0.2%
+                pnl -= 0.002
+                
+                hist_trades.append({
+                    "_sort_key": entry_time,
+                    "Asset": asset['name'],
+                    "Timeframe": "1H",
+                    "Time": str(entry_time),
+                    "Exit Time": exit_time_str,
+                    "Type": f"{pos_type} {'🟢' if pos_type == 'LONG' else '🔴'}",
+                    "Price": entry_price,
+                    "Confidence": "100%",
+                    "Model": "✅",
+                    "Return_Pct": pnl,
+                    "SL_Pct": abs((entry_price - sl)/entry_price) if entry_price else 0,
+                    "Status": outcome_status,
+                    "Strategy": "Daily CLS Range"
+                })
+
+            return active_trade, hist_trades
+            
         except Exception:
             pass
-        return None
+        return None, []
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
         futures = {executor.submit(process_cls_asset, asset): asset for asset in tradfi_assets}
         for future in concurrent.futures.as_completed(futures):
-            res = future.result()
-            if res:
-                active_trades.append(res)
+            trade, hist = future.result()
+            if trade:
+                active_trades.append(trade)
+            if hist:
+                historical_signals.extend(hist)
                 
     if not silent and status: status.empty()
     
-    return None, pd.DataFrame(active_trades), None
+    return None, pd.DataFrame(active_trades), historical_signals
 
 def run_simulation(df, i, signal_type, asset_type, config):
     # Retrieve Triple Barrier Params
@@ -2555,7 +2645,13 @@ with col_center:
 
                  # Simplify cols
                  if not filtered_df.empty:
-                     display_cols = ['Time', 'Asset', 'Timeframe', 'Type', 'Confidence', 'Price', 'Exit Time', 'Return_Pct', 'Status']
+                     # Backward compatibility
+                     if 'Strategy' not in filtered_df.columns:
+                         filtered_df['Strategy'] = 'WizardWave'
+                     else:
+                         filtered_df['Strategy'] = filtered_df['Strategy'].fillna('WizardWave')
+
+                     display_cols = ['Time', 'Asset', 'Timeframe', 'Type', 'Confidence', 'Price', 'Exit Time', 'Return_Pct', 'Status', 'Strategy']
                      # Fill Status if missing
                      if 'Status' not in filtered_df.columns:
                          filtered_df['Status'] = 'CLOSED'
@@ -2589,6 +2685,7 @@ with col_center:
                              "_sort_key": None, # Hide sort key
                              "Return": st.column_config.TextColumn("Return"),
                              "Type": st.column_config.TextColumn("Signal Type"),
+                             "Strategy": st.column_config.TextColumn("Strategy"),
                              "Timeframe": st.column_config.TextColumn("TF"),
                          },
                          width="stretch",
