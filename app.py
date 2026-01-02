@@ -2547,8 +2547,15 @@ with col_center:
                      if 'Status' in filtered_df.columns:
                          filtered_df = filtered_df[filtered_df['Status'] == 'OPEN']
                      
-                 # 3. Timeframe Filter
+                 # 3. Timeframe & Strategy Filter
                  if 'Timeframe' in hist_df.columns:
+                     # Ensure Strategy Column Exists for Filtering
+                     if 'Strategy' not in hist_df.columns:
+                         hist_df['Strategy'] = 'WizardWave'
+                     else:
+                         hist_df['Strategy'] = hist_df['Strategy'].fillna('WizardWave')
+                         
+                     # Timeframes
                      tf_order = {
                         "15m": 0, "15 Minutes": 0,
                         "1H": 2, "1 Hour": 2,
@@ -2560,24 +2567,39 @@ with col_center:
                      
                      unique_tfs = hist_df['Timeframe'].unique().tolist()
                      sorted_tfs = sorted(unique_tfs, key=lambda x: tf_order.get(x, 99))
-                     display_opts = sorted_tfs
+                     
+                     # Strategies
+                     unique_strats = sorted(hist_df['Strategy'].unique().tolist())
                      
                      with opt_col2:
-                         # Initialize default selection in session state if new
+                         # 1. Timeframe Select
                          if "history_tf_filter" not in st.session_state:
-                             st.session_state.history_tf_filter = display_opts
+                             st.session_state.history_tf_filter = sorted_tfs
                          
-                         # Use session state via key
-                         selected_short = st.multiselect("Timeframes", options=display_opts, label_visibility="collapsed", key="history_tf_filter")
+                         selected_short = st.multiselect("Timeframes", options=sorted_tfs, default=sorted_tfs, key="history_tf_filter")
                          
-                     # Use directly
-                     selected_tfs = selected_short
-                     
-                     # Apply Filter
-                     if selected_tfs:
-                         filtered_df = filtered_df[filtered_df['Timeframe'].isin(selected_tfs)]
+                         # 2. Strategy Select
+                         if "history_strat_filter" not in st.session_state:
+                             st.session_state.history_strat_filter = unique_strats
+                             
+                         selected_strats = st.multiselect("Strategies", options=unique_strats, default=unique_strats, key="history_strat_filter")
+                         
+                     # Apply Filters
+                     # 1. TF
+                     if selected_short:
+                         filtered_df = filtered_df[filtered_df['Timeframe'].isin(selected_short)]
                      else:
-                         filtered_df = pd.DataFrame(columns=filtered_df.columns) # Show nothing if nothing selected
+                         filtered_df = pd.DataFrame(columns=filtered_df.columns)
+                         
+                     # 2. Strategy
+                     if selected_strats:
+                          # Ensure target df has the col
+                          if 'Strategy' not in filtered_df.columns: filtered_df['Strategy'] = 'WizardWave'
+                          else: filtered_df['Strategy'] = filtered_df['Strategy'].fillna('WizardWave')
+                          
+                          filtered_df = filtered_df[filtered_df['Strategy'].isin(selected_strats)]
+                     else:
+                          filtered_df = pd.DataFrame(columns=filtered_df.columns)
                          
                  # Sort newest first
                  filtered_df = filtered_df.sort_values(by='_sort_key', ascending=False)
