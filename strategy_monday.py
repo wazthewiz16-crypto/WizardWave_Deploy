@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import pandas_ta as ta
 
 class MondayRangeStrategy:
     """
@@ -24,6 +25,10 @@ class MondayRangeStrategy:
         # Ensure DateTime Index
         if not isinstance(df.index, pd.DatetimeIndex):
             df.index = pd.to_datetime(df.index)
+
+        # Calculate Trend Filter (200 EMA)
+        # Note: Need sufficient history for accurate EMA
+        df['ema_200'] = ta.ema(df['close'], length=200)
 
         # 1. Identify Monday Ranges
         # Resample to Daily to get Monday's Full High/Low
@@ -64,50 +69,111 @@ class MondayRangeStrategy:
         
         df['day_of_week'] = df.index.dayofweek
         
-        # Logic:
-        # We need to detect the 'cross back'.
-        # Previous Intraday candle was 'deviated' (or just low < mon_low), Current close > mon_low
-        # Re-entry triggers:
-        # LONG: Low(any recent) < MonLow, but NOW Close > MonLow.
-        # Specifically "Close back inside". This implies the *break* happened recently.
-        # Simplest Trigger: prev_close < mon_low AND curr_close > mon_low ?
-        # OR prev_low < mon_low AND curr_close > mon_low? 
-        # "Deviate under" -> Price WAS under. "Close back inside" -> Price IS NOW inside (above Low).
-        # We effectively check for a Bullish Engulfing or simple crossover of the Level.
+        # --- Logic Steps ---
         
-        # Check "Cross Up" on Monday Low
-        cross_up_mon_low = (df['close'] > df['mon_low']) & (df['close'].shift(1) <= df['mon_low'])
-        # Ensure we actually deviated (Low was below). 
-        # If shift(1) close <= mon_low, then by def it was below or at.
+        # 1. Identify Deviation Extremes (Pre-calculation for SL)
+        # Longs: Deviation Low (Lowest Low while < Mon Low)
+        is_below = df['close'] < df['mon_low']
+        below_grp = (is_below != is_below.shift()).cumsum()
+        low_min = df.groupby(below_grp)['low'].transform('min')
+        df['dev_low'] = np.where(is_below, low_min, np.nan)
         
-        # Check "Cross Down" on Monday High
-        cross_down_mon_high = (df['close'] < df['mon_high']) & (df['close'].shift(1) >= df['mon_high'])
+        # Shorts: Deviation High (Highest High while > Mon High)
+        is_above = df['close'] > df['mon_high']
+        above_grp = (is_above != is_above.shift()).cumsum()
+        high_max = df.groupby(above_grp)['high'].transform('max')
+        df['dev_high'] = np.where(is_above, high_max, np.nan)
+
+        # 2. Identify Reclaim Events
+        # Long Reclaim: Prev Close < Mon Low, Curr Close > Mon Low
+        reclaim_long = (df['close'] > df['mon_low']) & (df['close'].shift(1) < df['mon_low'])
+        # Short Reclaim: Prev Close > Mon High, Curr Close < Mon High
+        reclaim_short = (df['close'] < df['mon_high']) & (df['close'].shift(1) > df['mon_high'])
         
-        # Valid Days: Tue(1) to Sun(6). 
-        valid_day = df['day_of_week'] != 0 
+        # 3. Setup Window (Retest must happen within 12 bars of reclaim)
+        # We forward fill the Reclaim Event and the Deviation Extreme associated with it
         
-        df['long_signal'] = cross_up_mon_low & valid_day
-        df['short_signal'] = cross_down_mon_high & valid_day
+        # We need the dev_low from the *moment* of reclaim (shift 1)
+        df['setup_sl_long'] = np.where(reclaim_long, df['dev_low'].shift(1), np.nan)
+        df['setup_sl_short'] = np.where(reclaim_short, df['dev_high'].shift(1), np.nan)
         
-        # 3. Assign Signal Types
-        conditions = [
-            df['long_signal'],
-            df['short_signal']
-        ]
-        choices = [
-            "MONDAY_LONG",
-            "MONDAY_SHORT"
-        ]
+        # Forward fill active setup for 12 bars? 
+        # Pandas ffill(limit=12) works on NaNs.
+        df['active_long_setup'] = df['setup_sl_long'].ffill(limit=12)
+        df['active_short_setup'] = df['setup_sl_short'].ffill(limit=12)
         
+        # 4. Trigger Retest Entry
+        # Long: Active Setup, Low touches Mon Low (within 0.3%?), Close holds (>= Mon Low * 0.998?)
+        # User said "retest... not just breakout".
+        # Let's say Low <= Mon Low * 1.002 (came close) AND Close > Mon Low (held)
+        # AND it is NOT the reclaim candle itself (shift 1 reclaim must be false? or just ensure we are in window)
+        
+        # Valid Day (Tue-Sun)
+        valid_day = df['day_of_week'] != 0
+        
+        # Valid Session (High Volume: 07:00 to 21:00 UTC - London & NY)
+        # Assuming df index is UTC (which it is from data_fetcher)
+        valid_time = (df.index.hour >= 7) & (df.index.hour <= 21)
+        
+        # Trend Filter (200 EMA)
+        trend_long = df['close'] > df['ema_200']
+        trend_short = df['close'] < df['ema_200']
+        
+        # Long Entry
+        # Condition: Have active setup (not NaN)
+        has_long_setup = df['active_long_setup'].notna()
+        # Condition: Retest (Low dipped near Mon Low). 0.2% buffer
+        retest_dip_long = df['low'] <= (df['mon_low'] * 1.002)
+        # Condition: Held (Close is above Mon Low - 0.1% tolerance?)
+        held_long = df['close'] >= df['mon_low']
+        
+        long_signal = has_long_setup & retest_dip_long & held_long & valid_day & valid_time & trend_long & (~reclaim_long)
+        
+        # Short Entry
+        has_short_setup = df['active_short_setup'].notna()
+        retest_peak_short = df['high'] >= (df['mon_high'] * 0.998)
+        held_short = df['close'] <= df['mon_high']
+        
+        short_signal = has_short_setup & retest_peak_short & held_short & valid_day & valid_time & trend_short & (~reclaim_short)
+
+        # 5. Assign Targets & SLs
+        
+        # Signal Type
+        conditions = [long_signal, short_signal]
+        choices = ["MONDAY_LONG", "MONDAY_SHORT"]
         df['signal_type'] = np.select(conditions, choices, default="NONE")
         
-        # Props for UI/Analysis
+        # Targets
         df['target_price'] = np.where(df['signal_type'] == 'MONDAY_LONG', df['mon_high'], 
                                    np.where(df['signal_type'] == 'MONDAY_SHORT', df['mon_low'], np.nan))
                                    
-        # Stop Loss? Usually below deviation low (Swing Low). 
-        # Hard to map exact swing low without loop/rolling. 
-        # For now, we can leave SL blank or standard. User didn't specify.
+        # Mid-Range Target (50% of range)
+        mid_price = (df['mon_high'] + df['mon_low']) / 2
+        df['target_mid'] = np.where(df['signal_type'] != 'NONE', mid_price, np.nan)
+                                   
+        # Stop Loss: Middle of Extreme & Level
+        # SL = (Dev + Level) / 2
+        
+        # Create temp columns for SL calc
+        # active_long_setup holds the Dev Low
+        df['rough_sl_long'] = (df['active_long_setup'] + df['mon_low']) / 2
+        df['rough_sl_short'] = (df['active_short_setup'] + df['mon_high']) / 2
+        
+        df['stop_loss'] = np.where(df['signal_type'] == 'MONDAY_LONG', df['rough_sl_long'], 
+                                   np.where(df['signal_type'] == 'MONDAY_SHORT', df['rough_sl_short'], np.nan))
+                                   
+        # 6. R:R Filter
+        entry = df['close']
+        risk = abs(entry - df['stop_loss'])
+        reward = abs(df['target_price'] - entry)
+        
+        df['rr_ratio'] = np.where((risk > 0) & (df['signal_type'] != 'NONE'), reward / risk, 0.0)
+        
+        valid_rr = (df['rr_ratio'] >= 2.0) & (df['rr_ratio'] <= 5.0)
+        df['signal_type'] = np.where((df['signal_type'] != 'NONE') & (~valid_rr), "NONE", df['signal_type'])
+        
+        mask_invalid = df['signal_type'] == 'NONE'
+        df.loc[mask_invalid, ['target_price', 'stop_loss', 'rr_ratio']] = np.nan
         
         return df
 

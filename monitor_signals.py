@@ -13,6 +13,7 @@ import traceback
 from data_fetcher import fetch_data
 from strategy import WizardWaveStrategy
 from strategy_scalp import WizardScalpStrategy
+from strategy_cls import CLSRangeStrategy
 from feature_engine import calculate_ml_features
 from pipeline import get_asset_type
 
@@ -78,8 +79,10 @@ def send_discord_alert(webhook_url, signal_data):
         except:
             pass
         
+        strategy_name = signal_data.get('Strategy', 'WizardWave')
+        
         embed = {
-            "title": f"🔮 WIZARD PROPHECY: {asset} {direction_str}",
+            "title": f"🔮 {strategy_name.upper()}: {asset} {direction_str}",
             "description": f"**Direction:** {direction_str}\n**Timeframe:** {timeframe}\n**Action:** {action}",
             "color": color,
             "fields": [
@@ -90,7 +93,7 @@ def send_discord_alert(webhook_url, signal_data):
                 {"name": "R:R", "value": rr_str, "inline": True},
                 {"name": "Entry Time", "value": f"{signal_data.get('Entry_Time', 'N/A')}", "inline": False}
             ],
-            "footer": {"text": "WizardWave v1.0 • Automated Signal (Monitor)"}
+            "footer": {"text": f"{strategy_name} • Automated Signal (Monitor)"}
         }
 
         data = {
@@ -299,6 +302,62 @@ def run_analysis_cycle():
 
                 except Exception as e:
                     pass
+
+    # --- CLS STRATEGY SCAN (TradFi Only) ---
+    print("Running Daily CLS Range Scan...")
+    try:
+        cls_strat = CLSRangeStrategy() 
+        
+        for symbol in CONFIG['assets']:
+            try:
+                # Filter TradFi
+                asset_type = get_asset_type(symbol)
+                is_tradfi = False
+                if asset_type == 'forex' or asset_type == 'trad': is_tradfi = True
+                elif '-' in symbol or '^' in symbol or '=' in symbol: is_tradfi = True
+                
+                if not is_tradfi: continue
+                
+                # Fetch MTF Data
+                df_htf = fetch_data(symbol, asset_type='trad', timeframe='1d', limit=500)
+                df_ltf = fetch_data(symbol, asset_type='trad', timeframe='1h', limit=400)
+                
+                if df_htf.empty or df_ltf.empty: continue
+                
+                # Apply
+                df = cls_strat.apply_mtf(df_htf, df_ltf)
+                if df.empty or 'signal_type' not in df.columns: continue
+                
+                last = df.iloc[-1]
+                s_type = last['signal_type']
+                
+                if isinstance(s_type, str) and "CLS" in s_type:
+                     price = last['close']
+                     tp = last['target_price']
+                     sl = last['stop_loss']
+                     
+                     sig = {
+                        "Asset": symbol,
+                        "Timeframe": "1h", 
+                        "Action": "✅ TAKE",
+                        "Type": "LONG" if "LONG" in s_type else "SHORT",
+                        "Signal": s_type,
+                        "Entry_Price": price,
+                        "Current_Price": price,
+                        "Entry_Time": str(last.name),
+                        "Confidence": "100.0%", 
+                        "Confidence_Score": 100,
+                        "Take_Profit": round(tp, 4) if pd.notna(tp) else 0,
+                        "Stop_Loss": round(sl, 4) if pd.notna(sl) else 0,
+                        "Strategy": "Daily CLS Range"
+                    }
+                     all_signals.append(sig)
+                     print(f"CLS Signal Found: {symbol} {s_type}")
+
+            except Exception as e:
+                pass
+    except Exception as e:
+         print(f"CLS Init Error: {e}")
 
     # Process
     if all_signals:

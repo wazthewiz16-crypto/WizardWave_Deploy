@@ -127,6 +127,10 @@ def run_runic_analysis():
         r4d, a4d, h4d = analyze_timeframe("4 Days", silent=True)
         thread_manager.update_progress(95)
         
+        # --- CLS Strategy Scan ---
+        _, a_cls, _ = analyze_cls_strategy(silent=True)
+        thread_manager.update_progress(98)
+        
         # Aggregate History
         all_history = []
         if h15m: all_history.extend(h15m)
@@ -141,7 +145,7 @@ def run_runic_analysis():
              history_df = pd.DataFrame(all_history)
         
         # Aggregate Active
-        active_dfs = [df for df in [a15m, a1h, a4h, a12h, a1d, a4d] if df is not None and not df.empty]
+        active_dfs = [df for df in [a15m, a1h, a4h, a12h, a1d, a4d, a_cls] if df is not None and not df.empty]
         combined_active = pd.DataFrame()
         if active_dfs:
             combined_active = pd.concat(active_dfs).sort_values(by='_sort_key', ascending=False)
@@ -185,6 +189,7 @@ from data_fetcher import fetch_data
 from feature_engine import calculate_ml_features
 from strategy import WizardWaveStrategy
 from strategy_scalp import WizardScalpStrategy
+from strategy_cls import CLSRangeStrategy
 import streamlit.components.v1 as components
 import json
 import urllib.request
@@ -869,7 +874,8 @@ def analyze_timeframe(timeframe_label, silent=False):
                     "PnL (%)": f"{last_open['Return_Pct']:.2%}",
                     "Confidence": last_open['Confidence'],
                     "Action": rec_action,
-                    "Signal": pos_raw
+                    "Signal": pos_raw,
+                    "Strategy": strat_name
                 }
 
             # --- Latest Candle Status ---
@@ -1117,6 +1123,77 @@ def analyze_timeframe(timeframe_label, silent=False):
         active_trades.sort(key=lambda x: x['_sort_key'], reverse=True)
         
     return pd.DataFrame(results), pd.DataFrame(active_trades), historical_signals
+
+def analyze_cls_strategy(silent=False):
+    """
+    Runs CLS Strategy for TradFi Assets on Daily/Hourly MTF.
+    """
+    status = None
+    if not silent: 
+        status = st.empty()
+        status.text("Scanning Daily CLS Ranges...")
+        
+    active_trades = []
+    
+    # Filter TradFi Assets (Forex + Trad)
+    tradfi_assets = [a for a in ASSETS if a['type'] == 'trad' or a['type'] == 'forex']
+    
+    cls_strat = CLSRangeStrategy() # Config B (1.5x/10) Default
+    
+    # Threading for speed
+    def process_cls_asset(asset):
+        try:
+             # Fetch MTF
+            df_htf = fetch_data(asset['symbol'], 'trad', '1d', 500)
+            df_ltf = fetch_data(asset['symbol'], 'trad', '1h', 400)
+            
+            if df_htf.empty or df_ltf.empty: return None
+            
+            df = cls_strat.apply_mtf(df_htf, df_ltf)
+            if df.empty or 'signal_type' not in df.columns: return None
+            
+            # --- Check Active Trade ---
+            last = df.iloc[-1]
+            s_type = last['signal_type']
+            
+            if isinstance(s_type, str) and "CLS" in s_type:
+                price = last['close']
+                tp = last['target_price']
+                sl = last['stop_loss']
+                
+                # Format for Display
+                pos = "LONG" if "LONG" in s_type else "SHORT"
+                color_icon = "🟢" if "LONG" in s_type else "🔴"
+                
+                # Active Signal Object
+                trade = {
+                    "_sort_key": last.name,
+                    "Asset": asset['name'],
+                    "Timeframe": "1H",
+                    "Time": str(last.name), 
+                    "Type": f"{pos} {color_icon}",
+                    "Price": price,
+                    "Confidence": "100%", # Rule Based
+                    "Action": "✅ TAKE",
+                    "Stop Loss": round(sl, 4) if pd.notna(sl) else 0,
+                    "Take Profit": round(tp, 4) if pd.notna(tp) else 0,
+                    "Strategy": "Daily CLS Range"
+                }
+                return trade
+        except Exception:
+            pass
+        return None
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        futures = {executor.submit(process_cls_asset, asset): asset for asset in tradfi_assets}
+        for future in concurrent.futures.as_completed(futures):
+            res = future.result()
+            if res:
+                active_trades.append(res)
+                
+    if not silent and status: status.empty()
+    
+    return None, pd.DataFrame(active_trades), None
 
 def run_simulation(df, i, signal_type, asset_type, config):
     # Retrieve Triple Barrier Params
@@ -1761,7 +1838,7 @@ def show_runic_alerts():
 <div><span style="color:#777">Sig:</span> <span style="font-weight:bold; color:#eee">{row.get('Action')}</span> <span style="color:#FFB74D">{row.get('Confidence')}</span></div>
 <div style="text-align: right;"><span style="color:#777">Ent:</span> <span style="color:#00ff88; font-family:monospace">{row.get('Entry_Price')}</span> <span style="color:#555">|</span> <span style="color:#777">Now:</span> <span style="color:#ffd700; font-family:monospace">{row.get('Current_Price', 'N/A')}</span></div>
 <div><span style="color:#777">TP:</span> <span style="color:#eee">{row.get('Take_Profit')}</span> <span style="color:#777">SL:</span> <span style="color:#d8b4fe">{row.get('Stop_Loss')}</span></div>
-<div style="text-align: right;"><span style="color:#888; font-size: 0.7rem;">🕒 {et_disp}</span></div>
+<div style="text-align: right;"><span style="font-size:0.65rem; color:#00eaff; font-weight:bold; margin-right:5px;">{row.get('Strategy','WizardWave')}</span> <span style="color:#888; font-size: 0.7rem;">🕒 {et_disp}</span></div>
 </div>
 </div>
 </div>
