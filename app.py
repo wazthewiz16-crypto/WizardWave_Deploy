@@ -1270,11 +1270,10 @@ def analyze_cls_strategy(silent=False):
                 last_ts = pd.Timestamp(last_t['_sort_key'])
                 current_ts = df.iloc[-1].name
                 
-                if last_ts == current_ts:
+                # Show in Active if Fresh OR Open
+                if last_ts == current_ts or last_t['Status'] == 'OPEN':
                     # Move to Active
                     pos_str = last_t['Type'] # "LONG 🟢"
-                    # Extract raw direction
-                    # "LONG 🟢" -> "LONG"
                     
                     price = last_t['Price']
                     sl = last_t.get('Raw_SL', 0)
@@ -1294,7 +1293,8 @@ def analyze_cls_strategy(silent=False):
                         "Strategy": "Daily CLS Range"
                     }
                     
-                    hist_trades.pop() # Remove from history list
+                    # Do NOT remove from history list, so it appears in both (User Visibility)
+                    # hist_trades.pop()
             
             return active_trade, hist_trades
             
