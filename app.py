@@ -1158,99 +1158,93 @@ def analyze_cls_strategy(silent=False):
             df = cls_strat.apply_mtf(df_htf, df_ltf)
             if df.empty or 'signal_type' not in df.columns: return None, []
             
-            # --- Check Active Trade ---
-            last = df.iloc[-1]
-            active_trade = None
-            s_type = last['signal_type']
-            
-            if isinstance(s_type, str) and "CLS" in s_type:
-                price = last['close']
-                tp = last['target_price']
-                sl = last['stop_loss']
-                
-                pos = "LONG" if "LONG" in s_type else "SHORT"
-                color_icon = "🟢" if "LONG" in s_type else "🔴"
-                
-                active_trade = {
-                    "_sort_key": last.name,
-                    "Asset": asset['name'],
-                    "Timeframe": "1H",
-                    "Time": str(last.name), 
-                    "Type": f"{pos} {color_icon}",
-                    "Price": price,
-                    "Confidence": "100%", # Rule Based
-                    "Action": "✅ TAKE",
-                    "Stop Loss": round(sl, 4) if pd.notna(sl) else 0,
-                    "Take Profit": round(tp, 4) if pd.notna(tp) else 0,
-                    "Strategy": "Daily CLS Range"
-                }
-
-            # --- Simulate History ---
-            hist_trades = []
-            # Find past signals
-            # Filter rows with "CLS" in signal_type
-            
-            # We iterate to find outcomes
-            # Use 'signal_type' column
+            # --- Simulate History (ordered) ---
             sig_rows = df[df['signal_type'].astype(str).str.contains("CLS", na=False)]
+            sig_rows = sig_rows.sort_index()
+
+            hist_trades = []
             
-            for idx, row in sig_rows.iterrows():
-                
-                entry_time = row.name
+            # Initialize last_exit using same tz
+            tz_info = sig_rows.index.tz
+            last_exit_time = pd.Timestamp.min
+            if tz_info:
+                last_exit_time = last_exit_time.tz_localize(tz_info)
+            
+            active_trade = None
+
+            for entry_time, row in sig_rows.iterrows():
+                # 1. Overlap Check
+                if entry_time <= last_exit_time:
+                    continue
+
                 entry_price = row['close']
+                s_type = row['signal_type']
                 tp = row['target_price']
                 sl = row['stop_loss']
                 
                 if pd.isna(tp) or pd.isna(sl): continue
                 
-                pos_type = "LONG" if "LONG" in row['signal_type'] else "SHORT"
+                pos_type = "LONG" if "LONG" in s_type else "SHORT"
                 
                 # Check Outcome
                 outcome_status = "OPEN"
                 pnl = 0.0
                 exit_time_str = "-"
+                trade_exit_time = None
                 
                 # Look forward
-                # Slice future
                 future_df = df.loc[entry_time:].iloc[1:] # strictly after
                 
-                for _, f_row in future_df.iterrows():
-                    h = f_row['high']
-                    l = f_row['low']
+                if not future_df.empty:
+                    for _, f_row in future_df.iterrows():
+                        h = f_row['high']
+                        l = f_row['low']
+                        
+                        if pos_type == "LONG":
+                            if l <= sl:
+                                outcome_status = "HIT SL 🔴"
+                                pnl = (sl - entry_price) / entry_price
+                                exit_time_str = str(f_row.name)
+                                trade_exit_time = f_row.name
+                                break
+                            if h >= tp:
+                                outcome_status = "HIT TP 🟢"
+                                pnl = (tp - entry_price) / entry_price
+                                exit_time_str = str(f_row.name)
+                                trade_exit_time = f_row.name
+                                break
+                        else: # SHORT
+                            if h >= sl:
+                                outcome_status = "HIT SL 🔴"
+                                pnl = (entry_price - sl) / entry_price
+                                exit_time_str = str(f_row.name)
+                                trade_exit_time = f_row.name
+                                break
+                            if l <= tp:
+                                outcome_status = "HIT TP 🟢"
+                                pnl = (entry_price - tp) / entry_price
+                                exit_time_str = str(f_row.name)
+                                trade_exit_time = f_row.name
+                                break
                     
-                    if pos_type == "LONG":
-                        if l <= sl:
-                            outcome_status = "HIT SL 🔴"
-                            pnl = (sl - entry_price) / entry_price
-                            exit_time_str = str(f_row.name)
-                            break
-                        if h >= tp:
-                            outcome_status = "HIT TP 🟢"
-                            pnl = (tp - entry_price) / entry_price
-                            exit_time_str = str(f_row.name)
-                            break
-                    else: # SHORT
-                        if h >= sl:
-                            outcome_status = "HIT SL 🔴"
-                            pnl = (entry_price - sl) / entry_price
-                            exit_time_str = str(f_row.name)
-                            break
-                        if l <= tp:
-                            outcome_status = "HIT TP 🟢"
-                            pnl = (entry_price - tp) / entry_price
-                            exit_time_str = str(f_row.name)
-                            break
+                    if outcome_status == "OPEN":
+                        curr_price = df.iloc[-1]['close']
+                        if pos_type == "LONG": pnl = (curr_price - entry_price) / entry_price
+                        else: pnl = (entry_price - curr_price) / entry_price
+                        trade_exit_time = future_df.index.max()
+                else:
+                    # No future data = Current Bar Signal
+                    trade_exit_time = entry_time # Block until this bar passes
                 
-                # If still open and not the last bar, calculate floating PnL
-                if outcome_status == "OPEN":
-                    curr_price = df.iloc[-1]['close']
-                    if pos_type == "LONG": pnl = (curr_price - entry_price) / entry_price
-                    else: pnl = (entry_price - curr_price) / entry_price
+                # Update State
+                if trade_exit_time:
+                    last_exit_time = trade_exit_time
                 
                 # Deduct fee 0.2%
                 pnl -= 0.002
                 
-                hist_trades.append({
+                # Store
+                trade_obj = {
                     "_sort_key": entry_time,
                     "Asset": asset['name'],
                     "Timeframe": "1H",
@@ -1263,9 +1257,45 @@ def analyze_cls_strategy(silent=False):
                     "Return_Pct": pnl,
                     "SL_Pct": abs((entry_price - sl)/entry_price) if entry_price else 0,
                     "Status": outcome_status,
-                    "Strategy": "Daily CLS Range"
-                })
-
+                    "Strategy": "Daily CLS Range",
+                    "Raw_TP": tp,
+                    "Raw_SL": sl
+                }
+                
+                hist_trades.append(trade_obj)
+            
+            # --- Separate Active vs History ---
+            if hist_trades:
+                last_t = hist_trades[-1]
+                last_ts = pd.Timestamp(last_t['_sort_key'])
+                current_ts = df.iloc[-1].name
+                
+                if last_ts == current_ts:
+                    # Move to Active
+                    pos_str = last_t['Type'] # "LONG 🟢"
+                    # Extract raw direction
+                    # "LONG 🟢" -> "LONG"
+                    
+                    price = last_t['Price']
+                    sl = last_t.get('Raw_SL', 0)
+                    tp = last_t.get('Raw_TP', 0)
+                    
+                    active_trade = {
+                        "_sort_key": last_t['_sort_key'],
+                        "Asset": asset['name'],
+                        "Timeframe": "1H",
+                        "Time": last_t['Time'], 
+                        "Type": pos_str,
+                        "Price": price,
+                        "Confidence": "100%", # Rule Based
+                        "Action": "✅ TAKE",
+                        "Stop Loss": round(sl, 4),
+                        "Take Profit": round(tp, 4),
+                        "Strategy": "Daily CLS Range"
+                    }
+                    
+                    hist_trades.pop() # Remove from history list
+            
             return active_trade, hist_trades
             
         except Exception:

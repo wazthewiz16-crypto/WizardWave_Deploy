@@ -78,7 +78,19 @@ def run_report():
                     signals = df[sig_mask].copy()
                     signals = signals[signals.index >= cutoff]
                     
+                    signals = signals.sort_index()
+                    
+                    # Initialize last_exit using same tz
+                    tz_info = signals.index.tz
+                    last_exit_time = pd.Timestamp.min
+                    if tz_info:
+                        last_exit_time = last_exit_time.tz_localize(tz_info)
+
                     for time, row in signals.iterrows():
+                        # 1. Overlap Check
+                        if time <= last_exit_time:
+                            continue
+
                         entry_price = row['close']
                         s_type = row['signal_type']
                         target = row['target_price']
@@ -90,6 +102,7 @@ def run_report():
                         # PnL Calculation Logic (Standard)
                         pnl_pct = 0.0
                         outcome = "INVALID"
+                        trade_exit_time = None
                         
                         if pd.notna(sl_price) and pd.notna(target):
                             if "LONG" in s_type:
@@ -105,6 +118,7 @@ def run_report():
                                     outcome = "OPEN"
                                     curr = future.iloc[-1]['close']
                                     pnl_pct = (curr - entry_price) / entry_price
+                                    trade_exit_time = future.index.max()
                                 elif ts_tp1 < ts_sl:
                                     pnl_locked = (target_mid - entry_price) / entry_price
                                     future_post = future.loc[future.index > idx_tp1]
@@ -112,6 +126,7 @@ def run_report():
                                        rem = (future.iloc[-1]['close'] - entry_price) / entry_price
                                        outcome = "HIT TP1 -> OPEN"
                                        pnl_pct = (0.5 * pnl_locked) + (0.5 * rem)
+                                       trade_exit_time = future.index.max()
                                     else:
                                         tp2_mask = future_post['high'] >= target
                                         be_mask = future_post['low'] <= entry_price
@@ -123,15 +138,19 @@ def run_report():
                                         if pd.isna(idx_tp2) and pd.isna(idx_be):
                                             rem = (future_post.iloc[-1]['close'] - entry_price) / entry_price
                                             pnl_pct = (0.5 * pnl_locked) + (0.5 * rem)
+                                            trade_exit_time = future_post.index.max()
                                         elif ts_tp2 < ts_be:
                                             rem = (target - entry_price) / entry_price
                                             pnl_pct = (0.5 * pnl_locked) + (0.5 * rem)
+                                            trade_exit_time = idx_tp2
                                         else:
                                             rem = 0.0 # BE
                                             pnl_pct = (0.5 * pnl_locked) + (0.5 * rem)
+                                            trade_exit_time = idx_be
                                 else:
                                     outcome = "HIT SL" 
                                     pnl_pct = (sl_price - entry_price) / entry_price
+                                    trade_exit_time = idx_sl
                             else: # SHORT
                                 tp1_mask = future['low'] <= target_mid
                                 sl_mask = future['high'] >= sl_price
@@ -144,6 +163,7 @@ def run_report():
                                     outcome = "OPEN"
                                     curr = future.iloc[-1]['close']
                                     pnl_pct = (entry_price - curr) / entry_price
+                                    trade_exit_time = future.index.max()
                                 elif ts_tp1 < ts_sl:
                                     pnl_locked = (entry_price - target_mid) / entry_price
                                     future_post = future.loc[future.index > idx_tp1]
@@ -151,6 +171,7 @@ def run_report():
                                        rem = (entry_price - future.iloc[-1]['close']) / entry_price
                                        outcome = "HIT TP1 -> OPEN"
                                        pnl_pct = (0.5 * pnl_locked) + (0.5 * rem)
+                                       trade_exit_time = future.index.max()
                                     else:
                                         tp2_mask = future_post['low'] <= target
                                         be_mask = future_post['high'] >= entry_price
@@ -162,15 +183,22 @@ def run_report():
                                         if pd.isna(idx_tp2) and pd.isna(idx_be):
                                             rem = (entry_price - future_post.iloc[-1]['close']) / entry_price
                                             pnl_pct = (0.5 * pnl_locked) + (0.5 * rem)
+                                            trade_exit_time = future_post.index.max()
                                         elif ts_tp2 < ts_be:
                                             rem = (entry_price - target) / entry_price
                                             pnl_pct = (0.5 * pnl_locked) + (0.5 * rem)
+                                            trade_exit_time = idx_tp2
                                         else:
                                             rem = 0.0
                                             pnl_pct = (0.5 * pnl_locked) + (0.5 * rem)
+                                            trade_exit_time = idx_be
                                 else:
                                     outcome = "HIT SL"
                                     pnl_pct = (entry_price - sl_price) / entry_price
+                                    trade_exit_time = idx_sl
+
+                        if trade_exit_time:
+                            last_exit_time = trade_exit_time
 
                         all_results.append({
                             "Setup": label,
