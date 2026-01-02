@@ -1278,6 +1278,8 @@ def analyze_cls_strategy(silent=False):
                     price = last_t['Price']
                     sl = last_t.get('Raw_SL', 0)
                     tp = last_t.get('Raw_TP', 0)
+                    curr_p = df.iloc[-1]['close']
+                    pnl_val = last_t.get('Return_Pct', 0.0)
                     
                     active_trade = {
                         "_sort_key": last_t['_sort_key'],
@@ -1286,6 +1288,8 @@ def analyze_cls_strategy(silent=False):
                         "Time": last_t['Time'], 
                         "Type": pos_str,
                         "Price": price,
+                        "Current_Price": curr_p,
+                        "PnL (%)": f"{pnl_val*100:.2f}%",
                         "Confidence": "100%", # Rule Based
                         "Action": "✅ TAKE",
                         "Stop Loss": round(sl, 4),
@@ -1846,8 +1850,12 @@ def show_runic_alerts():
             unique_tfs = combined_active['Timeframe'].unique().tolist()
             sorted_tfs = sorted(unique_tfs, key=lambda x: tf_order.get(x, 99))
             
+            # --- Active List Render Fix ---
+            if "runic_active_tf_selector" not in st.session_state:
+                st.session_state.runic_active_tf_selector = sorted_tfs
+            
             st.markdown("<div style='margin-top: -15px;'></div>", unsafe_allow_html=True)
-            selected_short = st.multiselect("Timeframes", options=sorted_tfs, default=sorted_tfs, label_visibility="collapsed", key="runic_active_tf_selector")
+            selected_short = st.multiselect("Timeframes", options=sorted_tfs, label_visibility="collapsed", key="runic_active_tf_selector")
             
             df_display = combined_active.copy()
             if show_take_only and 'Action' in df_display.columns:
