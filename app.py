@@ -1286,14 +1286,18 @@ def analyze_cls_strategy(silent=False):
                         "Asset": asset['name'],
                         "Timeframe": "1H",
                         "Time": last_t['Time'], 
+                        "Entry_Time": last_t['Time'],
                         "Type": pos_str,
                         "Price": price,
+                        "Entry_Price": price,
                         "Current_Price": curr_p,
                         "PnL (%)": f"{pnl_val*100:.2f}%",
                         "Confidence": "100%", # Rule Based
                         "Action": "✅ TAKE",
-                        "Stop Loss": round(sl, 4),
-                        "Take Profit": round(tp, 4),
+                        "Stop_Loss": round(sl, 4),
+                        "Take_Profit": round(tp, 4),
+                        "Stop Loss": round(sl, 4), # Check compatibility
+                        "Take Profit": round(tp, 4), # Check compatibility
                         "Strategy": "Daily CLS Range"
                     }
                     
