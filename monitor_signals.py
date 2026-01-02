@@ -36,6 +36,50 @@ PROCESSED_FILE = 'processed_signals.json'
 
 # --- HELPERS ---
 
+def format_asset_name(symbol):
+    # Mapping
+    mapping = {
+        "DX-Y.NYB": "DXY 💵",
+        "GC=F": "Gold 🟡",
+        "CL=F": "Oil 🛢️",
+        "SI=F": "Silver ⚪",
+        "^GSPC": "SPX 📈",
+        "^NDX": "NDX 💻",
+        "^DJI": "DOW 🏭",
+        "^AXJO": "AUS200 🇦🇺",
+        "EURUSD=X": "EUR/USD 🇪🇺",
+        "GBPUSD=X": "GBP/USD 🇬🇧",
+        "AUDUSD=X": "AUD/USD 🇦🇺",
+        "NZDUSD=X": "NZD/USD 🇳🇿",
+        "USDCAD=X": "USD/CAD 🇨🇦",
+        "USDCHF=X": "USD/CHF 🇨🇭",
+        "USDJPY=X": "USD/JPY 🇯🇵"
+    }
+    if symbol in mapping: return mapping[symbol]
+    
+    # Generic Cleanup
+    s = symbol.replace("=X", "")
+    if s.endswith("USD") and len(s) == 6 and "/" not in s: 
+         # FOREX
+         return f"{s[:3]}/{s[3:]}"
+    if s.endswith("USD") and "/" not in s:
+         # Crypto likely e.g. BTCUSD
+         return f"{s.replace('USD', '/USD')}"
+         
+    return s
+
+def format_display_time(ts_str):
+    try:
+        dt = pd.to_datetime(ts_str)
+        # Handle naive as UTC (yfinance standard) or imply UTC
+        if dt.tzinfo is None:
+            dt = dt.tz_localize('UTC')
+        
+        dt_ny = dt.tz_convert('America/New_York')
+        return dt_ny.strftime('%Y-%m-%d %I:%M %p EST')
+    except:
+        return ts_str
+
 def send_discord_alert(webhook_url, signal_data):
     """Sends a formatted trade signal to Discord."""
     try:
@@ -48,7 +92,9 @@ def send_discord_alert(webhook_url, signal_data):
                 return 0.0
 
         action = str(signal_data.get('Action','')).upper()
-        asset = str(signal_data.get('Asset', 'Unknown'))
+        asset_raw = str(signal_data.get('Asset', 'Unknown'))
+        asset = format_asset_name(asset_raw)
+        
         timeframe = str(signal_data.get('Timeframe', 'N/A'))
         
         # Determine Direction and Color
@@ -80,6 +126,7 @@ def send_discord_alert(webhook_url, signal_data):
             pass
         
         strategy_name = signal_data.get('Strategy', 'WizardWave')
+        entry_time_display = format_display_time(signal_data.get('Entry_Time', 'N/A'))
         
         embed = {
             "title": f"🔮 {strategy_name.upper()}: {asset} {direction_str}",
@@ -91,7 +138,7 @@ def send_discord_alert(webhook_url, signal_data):
                 {"name": "Stop Loss", "value": f"{stop_loss}", "inline": True},
                 {"name": "Confidence", "value": f"{confidence:.1f}%", "inline": True},
                 {"name": "R:R", "value": rr_str, "inline": True},
-                {"name": "Entry Time", "value": f"{signal_data.get('Entry_Time', 'N/A')}", "inline": False}
+                {"name": "Entry Time", "value": entry_time_display, "inline": False}
             ],
             "footer": {"text": f"{strategy_name} • Automated Signal (Monitor)"}
         }
