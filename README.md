@@ -17,53 +17,62 @@ Dashboard Preview
 ## ✨ Key Features
 
 ### 🔮 The Arcane Portal (Dashboard)
-- **Dual-Engine Signal Feed**: Real-time display of active trade setups across Crypto, Forex, and Indices, split into High Timeframe (Trend) and Low Timeframe (Scalp) engines.
-- **Runic Alerts**: A dedicated sidebar for live signal monitoring. 
-  - **Non-Blocking Updates**: Powered by a multi-threaded background worker, allowing the UI to remain responsive while data is fetched.
-  - **Live Progress**: A real-time progress bar shows the status of the data fetch cycle.
+- **Multi-Strategy Feed**: Real-time display of active trade setups across Crypto, Forex, and Indices, now supporting **three** distinct engines (WizardWave, WizardScalp, Daily CLS Range).
+- **Runic Alerts V2**: A dedicated "Datapad" sidebar for live signal monitoring.
+  - **Rich Cards**: Displays Entry, Price, Net PnL, TP/SL, and Strategy Type in a compact, readable card.
+  - **Live Updates**: Open positions remain visible ("Active") to keep you in the loop until closed.
   - **Dynamic Styling**: Active signals display "Confidence" in high-visibility light orange.
 - **Signal History**: A comprehensive log of all past signals.
-  - **New Filters**: "Show Last 24h" and "Show Open Trades Only" to focus on relevant data.
-  - **Session Highlighting**: Trades executed during the New York Session (8 AM - 5 PM ET) are automatically highlighted in Burnt Orange for quick identification.
-- **Realms (Market Sessions)**: A visual 24-hour timeline showing the overlap of major global trading sessions (Sydney, Tokyo, London, New York).
-- **The Oracle**: An automated countdown to high-impact economic events (CPI, NFP, FOMC) to help you avoid volatility spikes.
+  - **Strategy Filter**: Filter history by specific strategy (e.g., "Daily CLS Range" vs "WizardWave").
+  - **Session Highlighting**: Trades executed during the New York Session (8 AM - 5 PM ET) are automatically highlighted.
+- **Realms (Market Sessions)**: A visual 24-hour timeline showing the overlap of major global trading sessions.
 
-### 🧠 AI Meta-Labeling
-- **Smart Filtering**: Raw technical signals are passed through specialized Random Forest Classifiers.
-- **Hybrid Confidence Scoring**:
-  - **HTF Model**: Optimized for 1D and 4D trend following.
-  - **LTF Model**: Optimized for 15M, 1H, and 4H scalping/swings.
-  - **Ensemble Logic**: 12H signals use a weighted mix (80% HTF / 20% LTF) for high-conviction entries.
-- **Meta-Labeling**: The system advises "TAKE" or "SKIP" based on whether the signal matches the characteristics of historically profitable trades.
+### 🧠 Logic & Strategies
+**A. WizardWave (HTF)**:
+- **Goal**: Capture major multi-day trends (12H, 1D, 4D).
+- **Type**: AI-Filtered Trend Following.
+
+**B. WizardScalp (LTF)**:
+- **Goal**: Capture intraday swings and scalps (15M, 1H, 4H).
+- **Type**: AI-Filtered Momentum.
+
+**C. Daily CLS Range (Mean Reversion)**:
+- **Goal**: Identify "Continuated Liquidity Sweep" candles on the Daily timeframe.
+- **Execution**: Precision execution on the 1H timeframe upon range reclaim.
+- **Risk**: Rule-based (Non-AI) strategy with strict 2-target profit taking.
+- **Safety**: Built-in logic prevents opening duplicate positions on the same asset.
+
+### 🔔 Smart Alerts & Discord
+- **Automated Monitoring**: Background service (`monitor_signals.py`) scans for signals 24/7.
+- **Enhanced Notifications**: Discord alerts feature prettified asset names (e.g., `EUR/USD 🇪🇺`), explicit EST timestamps, and Confidence/R:R metrics.
+- **Deduplication**: Smart filtering preventing alert spam for existing signals.
 
 ### 🛡️ Risk Management Shield
-- **Gamified Risk**: Capital is treated as "Mana". Taking trades costs Mana, limiting overtrading.
-- **Prop Firm Tracking**: Native support for tracking multiple prop firm accounts, including drawdown limits and profit targets.
-- **Position Sizing**: Automatic calculation of risk per trade based on account size and specific risk percentage (0.25%, 0.5%, 1.0%).
+- **Gamified Risk**: Capital is treated as "Mana". Taking trades costs Mana.
+- **Prop Firm Tracking**: Native support for tracking multiple prop firm accounts with visual progress bars for Profit Targets and Drawdown Limits.
+- **Position Size Calculator**: **NEW!** Embedded calculator to instantly determine lot size/units based on Entry, Stop Loss, and Risk ($) amount.
+- **Manual Mode**: Toggle to filter strict high-confidence (>60%) setups only.
 
 ---
 
 ## ⚙️ How It Works: The Signal Pipeline
 
-The system operates on a specialized dual-pipeline that transforms raw market data into actionable intelligence.
+The system operates on a specialized multi-pipeline that transforms raw market data into actionable intelligence.
 
 ### 1. Data Ingestion (`data_fetcher.py`)
 - **Crypto**: Fetches real-time OHLCV data using `ccxt` (BinanceUS).
 - **Traditional**: Fetches Stocks, Forex, and Indices data using `yfinance`.
 - **Resampling**: Handles custom timeframes like 12H and 4D via robust resampling logic.
 
-### 2. Dual Strategy Logic
+### 2. Strategy Logic
 **A. High Timeframe (HTF) - `strategy.py`**:
-- **Goal**: Capture major multi-day trends.
-- **Logic**: "WizardWave" Trend Following.
-- **Timeframes**: 12H, 1D, 4D.
-- **Triggers**: Cloud Breakouts and Zone Pullbacks.
+- "WizardWave" Trend Following targeting Cloud Breakouts and Zone Pullbacks.
 
 **B. Low Timeframe (LTF) - `strategy_scalp.py`**:
-- **Goal**: Capture intraday swings and scalps.
-- **Logic**: "WizardScalp" Momentum.
-- **Timeframes**: 15M, 1H, 4H, 12H (secondary).
-- **Triggers**: Cloud Crosses with ADX > 20 and EMA Trend Filtering.
+- "WizardScalp" Momentum targeting Cloud Crosses with ADX > 20 and EMA Trend Filtering.
+
+**C. Range Reversion - `strategy_cls.py`**:
+- "Daily CLS Range" identifying H/L sweeps of the previous candle body.
 
 ### 3. Advanced Feature Engineering (`feature_engine.py`)
 Signals are enriched with 8 distinct features before classification:
@@ -99,6 +108,10 @@ Signals are enriched with 8 distinct features before classification:
    ```bash
    streamlit run app.py
    ```
+   *To start the background alert monitor:*
+   ```bash
+   python monitor_signals.py
+   ```
 
 4. **Retrain the Models (Optional)**:
    To update the ML models with the latest data:
@@ -111,9 +124,11 @@ Signals are enriched with 8 distinct features before classification:
 ## 📂 Project Structure
 
 - **`app.py`**: Main application logic (Dashboard, UI, Signal Inference).
+- **`monitor_signals.py`**: Background service for generating Discord alerts.
 - **`pipeline.py`**: Training pipeline for generating `model_htf.pkl` and `model_ltf.pkl`.
 - **`strategy.py`**: HTF Strategy Logic (WizardWave).
 - **`strategy_scalp.py`**: LTF Strategy Logic (WizardScalp).
+- **`strategy_cls.py`**: Daily CLS Range Strategy Logic.
 - **`feature_engine.py`**: Shared library for calculating technical features.
 - **`data_fetcher.py`**: Wrapper for data APIs.
 - **`strategy_config.json`**: Central configuration for assets, strategies, and model parameters.
