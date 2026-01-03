@@ -192,7 +192,26 @@ def run_runic_analysis():
 
 import joblib
 from data_fetcher import fetch_data
-from feature_engine import calculate_ml_features
+from feature_engine import calculate_ml_features, calculate_ichi_features, calculate_cls_features
+import joblib
+
+# Load ML Models for New Strats
+try:
+    ICHI_MODEL = joblib.load("model_ichimoku.pkl")
+    with open("features_ichimoku.json", "r") as f:
+        ICHI_FEATS = json.load(f)
+except:
+    ICHI_MODEL = None
+    ICHI_FEATS = []
+    
+try:
+    CLS_MODEL = joblib.load("model_cls.pkl")
+    with open("features_cls.json", "r") as f:
+        CLS_FEATS = json.load(f)
+except:
+    CLS_MODEL = None
+    CLS_FEATS = []
+
 from strategy import WizardWaveStrategy
 from strategy_scalp import WizardScalpStrategy
 from strategy_cls import CLSRangeStrategy
@@ -1175,6 +1194,25 @@ def analyze_ichimoku_strategy(silent=False):
                 if df is None or df.empty or len(df) < 160: continue
                 
                 df = ichi.apply_strategy(df, tf)
+                
+                # ML Feature Calc
+                df = calculate_ichi_features(df)
+                
+                # Inference
+                if ICHI_MODEL and ICHI_FEATS:
+                    try:
+                        # Ensure cols exist
+                        # Fill missing just in case
+                        for c in ICHI_FEATS:
+                            if c not in df.columns: df[c] = 0
+                            
+                        probs = ICHI_MODEL.predict_proba(df[ICHI_FEATS])[:, 1]
+                        df['ml_conf'] = probs
+                    except:
+                        df['ml_conf'] = 0.99
+                else:
+                    df['ml_conf'] = 1.0 # Default if no model
+                
                 signals = df[df['signal_type'].notna()].copy()
                 
                 if signals.empty: continue
@@ -1226,6 +1264,8 @@ def analyze_ichimoku_strategy(silent=False):
                     pnl -= 0.001 # 0.1% Fee estimate
                     kijun_sl = row['kijun']
                     
+                    conf_val = row.get('ml_conf', 1.0)
+                    
                     trade_obj = {
                         "_sort_key": entry_time,
                         "Asset": asset['name'],
@@ -1235,8 +1275,8 @@ def analyze_ichimoku_strategy(silent=False):
                         "Type": f"{pos_type} {'🟢' if pos_type == 'LONG' else '🔴'}",
                         "Price": entry_price,
                         "Current_Price": curr_price,
-                        "Confidence": "100%",
-                        "Model": "✅",
+                        "Confidence": f"{conf_val:.0%}",
+                        "Model": "✅" if conf_val > 0.5 else "⚠️",
                         "Return_Pct": pnl,
                         "Status": outcome_status,
                         "Strategy": "Ichimoku Cloud",
@@ -1301,6 +1341,20 @@ def analyze_cls_strategy(silent=False):
             
             df = cls_strat.apply_mtf(df_htf, df_ltf)
             if df.empty or 'signal_type' not in df.columns: return None, []
+            
+            # ML Logic
+            df = calculate_cls_features(df)
+            
+            if CLS_MODEL and CLS_FEATS:
+                try:
+                    for c in CLS_FEATS:
+                        if c not in df.columns: df[c] = 0
+                    probs = CLS_MODEL.predict_proba(df[CLS_FEATS])[:, 1]
+                    df['ml_conf'] = probs
+                except:
+                    df['ml_conf'] = 0.99
+            else:
+                df['ml_conf'] = 1.0
             
             # --- Simulate History (ordered) ---
             sig_rows = df[df['signal_type'].astype(str).str.contains("CLS", na=False)]
@@ -1387,6 +1441,8 @@ def analyze_cls_strategy(silent=False):
                 # Deduct fee 0.2%
                 pnl -= 0.002
                 
+                conf_val = row.get('ml_conf', 1.0)
+                
                 # Store
                 trade_obj = {
                     "_sort_key": entry_time,
@@ -1396,8 +1452,8 @@ def analyze_cls_strategy(silent=False):
                     "Exit Time": exit_time_str,
                     "Type": f"{pos_type} {'🟢' if pos_type == 'LONG' else '🔴'}",
                     "Price": entry_price,
-                    "Confidence": "100%",
-                    "Model": "✅",
+                    "Confidence": f"{conf_val:.0%}",
+                    "Model": "✅" if conf_val > 0.5 else "⚠️",
                     "Return_Pct": pnl,
                     "SL_Pct": abs((entry_price - sl)/entry_price) if entry_price else 0,
                     "Status": outcome_status,
@@ -1436,7 +1492,7 @@ def analyze_cls_strategy(silent=False):
                         "Entry_Price": price,
                         "Current_Price": curr_p,
                         "PnL (%)": f"{pnl_val*100:.2f}%",
-                        "Confidence": "100%", # Rule Based
+                        "Confidence": last_t.get('Confidence', "100%"),
                         "Action": "✅ TAKE",
                         "Stop_Loss": round(sl, 4),
                         "Take_Profit": round(tp, 4),

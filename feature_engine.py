@@ -137,3 +137,85 @@ def calculate_ml_features(df):
     
     return df
 
+
+def calculate_ichi_features(df):
+    """
+    Features for Ichimoku ML Model.
+    Assumes df has: tenkan, kijun, span_a, span_b, close.
+    """
+    df = df.copy()
+    
+    # Distance normalization
+    # Check if columns exist
+    for col in ['tenkan', 'kijun', 'span_a', 'span_b']:
+        if col not in df.columns:
+            df[col] = df['close'] # Fallback
+            
+    df['tk_gap'] = (df['tenkan'] - df['kijun']) / df['close']
+    df['price_to_kijun'] = (df['close'] - df['kijun']) / df['close']
+    df['cloud_width'] = (df['span_a'] - df['span_b']) / df['close']
+    
+    # Cloud Proximity
+    cloud_top = df[['span_a', 'span_b']].max(axis=1)
+    cloud_bottom = df[['span_a', 'span_b']].min(axis=1)
+    df['dist_to_cloud_top'] = (df['close'] - cloud_top) / df['close']
+    
+    # Lagging Span (Chikou) Momentum Proxy
+    # Compare Close to Close 30 bars ago
+    df['chikou_mom'] = df['close'].pct_change(30)
+    
+    # Trend Strength
+    try:
+        adx = ta.adx(df['high'], df['low'], df['close'], length=14)
+        if adx is not None and 'ADX_14' in adx.columns:
+             df['adx'] = adx['ADX_14']
+        else:
+             df['adx'] = 0
+    except:
+        df['adx'] = 0
+        
+    df['rsi'] = ta.rsi(df['close'], length=14)
+    df['volatility'] = df['close'].pct_change().rolling(20).std()
+    
+    df.fillna(0, inplace=True)
+    return df
+
+def calculate_cls_features(df):
+    """
+    Features for CLS Range ML Model.
+    Assumes df has: daily_high, daily_low, sma_200 (optional), close.
+    """
+    df = df.copy()
+    
+    if 'target_price' in df.columns and 'stop_loss' in df.columns:
+        df['dist_to_tp'] = (df['target_price'] - df['close']) / df['close']
+        df['dist_to_sl'] = (df['close'] - df['stop_loss']) / df['close']
+        # Handle zeros
+        denom = df['dist_to_sl'].abs().replace(0, 0.001)
+        df['rr_ratio'] = df['dist_to_tp'].abs() / denom
+    else:
+        df['dist_to_tp'] = 0
+        df['dist_to_sl'] = 0
+        df['rr_ratio'] = 0
+        
+    df['rsi'] = ta.rsi(df['close'], length=14)
+    
+    try:
+        adx = ta.adx(df['high'], df['low'], df['close'], length=14)
+        if adx is not None and 'ADX_14' in adx.columns:
+             df['adx'] = adx['ADX_14']
+        else:
+             df['adx'] = 0
+    except:
+        df['adx'] = 0
+    
+    # Volatility
+    df['atr'] = ta.atr(df['high'], df['low'], df['close'], length=14)
+    df['atr_pct'] = df['atr'] / df['close']
+    
+    # Price Action to MA
+    df['sma_50'] = ta.sma(df['close'], length=50)
+    df['dist_sma50'] = (df['close'] - df['sma_50']) / df['close']
+    
+    df.fillna(0, inplace=True)
+    return df
