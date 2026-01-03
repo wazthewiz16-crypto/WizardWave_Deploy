@@ -131,6 +131,10 @@ def run_runic_analysis():
         _, a_cls, h_cls = analyze_cls_strategy(silent=True)
         thread_manager.update_progress(98)
         
+        # --- Ichimoku Strategy Scan ---
+        _, a_ichi, h_ichi = analyze_ichimoku_strategy(silent=True)
+        thread_manager.update_progress(99)
+        
         # Aggregate History
         all_history = []
         if h15m: all_history.extend(h15m)
@@ -140,13 +144,14 @@ def run_runic_analysis():
         if h1d: all_history.extend(h1d)
         if h4d: all_history.extend(h4d)
         if h_cls: all_history.extend(h_cls)
+        if h_ichi: all_history.extend(h_ichi)
         
         history_df = pd.DataFrame()
         if all_history:
              history_df = pd.DataFrame(all_history)
         
         # Aggregate Active
-        active_dfs = [df for df in [a15m, a1h, a4h, a12h, a1d, a4d, a_cls] if df is not None and not df.empty]
+        active_dfs = [df for df in [a15m, a1h, a4h, a12h, a1d, a4d, a_cls, a_ichi] if df is not None and not df.empty]
         combined_active = pd.DataFrame()
         if active_dfs:
             combined_active = pd.concat(active_dfs).sort_values(by='_sort_key', ascending=False)
@@ -191,6 +196,7 @@ from feature_engine import calculate_ml_features
 from strategy import WizardWaveStrategy
 from strategy_scalp import WizardScalpStrategy
 from strategy_cls import CLSRangeStrategy
+from strategy_ichimoku import IchimokuStrategy
 import streamlit.components.v1 as components
 import json
 import urllib.request
@@ -1127,6 +1133,138 @@ def analyze_timeframe(timeframe_label, silent=False):
         active_trades.sort(key=lambda x: x['_sort_key'], reverse=True)
         
     return pd.DataFrame(results), pd.DataFrame(active_trades), historical_signals
+
+def analyze_ichimoku_strategy(silent=False):
+    """
+    Runs Ichimoku Strategy (Cloud) for All Assets on 4H/1D.
+    Hybrid Settings: Crypto=Turbo, TradFi=Slow.
+    """
+    status = None
+    if not silent: 
+        status = st.empty()
+        status.text("Scanning Ichimoku Cloud...")
+        
+    active_trades = []
+    historical_signals = []
+    
+    # Configs
+    TRADFI_CFG = {"tenkan": 20, "kijun": 60, "span_b": 120, "disp": 30}
+    CRYPTO_CFG = {"tenkan": 7, "kijun": 21, "span_b": 42, "disp": 21}
+    TIMEFRAMES = ["4h", "1d"] 
+    
+    def process_ichi_asset(asset):
+        try:
+            is_crypto = (asset['type'] == 'crypto')
+            cfg = CRYPTO_CFG if is_crypto else TRADFI_CFG
+            
+            ichi = IchimokuStrategy(**cfg)
+            
+            asset_res_trades = []
+            asset_hist = []
+            
+            for tf in TIMEFRAMES:
+                # Need enough history for Lookback (120) + Displacement (30) + Simulation
+                df = fetch_data(asset['symbol'], asset['type'], tf, 500)
+                
+                if df is None or df.empty or len(df) < 160: continue
+                
+                df = ichi.apply_strategy(df, tf)
+                signals = df[df['signal_type'].notna()].copy()
+                
+                if signals.empty: continue
+                
+                for entry_time, row in signals.iterrows():
+                    signal_type = row['signal_type']
+                    entry_price = row['close']
+                    pos_type = "LONG" if signal_type == "LONG" else "SHORT"
+                     
+                    # Exit Check (Kijun Trail)
+                    future_df = df.loc[entry_time:].iloc[1:]
+                    
+                    outcome_status = "OPEN"
+                    pnl = 0.0
+                    exit_time_str = "-"
+                    exit_price = entry_price
+                    curr_price = entry_price
+                    
+                    if not future_df.empty:
+                        curr_price = df.iloc[-1]['close']
+                        trade_exit_time = future_df.index.max()
+                        
+                        for t, f_row in future_df.iterrows():
+                            if signal_type == "LONG" and f_row['close'] < f_row['kijun']:
+                                outcome_status = "HIT SL 🔴"
+                                exit_price = f_row['close']
+                                exit_time_str = str(t)
+                                trade_exit_time = t
+                                break
+                            elif signal_type == "SHORT" and f_row['close'] > f_row['kijun']:
+                                outcome_status = "HIT SL 🔴"
+                                exit_price = f_row['close']
+                                exit_time_str = str(t)
+                                trade_exit_time = t
+                                break
+                        
+                        if outcome_status == "OPEN":
+                             # Mark to market
+                             if signal_type == "LONG": pnl = (curr_price - entry_price) / entry_price
+                             else: pnl = (entry_price - curr_price) / entry_price
+                        else:
+                             # Closed
+                             if signal_type == "LONG": pnl = (exit_price - entry_price) / entry_price
+                             else: pnl = (entry_price - exit_price) / entry_price
+                    else:
+                        trade_exit_time = entry_time
+                        curr_price = entry_price
+                    
+                    pnl -= 0.001 # 0.1% Fee estimate
+                    kijun_sl = row['kijun']
+                    
+                    trade_obj = {
+                        "_sort_key": entry_time,
+                        "Asset": asset['name'],
+                        "Timeframe": "4H" if tf=='4h' else "1D",
+                        "Time": str(entry_time),
+                        "Exit Time": exit_time_str,
+                        "Type": f"{pos_type} {'🟢' if pos_type == 'LONG' else '🔴'}",
+                        "Price": entry_price,
+                        "Current_Price": curr_price,
+                        "Confidence": "100%",
+                        "Model": "✅",
+                        "Return_Pct": pnl,
+                        "Status": outcome_status,
+                        "Strategy": "Ichimoku Cloud",
+                        "Raw_TP": 0.0,
+                        "Raw_SL": kijun_sl,
+                        "Entry_Price": entry_price,
+                        "Entry_Time": str(entry_time),
+                        "Stop_Loss": float(f"{kijun_sl:.5f}"),
+                        "Take_Profit": 0.0,
+                        "Stop Loss": float(f"{kijun_sl:.5f}"),
+                        "Take Profit": 0.0,
+                        "Action": "✅ TAKE",
+                        "PnL (%)": f"{pnl*100:.2f}%"
+                    }
+                    
+                    asset_hist.append(trade_obj)
+                    if outcome_status == "OPEN":
+                        asset_res_trades.append(trade_obj)
+            
+            return asset_res_trades, asset_hist
+
+        except Exception:
+            return [], []
+
+    # Parallel Execution (5 workers)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        futures = {executor.submit(process_ichi_asset, asset): asset for asset in ASSETS}
+        for future in concurrent.futures.as_completed(futures):
+            act, hist = future.result()
+            if act: active_trades.extend(act)
+            if hist: historical_signals.extend(hist)
+            
+    if not silent and status: status.empty()
+    return None, pd.DataFrame(active_trades), historical_signals
 
 def analyze_cls_strategy(silent=False):
     """
@@ -2618,13 +2756,13 @@ with col_center:
                          if "history_tf_filter" not in st.session_state:
                              st.session_state.history_tf_filter = sorted_tfs
                          
-                         selected_short = st.multiselect("Timeframes", options=sorted_tfs, default=sorted_tfs, key="history_tf_filter")
+                         selected_short = st.multiselect("Timeframes", options=sorted_tfs, key="history_tf_filter")
                          
                          # 2. Strategy Select
                          if "history_strat_filter" not in st.session_state:
                              st.session_state.history_strat_filter = unique_strats
                              
-                         selected_strats = st.multiselect("Strategies", options=unique_strats, default=unique_strats, key="history_strat_filter")
+                         selected_strats = st.multiselect("Strategies", options=unique_strats, key="history_strat_filter")
                          
                      # Apply Filters
                      # 1. TF
