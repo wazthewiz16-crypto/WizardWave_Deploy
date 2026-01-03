@@ -1148,8 +1148,8 @@ def analyze_ichimoku_strategy(silent=False):
     historical_signals = []
     
     # Configs
-    TRADFI_CFG = {"tenkan": 20, "kijun": 60, "span_b": 120, "disp": 30}
-    CRYPTO_CFG = {"tenkan": 7, "kijun": 21, "span_b": 42, "disp": 21}
+    TRADFI_CFG = {"tenkan": 20, "kijun": 60, "span_b": 120, "displacement": 30}
+    CRYPTO_CFG = {"tenkan": 7, "kijun": 21, "span_b": 42, "displacement": 21}
     
     def process_ichi_asset(asset):
         try:
