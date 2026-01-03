@@ -1150,19 +1150,25 @@ def analyze_ichimoku_strategy(silent=False):
     # Configs
     TRADFI_CFG = {"tenkan": 20, "kijun": 60, "span_b": 120, "disp": 30}
     CRYPTO_CFG = {"tenkan": 7, "kijun": 21, "span_b": 42, "disp": 21}
-    TIMEFRAMES = ["4h", "1d"] 
     
     def process_ichi_asset(asset):
         try:
             is_crypto = (asset['type'] == 'crypto')
             cfg = CRYPTO_CFG if is_crypto else TRADFI_CFG
             
+            # Smart Timeframe Selection
+            # Crypto: 1D Only (Turbo)
+            # TradFi: 4H + 1D (Slow)
+            target_tfs = ["1d"]
+            if not is_crypto:
+                target_tfs = ["4h", "1d"]
+            
             ichi = IchimokuStrategy(**cfg)
             
             asset_res_trades = []
             asset_hist = []
             
-            for tf in TIMEFRAMES:
+            for tf in target_tfs:
                 # Need enough history for Lookback (120) + Displacement (30) + Simulation
                 df = fetch_data(asset['symbol'], asset['type'], tf, 500)
                 
