@@ -47,29 +47,29 @@ def fetch_data(symbol: str, asset_type: str, timeframe: str = '1h', limit: int =
     cache_file = os.path.join(CACHE_DIR, f"{clean_symbol}_{timeframe}.csv")
     
     # Check if file exists and is fresh
+    cached_df = pd.DataFrame()
+    
+    # Try load cache for fallback
     if os.path.exists(cache_file):
+        try:
+            cached_df = pd.read_csv(cache_file, index_col='datetime', parse_dates=True)
+            if not isinstance(cached_df.index, pd.DatetimeIndex):
+                cached_df.index = pd.to_datetime(cached_df.index)
+        except: pass
+
+    # Check validity for "Fresh Return"
+    if not cached_df.empty:
         file_age = time.time() - os.path.getmtime(cache_file)
         if file_age < current_ttl: 
-            try:
-                df = pd.read_csv(cache_file, index_col='datetime', parse_dates=True)
-                if not isinstance(df.index, pd.DatetimeIndex):
-                    df.index = pd.to_datetime(df.index)
-                
-                # SELF-HEALING: Check if data is actually stale despite file being "new"
-                if not df.empty:
-                    last_ts = df.index[-1]
-                    # If data is older than 2 days (48h), force refresh unless it's a 4d timeframe
-                    time_since_data = (pd.Timestamp.now() - last_ts).total_seconds()
-                    # 48 hours for crypto/tradfi (markets close weekends, so 2 days might be tight for tradfi on monday morning? Let's use 80 hours ~3.3 days)
-                    max_lag = 300000 # ~3.5 days
-                    if timeframe == '4d': max_lag = 600000 # 7 days
-                    
-                    if time_since_data < max_lag:
-                        return df
-                    else:
-                        print(f"Cache for {symbol} is fresh but data is stale (Last: {last_ts}). Refetching...")
-            except Exception as e:
-                print(f"Error reading cache for {symbol}: {e}")
+            # TTL Valid, check Data Stale
+             last_ts = cached_df.index[-1]
+             time_since = (pd.Timestamp.now() - last_ts).total_seconds()
+             max_lag_s = 300000 if timeframe != '4d' else 600000
+             
+             if time_since < max_lag_s:
+                 return cached_df
+             else:
+                 print(f"Cache for {symbol} stale (Last: {last_ts}). Refetching...")
 
     base_timeframe = timeframe
     resample_rule = None
@@ -94,6 +94,11 @@ def fetch_data(symbol: str, asset_type: str, timeframe: str = '1h', limit: int =
         df = _fetch_trad(symbol, base_timeframe, limit)
     else:
         raise ValueError("Invalid asset_type. Must be 'crypto' or 'trad'.")
+
+    # FALLBACK: If fetch failed, use stale cache if available
+    if df.empty and not cached_df.empty:
+         print(f"Fetch failed for {symbol}, using stale cache.")
+         return cached_df
 
     # Resample if needed
     # Resample if needed

@@ -1302,7 +1302,7 @@ def analyze_ichimoku_strategy(silent=False):
             return [], []
 
     # Parallel Execution (5 workers)
-    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         futures = {executor.submit(process_ichi_asset, asset): asset for asset in ASSETS}
         for future in concurrent.futures.as_completed(futures):
             act, hist = future.result()
@@ -1510,7 +1510,7 @@ def analyze_cls_strategy(silent=False):
             pass
         return None, []
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         futures = {executor.submit(process_cls_asset, asset): asset for asset in tradfi_assets}
         for future in concurrent.futures.as_completed(futures):
             trade, hist = future.result()
