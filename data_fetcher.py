@@ -54,7 +54,20 @@ def fetch_data(symbol: str, asset_type: str, timeframe: str = '1h', limit: int =
                 df = pd.read_csv(cache_file, index_col='datetime', parse_dates=True)
                 if not isinstance(df.index, pd.DatetimeIndex):
                     df.index = pd.to_datetime(df.index)
-                return df
+                
+                # SELF-HEALING: Check if data is actually stale despite file being "new"
+                if not df.empty:
+                    last_ts = df.index[-1]
+                    # If data is older than 2 days (48h), force refresh unless it's a 4d timeframe
+                    time_since_data = (pd.Timestamp.now() - last_ts).total_seconds()
+                    # 48 hours for crypto/tradfi (markets close weekends, so 2 days might be tight for tradfi on monday morning? Let's use 80 hours ~3.3 days)
+                    max_lag = 300000 # ~3.5 days
+                    if timeframe == '4d': max_lag = 600000 # 7 days
+                    
+                    if time_since_data < max_lag:
+                        return df
+                    else:
+                        print(f"Cache for {symbol} is fresh but data is stale (Last: {last_ts}). Refetching...")
             except Exception as e:
                 print(f"Error reading cache for {symbol}: {e}")
 
