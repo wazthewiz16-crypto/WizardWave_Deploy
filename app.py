@@ -2770,7 +2770,7 @@ with col_center:
                          if "history_strat_filter" not in st.session_state:
                               st.session_state.history_strat_filter = unique_strats
                               
-                          selected_strats = st.multiselect("Strategies", options=unique_strats, key="history_strat_filter")
+                         selected_strats = st.multiselect("Strategies", options=unique_strats, key="history_strat_filter")
                          
                      # Apply Filters
                      # 1. TF
