@@ -169,8 +169,8 @@ def _fetch_trad(symbol: str, timeframe: str, limit: int) -> pd.DataFrame:
         
         # Choose a period that likely covers 'limit' candles
         period_map = {
-            '1m': '1d', '5m': '5d', '15m': '5d', '30m': '5d',
-            '1h': '3mo', '1d': 'max' # Increased for 4h/4d robustness
+            '1m': '7d', '5m': '60d', '15m': '60d', '30m': '60d',
+            '1h': '1y', '1d': 'max' # Increased for robustness
         }
         period = period_map.get(timeframe, '1mo')
         

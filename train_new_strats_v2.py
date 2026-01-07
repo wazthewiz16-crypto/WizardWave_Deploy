@@ -100,7 +100,10 @@ def run_training():
                 df = ichi_strat.apply_strategy(df, tf)
                 df = calculate_ichi_features(df)
                 
-                signals = df[df['signal_type'].notna()]
+                # Filter for ENTRIES only (change in signal_type)
+                # We only want to train on the START of a trend
+                df['prev_sig'] = df['signal_type'].shift(1)
+                signals = df[ (df['signal_type'].notna()) & (df['signal_type'] != df['prev_sig']) ]
                 
                 # Simulate Checks
                 for idx in range(len(signals)):
