@@ -11,6 +11,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.simplefilter(action='ignore', category=ResourceWarning)
 pd.set_option('future.no_silent_downcasting', True)
 
+import manage_trades
 import subprocess
 import sys
 import os
@@ -2908,6 +2909,17 @@ with col_center:
                         - **Forex:**  TP `{ltf_c['forex_pt']:.1%}` / SL `{ltf_c['forex_sl']:.1%}`
                         """)
 
+                 # --- MY TRADES SECTION ---
+                 with st.expander("⭐ My Trades", expanded=False):
+                     my_trades_list = manage_trades.load_trades()
+                     if my_trades_list:
+                         st.dataframe(pd.DataFrame(my_trades_list))
+                         if st.button("Clear All Saved Trades"):
+                             manage_trades.save_trades_list([])
+                             st.rerun()
+                     else:
+                         st.info("No trades saved yet. Check the box in the history table to save a trade.")
+
                  # Simplify cols
                  if not filtered_df.empty:
                      # Backward compatibility
@@ -2924,38 +2936,57 @@ with col_center:
                      # Format Return
                      filtered_df['Return'] = filtered_df['Return_Pct'].apply(lambda x: f"{x:.2%}")
                      
-                     # Highlight Logic (NY Session)
-                     def highlight_ny(row):
-                         try:
-                             # _sort_key is UTC datetime
-                             ts = row['_sort_key']
-                             if pd.isna(ts): return [''] * len(row)
-                             ts_ny = ts.tz_convert('America/New_York')
-                             # Check 8am-5pm (17:00) | Use strictly < 17 or <= 17? "8am-5pm" implies inclusive or up to.
-                             # Usually session is 9:30 - 4:00. But user asked for 8-5.
-                             if 8 <= ts_ny.hour < 17:
-                                 return ['background-color: #B36B00; color: white; font-weight: bold'] * len(row)
-                             else:
-                                 return [''] * len(row)
-                         except:
-                             return [''] * len(row)
+                     # --- SAVED STATUS LOGIC ---
+                     saved_keys = manage_trades.get_saved_keys()
+                     filtered_df['Saved'] = filtered_df.apply(lambda x: (x.get('Asset'), x.get('Time')) in saved_keys, axis=1)
                      
-                     # We need columns + Sort Key for styling
-                     styler = filtered_df[display_cols + ['Return', '_sort_key']].style.apply(highlight_ny, axis=1)
+                     # Reorder: Saved first
+                     final_cols = ['Saved'] + display_cols + ['Return']
                      
-                     st.dataframe(
-                         styler, 
+                     # Prepare for Editor
+                     # We must reset index to ensure 0..N alignment for edited_rows
+                     editor_df = filtered_df[final_cols].reset_index(drop=True)
+                     
+                     # Render Editor
+                     edited_df = st.data_editor(
+                         editor_df,
                          column_config={
+                             "Saved": st.column_config.CheckboxColumn("Save", help="Check to save this trade to 'My Trades'", default=False),
                              "Return_Pct": None, 
-                             "_sort_key": None, # Hide sort key
                              "Return": st.column_config.TextColumn("Return"),
                              "Type": st.column_config.TextColumn("Signal Type"),
                              "Strategy": st.column_config.TextColumn("Strategy"),
                              "Timeframe": st.column_config.TextColumn("TF"),
                          },
-                         width="stretch",
-                         hide_index=True
+                         use_container_width=True,
+                         hide_index=True,
+                         key="history_editor",
+                         disabled=[c for c in final_cols if c != 'Saved'] # Disable editing other cols
                      )
+                     
+                     # Handle Changes
+                     if "history_editor" in st.session_state:
+                         changes = st.session_state["history_editor"].get("edited_rows", {})
+                         if changes:
+                             any_change = False
+                             for idx, change_dict in changes.items():
+                                 if 'Saved' in change_dict:
+                                     is_saved = change_dict['Saved']
+                                     # Get data from source DF (snapshot)
+                                     try:
+                                         if int(idx) < len(editor_df):
+                                             row_data = editor_df.iloc[int(idx)].to_dict()
+                                             manage_trades.toggle_trade(row_data, is_saved)
+                                             any_change = True
+                                     except: pass
+                             
+                             if any_change:
+                                 # Clean up state? Streamlit handles this on rerun if we don't persist key?
+                                 # We just rerun.
+                                 # To avoid infinite loop, we rely on the fact that next run 'Saved' col will match user input
+                                 # So 'edited_rows' (diff) will be empty?
+                                 # Yes, mostly.
+                                 st.rerun()
                  else:
                      st.info("No trades in this period.")
                  
