@@ -2766,11 +2766,11 @@ with col_center:
                          selected_short = st.multiselect("Timeframes", options=sorted_tfs, key="history_tf_filter")
                          
                          # 2. Strategy Select
-                         # Initialize or Update if new strategies appear
-                         if "history_strat_filter" not in st.session_state or len(unique_strats) > len(st.session_state.history_strat_filter):
-                             st.session_state.history_strat_filter = unique_strats
-                             
-                         selected_strats = st.multiselect("Strategies", options=unique_strats, key="history_strat_filter")
+                         # Initialize default to all if key missing
+                         if "history_strat_filter" not in st.session_state:
+                              st.session_state.history_strat_filter = unique_strats
+                              
+                          selected_strats = st.multiselect("Strategies", options=unique_strats, key="history_strat_filter")
                          
                      # Apply Filters
                      # 1. TF
