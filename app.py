@@ -2872,7 +2872,18 @@ with col_center:
                      else:
                          filtered_df['Strategy'] = filtered_df['Strategy'].fillna('WizardWave')
 
-                     display_cols = ['Time', 'Asset', 'Timeframe', 'Type', 'Confidence', 'Price', 'Exit Time', 'Return_Pct', 'Status', 'Strategy']
+                     # Format TP/SL for Display
+                     if 'Raw_TP' in filtered_df.columns:
+                         filtered_df['TP'] = filtered_df['Raw_TP'].fillna(0.0).apply(lambda x: f"{x:.4f}" if isinstance(x, (int, float)) else x)
+                     else:
+                         filtered_df['TP'] = "0.0000"
+                         
+                     if 'Raw_SL' in filtered_df.columns:
+                         filtered_df['SL'] = filtered_df['Raw_SL'].fillna(0.0).apply(lambda x: f"{x:.4f}" if isinstance(x, (int, float)) else x)
+                     else:
+                         filtered_df['SL'] = "0.0000"
+
+                     display_cols = ['Time', 'Asset', 'Timeframe', 'Type', 'Confidence', 'Price', 'TP', 'SL', 'Exit Time', 'Return_Pct', 'Status', 'Strategy']
                      # Fill Status if missing
                      if 'Status' not in filtered_df.columns:
                          filtered_df['Status'] = 'CLOSED'
