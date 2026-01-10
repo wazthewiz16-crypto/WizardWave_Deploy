@@ -54,7 +54,32 @@ def fetch_data(symbol: str, asset_type: str, timeframe: str = '1h', limit: int =
                 df = pd.read_csv(cache_file, index_col='datetime', parse_dates=True)
                 if not isinstance(df.index, pd.DatetimeIndex):
                     df.index = pd.to_datetime(df.index)
-                return df
+                
+                # --- FRESHNESS CHECK ---
+                if not df.empty:
+                    last_ts = df.index[-1]
+                    # Ensure naive UTC comparison
+                    now_utc = pd.Timestamp.utcnow().replace(tzinfo=None)
+                    
+                    # Handle TZ-aware index if it exists
+                    if last_ts.tzinfo is not None:
+                        last_ts = last_ts.tz_convert(None)
+                        
+                    lag_s = (now_utc - last_ts).total_seconds()
+                    
+                    # Thresholds
+                    max_lag = 7200 # 2 hours default
+                    if timeframe in ['1d', '4d', '1wk']:
+                        max_lag = 180000 # ~50 hours (weekend buffer)
+                    elif timeframe in ['4h', '12h']:
+                        max_lag = 28800 # 8 hours
+                    
+                    # If lag is acceptable, return cache
+                    if lag_s < max_lag:
+                        return df
+                    else:
+                        print(f"Cache data stale for {symbol} (Lag: {lag_s/3600:.1f}h). Refetching...")
+                        
             except Exception as e:
                 print(f"Error reading cache for {symbol}: {e}")
 
@@ -82,7 +107,6 @@ def fetch_data(symbol: str, asset_type: str, timeframe: str = '1h', limit: int =
     else:
         raise ValueError("Invalid asset_type. Must be 'crypto' or 'trad'.")
 
-    # Resample if needed
     # Resample if needed
     final_df = df
     if not df.empty and resample_rule:
@@ -151,7 +175,7 @@ def _fetch_trad(symbol: str, timeframe: str, limit: int) -> pd.DataFrame:
         
         # Choose a period that likely covers 'limit' candles
         period_map = {
-            '1m': '1d', '5m': '5d', '15m': '5d', '30m': '5d',
+            '1m': '1d', '5m': '5d', '15m': '1mo', '30m': '5d',
             '1h': '3mo', '1d': 'max' # Increased for 4h/4d robustness
         }
         period = period_map.get(timeframe, '1mo')
