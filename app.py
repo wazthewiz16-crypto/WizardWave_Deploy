@@ -966,6 +966,9 @@ def analyze_timeframe(timeframe_label, silent=False):
                            exit_trade = True
                            
                    if exit_trade:
+                       raw_tp_price = entry_price * (1 + curr_tp_pct) if position == 'LONG' else entry_price * (1 - curr_tp_pct)
+                       raw_sl_price = entry_price * (1 - curr_sl_pct) if position == 'LONG' else entry_price * (1 + curr_sl_pct)
+
                        trades.append({
                             "_sort_key": entry_time,
                             "Asset": asset['name'],
@@ -978,7 +981,10 @@ def analyze_timeframe(timeframe_label, silent=False):
                             "Model": "✅",
                             "Return_Pct": pnl, 
                             "SL_Pct": curr_sl_pct,
-                            "Status": status
+                            "Status": status,
+                            "Strategy": strat_name,
+                            "Raw_TP": raw_tp_price,
+                            "Raw_SL": raw_sl_price
                        })
                        position = None
 
@@ -1008,6 +1014,9 @@ def analyze_timeframe(timeframe_label, silent=False):
                                    last_close_pnl = -curr_sl_pct
                                    status_label = "HIT SL 🔴"
                                    
+                               raw_tp_price = entry_price * (1 + curr_tp_pct) if position == 'LONG' else entry_price * (1 - curr_tp_pct)
+                               raw_sl_price = entry_price * (1 - curr_sl_pct) if position == 'LONG' else entry_price * (1 + curr_sl_pct)
+
                                trades.append({
                                     "_sort_key": entry_time,
                                     "Asset": asset['name'],
@@ -1021,7 +1030,9 @@ def analyze_timeframe(timeframe_label, silent=False):
                                     "Return_Pct": last_close_pnl, 
                                     "SL_Pct": curr_sl_pct,
                                     "Status": status_label,
-                                    "Strategy": strat_name
+                                    "Strategy": strat_name,
+                                    "Raw_TP": raw_tp_price,
+                                    "Raw_SL": raw_sl_price
                                })
                                # Prepare for new entry
                                position = None 
@@ -1033,6 +1044,8 @@ def analyze_timeframe(timeframe_label, silent=False):
                                entry_time = idx
                                entry_int_idx = int_idx # Store integer index for time limit check
                                entry_conf = model_prob
+                               entry_tp_pct = curr_tp_pct
+                               entry_sl_pct = curr_sl_pct
 
                    # --- TIME LIMIT CHECK ---
                    if position is not None:
@@ -1049,6 +1062,9 @@ def analyze_timeframe(timeframe_label, silent=False):
                            else:
                                tl_pnl = (entry_price - close) / entry_price
                                
+                           raw_tp_price = entry_price * (1 + curr_tp_pct) if position == 'LONG' else entry_price * (1 - curr_tp_pct)
+                           raw_sl_price = entry_price * (1 - curr_sl_pct) if position == 'LONG' else entry_price * (1 + curr_sl_pct)
+
                            trades.append({
                                 "_sort_key": entry_time,
                                 "Asset": asset['name'],
@@ -1062,7 +1078,9 @@ def analyze_timeframe(timeframe_label, silent=False):
                                 "Return_Pct": tl_pnl, 
                                 "SL_Pct": curr_sl_pct,
                                 "Status": "TIME LIMIT ⌛",
-                                "Strategy": strat_name
+                                "Strategy": strat_name,
+                                "Raw_TP": raw_tp_price,
+                                "Raw_SL": raw_sl_price
                            })
                            position = None
                                
@@ -1077,6 +1095,13 @@ def analyze_timeframe(timeframe_label, silent=False):
                     else:
                         pnl = (entry_price - last_price) / entry_price
                         
+                    if position == 'LONG':
+                        raw_tp_price = entry_price * (1 + entry_tp_pct)
+                        raw_sl_price = entry_price * (1 - entry_sl_pct)
+                    else:
+                        raw_tp_price = entry_price * (1 - entry_tp_pct)
+                        raw_sl_price = entry_price * (1 + entry_sl_pct)
+
                     trades.append({
                         "_sort_key": entry_time,
                         "Asset": asset['name'],
@@ -1090,7 +1115,9 @@ def analyze_timeframe(timeframe_label, silent=False):
                         "Return_Pct": pnl, 
                         "SL_Pct": curr_sl_pct,
                         "Status": "OPEN",
-                        "Strategy": strat_name
+                        "Strategy": strat_name,
+                        "Raw_TP": raw_tp_price,
+                        "Raw_SL": raw_sl_price
                     })
 
 
