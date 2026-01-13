@@ -287,7 +287,7 @@ with st.sidebar:
     
     # 1. Filters
     st.caption("Auto-Filtering")
-    plan_active = st.checkbox("Apply Plan Filters", value=True, help="Automatically filter Runic Alerts & History based on rules.")
+    plan_active = st.checkbox("Apply Plan Filters", value=False, help="Automatically filter Runic Alerts & History based on rules.")
     
     min_conf_plan = st.slider("Min Confidence", 0, 100, 55, step=5, key="plan_slider_conf")
     
@@ -300,40 +300,6 @@ with st.sidebar:
         help="Select timeframes you want to focus on.",
         key="plan_multiselect_tf"
     )
-    
-    # 2. Daily Limits
-    st.caption("Risk Management")
-    max_daily_trades = st.number_input("Max Trades Per Day", 1, 10, 2, key="plan_daily_max")
-    
-    # Count Today's Trades (from Manage Trades)
-    try:
-        import datetime
-        curr_saved_trades = manage_trades.load_trades()
-        # Ensure date consistency
-        today_val = datetime.date.today()
-        today_str = today_val.strftime('%Y-%m-%d')
-        
-        todays_count = 0
-        for t in curr_saved_trades:
-            t_time = str(t.get('Time'))
-            # t_time format is "YYYY-MM-DD HH:MM:SS" usually
-            if t_time.startswith(today_str):
-                todays_count += 1
-        
-        st.write(f"**Trades Taken Today:** {todays_count} / {max_daily_trades}")
-        
-        if todays_count >= max_daily_trades:
-            st.error("🚫 Daily Limit Reached! Stop Trading.")
-            if todays_count > max_daily_trades:
-                 st.caption("You have exceeded your limit.")
-        else:
-            # Progress bar
-            prog = min(1.0, todays_count / max_daily_trades)
-            st.progress(prog)
-            st.caption(f"{max_daily_trades - todays_count} trades remaining.")
-            
-    except Exception as e:
-        st.error(f"Error checking daily limit: {e}")
 
     # Store in Session State for Global Access
     st.session_state['plan_active'] = plan_active
@@ -2156,11 +2122,8 @@ def show_runic_alerts():
                 
                 for index, row in current_batch.iterrows():
                     with st.container():
-                        # --- NEW "DATAPAD" RUNIC CARD DESIGN ---
-                        # Split: Content (85%) | Buttons (15%)
-                        c_content, c_btn = st.columns([0.85, 0.15], gap="small", vertical_alignment="center")
-                        
-                        with c_content:
+                        # --- NEW "DATAPAD" RUNIC CARD DESIGN (Full Width) ---
+                        with st.container():
                             is_long = "LONG" in row.get('Type', '')
                             direction_color = "#00ff88" if is_long else "#ff3344"
                             asset_name = row['Asset']
@@ -2182,92 +2145,85 @@ def show_runic_alerts():
                             pnl_display_str = f"{net_pnl_val:.2f}%"
                             pnl_color = "#00ff88" if net_pnl_val >= 0 else "#ff3344"
                             
-                            # CSS Hack to fix button buttons
-                            st.markdown("""
-                            <style>
-                            div[data-testid="stHorizontalBlock"] button[kind="tertiary"] {
-                                border: none !important;
-                                background: transparent !important;
-                                padding: 0px !important;
-                                margin-top: 10px !important;
-                            }
-                            </style>
-                            """, unsafe_allow_html=True)
-                            lbl_pnl = "Net" if st.session_state.get('manual_mode', False) or fee_cost > 0 else "PnL"
-
-                            # --- HTML CARD ---
-                            # formatting entry time
+                            # Formatting entry time
                             try:
                                 et_str = str(row.get('Entry_Time', ''))
-                                # Try to extract full date-time if ISO format (YYYY-MM-DDT...), or just display what we have
-                                # Expected format: 2025-12-25 14:30:00 or similar
                                 if len(et_str) > 10:
-                                    # Just take MM-DD HH:MM
-                                    # Assuming YYYY-MM-DD HH:MM:SS format
-                                    # 5:10 is MM-DD, 11:16 is HH:MM
                                     et_disp = f"{et_str[5:10]} {et_str[11:16]}"
                                 else:
                                     et_disp = et_str
                             except: et_disp = ""
 
+                            # HTML Card Content
                             st.markdown(f"""
-<div style="font-family: 'Lato', sans-serif; background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); padding: 10px; margin-bottom: 12px; min-height: 90px; display: flex; flex-direction: column; justify-content: center;">
-<div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px; margin-bottom: 8px;">
-<div style="display: flex; align-items: center; gap: 8px;">
-<span style="font-size: 1.1rem; color: #f0f0f0;">{icon_char}</span>
-<span style="font-weight: 800; font-size: 0.95rem; color: #fff;">{asset_name}</span>
-<span style="font-size: 0.65rem; font-weight: bold; padding: 1px 5px; border-radius: 4px; background: {direction_color}25; color: {direction_color}; border: 1px solid {direction_color}30;">{action_text}</span>
-<span style="font-size: 0.75rem; font-weight: bold; color: {pnl_color}; margin-left: 5px;">{pnl_display_str}</span>
-</div>
-<div style="font-size: 0.8rem; font-weight: bold; color: #ff3344;">{row.get('Timeframe')}</div>
-</div>
-<div style="font-size: 0.75rem; color: #ccc; line-height: 1.5;">
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
-<div><span style="color:#777">Sig:</span> <span style="font-weight:bold; color:#eee">{row.get('Action')}</span> <span style="color:#FFB74D">{row.get('Confidence')}</span></div>
-<div style="text-align: right;"><span style="color:#777">Ent:</span> <span style="color:#00ff88; font-family:monospace">{row.get('Entry_Price')}</span> <span style="color:#555">|</span> <span style="color:#777">Now:</span> <span style="color:#ffd700; font-family:monospace">{row.get('Current_Price', 'N/A')}</span></div>
-<div><span style="color:#777">TP:</span> <span style="color:#eee">{row.get('Take_Profit')}</span> <span style="color:#777">SL:</span> <span style="color:#d8b4fe">{row.get('Stop_Loss')}</span></div>
-<div style="text-align: right;"><span style="font-size:0.65rem; color:#00eaff; font-weight:bold; margin-right:5px;">{row.get('Strategy','WizardWave')}</span> <span style="color:#888; font-size: 0.7rem;">🕒 {et_disp}</span></div>
-</div>
-</div>
-</div>
-""", unsafe_allow_html=True)
-                        
-                        with c_btn:
-                             unique_id = f"{row['Asset']}_{row.get('Timeframe','')}_{row.get('Entry_Time','')}"
-                             unique_id = "".join(c for c in unique_id if c.isalnum() or c in ['_','-'])
-                             
-                             # Grid: View | Calc
-                             b1, b2 = st.columns(2, gap="small")
-                             
-                             with b1:
-                                 if st.button("👁️", key=f"btn_v_{unique_id}", use_container_width=True, help="View Chart"):
-                                     # View Logic
-                                     st.session_state['active_signal'] = row.to_dict()
-                                     st.session_state['active_view_mode'] = 'details' 
-                                     # Set TV params
-                                     tv_sym = get_tv_symbol({'symbol': row.get('Symbol', row.get('Asset'))})
-                                     st.session_state['active_tv_symbol'] = tv_sym
-                                     st.session_state['active_tab'] = 'PORTAL' # Ensure portal
-                                     st.rerun()
-                                     
-                             with b2:
-                                 if st.button("🧮", key=f"btn_c_{unique_id}", use_container_width=True, help="Calc Position"):
-                                     st.session_state['active_signal'] = row.to_dict()
-                                     st.session_state['active_view_mode'] = 'calculator'
-                                     st.session_state['active_tab'] = 'RISK'
-                                     try:
-                                         ep = float(str(row['Entry_Price']).replace(',',''))
-                                         st.session_state.calc_entry_input = ep
-                                     except: st.session_state.calc_entry_input = 0.0
-                                     st.rerun()
-
-                             # Copy Button (Full Width below)
-                             copy_text = f"{asset_name} {action_text} @ {row['Entry_Price']} | TP: {row['Take_Profit']} | SL: {row['Stop_Loss']}"
-                             st_copy_to_clipboard(copy_text, "📋 Copy", "Copied!", key=f"copy_{unique_id}")
-                             
-                             # Full Width Separator below the columns
-                             # Full Width Separator below the columns
-                        # Removed, using card style instead
+                            <div style="font-family: 'Lato', sans-serif; background: rgba(0,0,0,0.2); border-radius: 8px 8px 0 0; border: 1px solid rgba(255,255,255,0.05); padding: 10px; margin-bottom: 0px; display: flex; flex-direction: column;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px; margin-bottom: 8px;">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span style="font-size: 1.1rem; color: #f0f0f0;">{icon_char}</span>
+                                        <span style="font-weight: 800; font-size: 0.95rem; color: #fff;">{asset_name}</span>
+                                        <span style="font-size: 0.65rem; font-weight: bold; padding: 1px 5px; border-radius: 4px; background: {direction_color}25; color: {direction_color}; border: 1px solid {direction_color}30;">{action_text}</span>
+                                        <span style="font-size: 0.75rem; font-weight: bold; color: {pnl_color}; margin-left: 5px;">{pnl_display_str}</span>
+                                    </div>
+                                    <div style="font-size: 0.8rem; font-weight: bold; color: #ff3344;">{row.get('Timeframe')}</div>
+                                </div>
+                                <div style="font-size: 0.75rem; color: #ccc; line-height: 1.5;">
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+                                        <div><span style="color:#777">Sig:</span> <span style="font-weight:bold; color:#eee">{row.get('Action')}</span> <span style="color:#FFB74D">{row.get('Confidence')}</span></div>
+                                        <div style="text-align: right;"><span style="color:#777">Ent:</span> <span style="color:#00ff88; font-family:monospace">{row.get('Entry_Price')}</span> <span style="color:#555">|</span> <span style="color:#777">Now:</span> <span style="color:#ffd700; font-family:monospace">{row.get('Current_Price', 'N/A')}</span></div>
+                                        <div><span style="color:#777">TP:</span> <span style="color:#eee">{row.get('Take_Profit')}</span> <span style="color:#777">SL:</span> <span style="color:#d8b4fe">{row.get('Stop_Loss')}</span></div>
+                                        <div style="text-align: right;"><span style="font-size:0.65rem; color:#00eaff; font-weight:bold; margin-right:5px;">{row.get('Strategy','WizardWave')}</span> <span style="color:#888; font-size: 0.7rem;">🕒 {et_disp}</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            # Action Bar (Attached to bottom of card)
+                            # Using a separate container with darker background
+                            unique_id = f"{row['Asset']}_{row.get('Timeframe','')}_{row.get('Entry_Time','')}"
+                            unique_id = "".join(c for c in unique_id if c.isalnum() or c in ['_','-'])
+                            
+                            # Custom CSS to merge buttons with card
+                            st.markdown("""
+                            <style>
+                            div[data-testid="stHorizontalBlock"] {
+                                gap: 0rem;
+                            }
+                            button[kind="secondary"] {
+                                border-radius: 0 !important;
+                                border: 1px solid rgba(255,255,255,0.1) !important;
+                                border-top: none !important;
+                                background-color: rgba(0,0,0,0.3) !important;
+                            }
+                            button[kind="secondary"]:hover {
+                                background-color: rgba(255,255,255,0.1) !important;
+                            }
+                            </style>
+                            """, unsafe_allow_html=True)
+                            
+                            ac1, ac2, ac3 = st.columns(3, gap="small")
+                            with ac1:
+                                if st.button("👁️ View", key=f"btn_v_{unique_id}", use_container_width=True, type="secondary"):
+                                    st.session_state['active_signal'] = row.to_dict()
+                                    st.session_state['active_view_mode'] = 'details' 
+                                    tv_sym = get_tv_symbol({'symbol': row.get('Symbol', row.get('Asset'))})
+                                    st.session_state['active_tv_symbol'] = tv_sym
+                                    st.session_state['active_tab'] = 'PORTAL' 
+                                    st.rerun()
+                            with ac2:
+                                if st.button("🧮 Calc", key=f"btn_c_{unique_id}", use_container_width=True, type="secondary"):
+                                    st.session_state['active_signal'] = row.to_dict()
+                                    st.session_state['active_view_mode'] = 'calculator'
+                                    st.session_state['active_tab'] = 'RISK'
+                                    try:
+                                        ep = float(str(row['Entry_Price']).replace(',',''))
+                                        st.session_state.calc_entry_input = ep
+                                    except: st.session_state.calc_entry_input = 0.0
+                                    st.rerun()
+                            with ac3:
+                                copy_text = f"{asset_name} {action_text} @ {row['Entry_Price']} | TP: {row['Take_Profit']} | SL: {row['Stop_Loss']}"
+                                st_copy_to_clipboard(copy_text, "📋 Copy", "Copied!", key=f"copy_{unique_id}")
+                            
+                            st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True) # Spacer
 
 
 
@@ -2985,20 +2941,9 @@ with col_center:
                          mt_df = pd.DataFrame(my_trades_list)
                          st.dataframe(mt_df, use_container_width=True)
                          
-                         mc1, mc2 = st.columns([0.2, 0.8])
-                         with mc1:
-                             if st.button("Clear All"):
-                                 manage_trades.save_trades_list([])
-                                 st.rerun()
-                         with mc2:
-                             csv_data = mt_df.to_csv(index=False).encode('utf-8')
-                             st.download_button(
-                                 label="💾 Download Journal (CSV)",
-                                 data=csv_data,
-                                 file_name='wizard_journal.csv',
-                                 mime='text/csv',
-                                 help="Download your trades to Excel/Sheets for permanent storage."
-                             )
+                         if st.button("Clear All"):
+                             manage_trades.save_trades_list([])
+                             st.rerun()
                      else:
                          st.info("No trades saved yet. Check the box in the history table to save a trade.")
 
