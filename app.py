@@ -277,8 +277,68 @@ st.set_page_config(
     page_title="Arcane Portal",
     page_icon="🧙‍♂️",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
+
+# --- TRADING PLAN SIDEBAR ---
+with st.sidebar:
+    st.markdown("### 📜 My Trading Plan")
+    st.info("Define your rules to streamline your process.")
+    
+    # 1. Filters
+    st.caption("Auto-Filtering")
+    plan_active = st.checkbox("Apply Plan Filters", value=True, help="Automatically filter Runic Alerts & History based on rules.")
+    
+    min_conf_plan = st.slider("Min Confidence", 0, 100, 55, step=5, key="plan_slider_conf")
+    
+    # Map common TFs
+    tf_opts = ["15m", "1H", "4H", "12H", "1D", "4D"]
+    allowed_tfs_plan = st.multiselect(
+        "Allowed Timeframes", 
+        tf_opts,
+        default=["4H", "1D", "4D"],
+        help="Select timeframes you want to focus on.",
+        key="plan_multiselect_tf"
+    )
+    
+    # 2. Daily Limits
+    st.caption("Risk Management")
+    max_daily_trades = st.number_input("Max Trades Per Day", 1, 10, 2, key="plan_daily_max")
+    
+    # Count Today's Trades (from Manage Trades)
+    try:
+        import datetime
+        curr_saved_trades = manage_trades.load_trades()
+        # Ensure date consistency
+        today_val = datetime.date.today()
+        today_str = today_val.strftime('%Y-%m-%d')
+        
+        todays_count = 0
+        for t in curr_saved_trades:
+            t_time = str(t.get('Time'))
+            # t_time format is "YYYY-MM-DD HH:MM:SS" usually
+            if t_time.startswith(today_str):
+                todays_count += 1
+        
+        st.write(f"**Trades Taken Today:** {todays_count} / {max_daily_trades}")
+        
+        if todays_count >= max_daily_trades:
+            st.error("🚫 Daily Limit Reached! Stop Trading.")
+            if todays_count > max_daily_trades:
+                 st.caption("You have exceeded your limit.")
+        else:
+            # Progress bar
+            prog = min(1.0, todays_count / max_daily_trades)
+            st.progress(prog)
+            st.caption(f"{max_daily_trades - todays_count} trades remaining.")
+            
+    except Exception as e:
+        st.error(f"Error checking daily limit: {e}")
+
+    # Store in Session State for Global Access
+    st.session_state['plan_active'] = plan_active
+    st.session_state['plan_min_conf'] = min_conf_plan
+    st.session_state['plan_allowed_tfs'] = allowed_tfs_plan
 
 # Custom CSS for styling
 st.markdown("""
@@ -2036,7 +2096,31 @@ def show_runic_alerts():
             df_display = combined_active.copy()
             if show_take_only and 'Action' in df_display.columns:
                 df_display = df_display[df_display['Action'].str.contains("TAKE")]
-            
+
+            # --- TRADING PLAN FILTERING ---
+            if st.session_state.get('plan_active', False):
+                # 1. Confidence
+                plan_conf = st.session_state.get('plan_min_conf', 55)
+                # Parse conf if string
+                def _parse_conf_plan(x):
+                    try: return float(str(x).replace('%',''))
+                    except: return 0.0
+                if 'Confidence' in df_display.columns:
+                    df_display = df_display[df_display['Confidence'].apply(_parse_conf_plan) >= plan_conf]
+                
+                # 2. Timeframes
+                plan_tfs = st.session_state.get('plan_allowed_tfs', [])
+                if plan_tfs:
+                    # Map standard TFs to what might be in DF (e.g. '1H' -> '1 Hour' matching?)
+                    # Data uses "15 Minutes", "1 Hour", "4 Hours", "1 Day"?
+                    # Or "15m", "1H", "4H", "1D"?
+                    # DF usually has mixed or standard. "15 Minutes" (Monitor) vs "1D" (Ichimoku).
+                    # We create a loose match.
+                    # normalize plan_tfs to simplistic list
+                    # "4 Hours" should match "4H"
+                    
+                    df_display = df_display[df_display['Timeframe'].apply(lambda tf: any(p_tf in str(tf) or (p_tf == "1H" and "1 Hour" in str(tf)) or (p_tf == "4H" and "4 Hours" in str(tf)) or (p_tf == "12H" and "12 Hours" in str(tf)) or (p_tf == "1D" and "1 Day" in str(tf)) for p_tf in plan_tfs))]
+
             # --- Manual Mode Filters ---
             if st.session_state.get('manual_mode', False):
                 # 1. Filter out 15m
@@ -2152,37 +2236,34 @@ def show_runic_alerts():
                              unique_id = f"{row['Asset']}_{row.get('Timeframe','')}_{row.get('Entry_Time','')}"
                              unique_id = "".join(c for c in unique_id if c.isalnum() or c in ['_','-'])
                              
-                             # Grid Layout for Buttons to save vertical space
-                             # [ View ] [ Calc ]
-                             # [      Copy     ]
+                             # Grid: View | Calc
+                             b1, b2 = st.columns(2, gap="small")
                              
-                             br1_c1, br1_c2 = st.columns([0.5, 0.5], gap="small")
-                             
-                             with br1_c1:
-                                 if st.button("👁️", key=f"btn_v_{unique_id}", use_container_width=True, help="View", type="tertiary"):
-                                     tv_sym = get_tv_symbol({'symbol': row.get('Symbol', '')})
-                                     try: tv_int = get_tv_interval(row['Timeframe'])
-                                     except: tv_int = '60'
-                                     st.session_state.active_tv_symbol = tv_sym
-                                     st.session_state.active_tv_interval = tv_int
-                                     st.session_state.active_signal = row.to_dict()
-                                     st.session_state.active_view_mode = 'details'
+                             with b1:
+                                 if st.button("👁️", key=f"btn_v_{unique_id}", use_container_width=True, help="View Chart"):
+                                     # View Logic
+                                     st.session_state['active_signal'] = row.to_dict()
+                                     st.session_state['active_view_mode'] = 'details' 
+                                     # Set TV params
+                                     tv_sym = get_tv_symbol({'symbol': row.get('Symbol', row.get('Asset'))})
+                                     st.session_state['active_tv_symbol'] = tv_sym
+                                     st.session_state['active_tab'] = 'PORTAL' # Ensure portal
                                      st.rerun()
-                             with br1_c2:
-                                 if st.button("🧮", key=f"btn_c_{unique_id}", use_container_width=True, help="Calc", type="tertiary"):
-                                     tv_sym = get_tv_symbol({'symbol': row.get('Symbol', '')})
-                                     try: tv_int = get_tv_interval(row['Timeframe'])
-                                     except: tv_int = '60'
-                                     st.session_state.active_tv_symbol = tv_sym
-                                     st.session_state.active_tv_interval = tv_int
-                                     st.session_state.active_signal = row.to_dict()
-                                     st.session_state.active_view_mode = 'calculator' 
-                                     st.session_state.active_tab = 'RISK' 
+                                     
+                             with b2:
+                                 if st.button("🧮", key=f"btn_c_{unique_id}", use_container_width=True, help="Calc Position"):
+                                     st.session_state['active_signal'] = row.to_dict()
+                                     st.session_state['active_view_mode'] = 'calculator'
+                                     st.session_state['active_tab'] = 'RISK'
                                      try:
                                          ep = float(str(row['Entry_Price']).replace(',',''))
                                          st.session_state.calc_entry_input = ep
                                      except: st.session_state.calc_entry_input = 0.0
                                      st.rerun()
+
+                             # Copy Button (Full Width below)
+                             copy_text = f"{asset_name} {action_text} @ {row['Entry_Price']} | TP: {row['Take_Profit']} | SL: {row['Stop_Loss']}"
+                             st_copy_to_clipboard(copy_text, "📋 Copy", "Copied!", key=f"copy_{unique_id}")
                              
                              # Full Width Separator below the columns
                              # Full Width Separator below the columns
@@ -2758,6 +2839,23 @@ with col_center:
                      
                  # 2. Filter Open Trades (New)
                  if show_open_only:
+                     filtered_df = filtered_df[filtered_df['Status'] == 'OPEN']
+
+                 # --- TRADING PLAN FILTERING ---
+                 if st.session_state.get('plan_active', False):
+                     # 1. Confidence
+                     plan_conf = st.session_state.get('plan_min_conf', 55)
+                     def _parse_conf_plan_hist(x):
+                         try: return float(str(x).replace('%',''))
+                         except: return 0.0
+                     if 'Confidence' in filtered_df.columns:
+                         filtered_df = filtered_df[filtered_df['Confidence'].apply(_parse_conf_plan_hist) >= plan_conf]
+                     
+                     # 2. Timeframes
+                     plan_tfs = st.session_state.get('plan_allowed_tfs', [])
+                     if plan_tfs:
+                         filtered_df = filtered_df[filtered_df['Timeframe'].apply(lambda tf: any(p_tf in str(tf) or (p_tf == "1H" and "1 Hour" in str(tf)) or (p_tf == "4H" and "4 Hours" in str(tf)) or (p_tf == "12H" and "12 Hours" in str(tf)) or (p_tf == "1D" and "1 Day" in str(tf)) for p_tf in plan_tfs))]
+                 if show_open_only:
                      if 'Status' in filtered_df.columns:
                          filtered_df = filtered_df[filtered_df['Status'] == 'OPEN']
                      
@@ -2884,10 +2982,23 @@ with col_center:
                  with st.expander("⭐ My Trades", expanded=False):
                      my_trades_list = manage_trades.load_trades()
                      if my_trades_list:
-                         st.dataframe(pd.DataFrame(my_trades_list))
-                         if st.button("Clear All Saved Trades"):
-                             manage_trades.save_trades_list([])
-                             st.rerun()
+                         mt_df = pd.DataFrame(my_trades_list)
+                         st.dataframe(mt_df, use_container_width=True)
+                         
+                         mc1, mc2 = st.columns([0.2, 0.8])
+                         with mc1:
+                             if st.button("Clear All"):
+                                 manage_trades.save_trades_list([])
+                                 st.rerun()
+                         with mc2:
+                             csv_data = mt_df.to_csv(index=False).encode('utf-8')
+                             st.download_button(
+                                 label="💾 Download Journal (CSV)",
+                                 data=csv_data,
+                                 file_name='wizard_journal.csv',
+                                 mime='text/csv',
+                                 help="Download your trades to Excel/Sheets for permanent storage."
+                             )
                      else:
                          st.info("No trades saved yet. Check the box in the history table to save a trade.")
 
