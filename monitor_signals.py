@@ -268,6 +268,11 @@ def run_analysis_cycle():
                     fetch_type = 'trad' if asset_type == 'forex' or asset_type == 'trad' else 'crypto'
                     if '-' in symbol or '^' in symbol or '=' in symbol: fetch_type = 'trad'
                     
+                    # --- FILTER: SKIP FOREX ON SWING TIMEFRAMES ---
+                    # User Request: Remove Forex swing signals
+                    if asset_type == 'forex' and tf in ['4h', '12h', '1d', '4d']:
+                        continue
+
                     # Fetch
                     df = fetch_data(symbol, asset_type=fetch_type, timeframe=tf, limit=300)
                     if df.empty: continue

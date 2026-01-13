@@ -582,6 +582,12 @@ def analyze_timeframe(timeframe_label, silent=False):
             current_limit = 1000
             if "Day" in timeframe_label:
                 current_limit = 300 
+
+            # --- FILTER: SKIP FOREX ON SWING TIMEFRAMES ---
+            # User Request: Remove Forex swing signals (poor performance)
+            if asset['type'] == 'forex' and tf_code in ['4h', '12h', '1d', '4d']:
+                 log_debug(f"Skipping Forex on Swing TF: {asset['symbol']} {tf_code}")
+                 return None, None, None
             
             # Fetch Data
             df = fetch_data(asset['symbol'], asset['type'], timeframe=tf_code, limit=current_limit)
