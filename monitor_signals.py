@@ -258,7 +258,13 @@ def run_analysis_cycle():
         conf_threshold = model_conf.get('confidence_threshold', 0.50)
         
         # Default Features
-        features_list = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi']
+        # Default Features
+        features_list = [
+            'volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 
+            'bb_width', 'candle_ratio', 'atr_pct', 'mfi',
+            'mango_d1_dist', 'mango_d2_dist', 'upper_zone_dist', 'lower_zone_dist',
+            'cloud_top_dist', 'cloud_bot_dist', 'regime_bull'
+        ]
         
         for tf in timeframes:
             for symbol in CONFIG['assets']:

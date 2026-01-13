@@ -610,7 +610,13 @@ def analyze_timeframe(timeframe_label, silent=False):
             prob = 0.0
             if model:
                 # Standard Features List
-                features_list = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi']
+                # Standard Features List
+                features_list = [
+                    'volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 
+                    'bb_width', 'candle_ratio', 'atr_pct', 'mfi',
+                    'mango_d1_dist', 'mango_d2_dist', 'upper_zone_dist', 'lower_zone_dist',
+                    'cloud_top_dist', 'cloud_bot_dist', 'regime_bull'
+                ]
                 
                 # Check for feature columns presence
                 missing_feats = [f for f in features_list if f not in df_strat.columns]
