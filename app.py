@@ -2200,7 +2200,52 @@ def show_runic_alerts():
                             </style>
                             """, unsafe_allow_html=True)
                             
+                            import streamlit.components.v1 as components
+
+                            # Calculate R:R
+                            try:
+                                ep_val = float(str(row.get('Entry_Price',0)).replace(',',''))
+                                tp_val = float(str(row.get('Take_Profit',0)).replace(',',''))
+                                sl_val = float(str(row.get('Stop_Loss',0)).replace(',',''))
+                                
+                                if ep_val > 0 and tp_val > 0 and sl_val > 0:
+                                    dist_tp = abs(tp_val - ep_val)
+                                    dist_sl = abs(ep_val - sl_val)
+                                    if dist_sl > 0:
+                                        rr_val = dist_tp / dist_sl
+                                        rr_str = f"{rr_val:.2f}R"
+                                    else: rr_str = "N/A"
+                                else: rr_str = "-"
+                            except: rr_str = "-"
+
+                            # HTML Card Content (Reduced Spacing)
+                            st.markdown(f"""
+                            <div style="font-family: 'Lato', sans-serif; background: rgba(0,0,0,0.2); border-radius: 8px 8px 0 0; border: 1px solid rgba(255,255,255,0.05); padding: 8px 10px; margin-bottom: 0px; display: flex; flex-direction: column;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px; margin-bottom: 6px;">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span style="font-size: 1.0rem; color: #f0f0f0;">{icon_char}</span>
+                                        <span style="font-weight: 800; font-size: 0.9rem; color: #fff;">{asset_name}</span>
+                                        <span style="font-size: 0.6rem; font-weight: bold; padding: 1px 4px; border-radius: 4px; background: {direction_color}25; color: {direction_color}; border: 1px solid {direction_color}30;">{action_text}</span>
+                                        <span style="font-size: 0.7rem; font-weight: bold; color: {pnl_color}; margin-left: 5px;">{pnl_display_str}</span>
+                                    </div>
+                                    <div style="font-size: 0.75rem; font-weight: bold; color: #ff3344;">{row.get('Timeframe')}</div>
+                                </div>
+                                <div style="font-size: 0.7rem; color: #ccc; line-height: 1.4;">
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+                                        <div><span style="color:#777">Sig:</span> <span style="font-weight:bold; color:#eee">{row.get('Action')}</span> <span style="color:#FFB74D">{row.get('Confidence')}</span></div>
+                                        <div style="text-align: right;"><span style="color:#777">Ent:</span> <span style="color:#00ff88; font-family:monospace">{row.get('Entry_Price')}</span> <span style="color:#555">|</span> <span style="color:#777">R:R</span> <span style="color:#ffd700; font-family:monospace">{rr_str}</span></div>
+                                        <div><span style="color:#777">TP:</span> <span style="color:#eee">{row.get('Take_Profit')}</span> <span style="color:#777">SL:</span> <span style="color:#d8b4fe">{row.get('Stop_Loss')}</span></div>
+                                        <div style="text-align: right;"><span style="font-size:0.6rem; color:#00eaff; font-weight:bold; margin-right:5px;">{row.get('Strategy','WizardWave')}</span> <span style="color:#888; font-size: 0.65rem;">🕒 {et_disp}</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
                             ac1, ac2, ac3 = st.columns(3, gap="small")
+                            
+                            # Standardized Button Style
+                            btn_style = "border: 1px solid rgba(255,255,255,0.1); background-color: rgba(0,0,0,0.3); color: white; padding: 0.25rem 0.5rem; font-size: 0.8rem; cursor: pointer; width: 100%; border-radius: 4px; text-align: center;"
+                            
                             with ac1:
                                 if st.button("👁️ View", key=f"btn_v_{unique_id}", use_container_width=True, type="secondary"):
                                     st.session_state['active_signal'] = row.to_dict()
@@ -2220,10 +2265,49 @@ def show_runic_alerts():
                                     except: st.session_state.calc_entry_input = 0.0
                                     st.rerun()
                             with ac3:
-                                copy_text = f"{asset_name} {action_text} @ {row['Entry_Price']} | TP: {row['Take_Profit']} | SL: {row['Stop_Loss']}"
-                                st_copy_to_clipboard(copy_text, "📋 Copy", "Copied!", key=f"copy_{unique_id}")
-                            
-                            st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True) # Spacer
+                                # Custom HTML Component for Copy to Clipboard to match style
+                                copy_text_pl = f"{asset_name} {action_text} @ {row['Entry_Price']} | TP: {row['Take_Profit']} | SL: {row['Stop_Loss']}"
+                                # Escaping quotes for JS
+                                safe_copy = copy_text_pl.replace("'", "\\'")
+                                
+                                # HTML Button that clicks copy
+                                # We use height=37 to match Streamlit buttons approx
+                                components.html(f"""
+                                <html>
+                                <head>
+                                <style>
+                                    body {{ margin: 0; padding: 0; background: transparent; }}
+                                    .btn {{
+                                        {btn_style}
+                                        display: flex; align-items: center; justify-content: center;
+                                        font-family: "Source Sans Pro", sans-serif;
+                                        height: 38px;
+                                        box-sizing: border-box;
+                                        transition: background-color 0.2s;
+                                    }}
+                                    .btn:hover {{ background-color: rgba(255,255,255,0.1); }}
+                                    .btn:active {{ background-color: rgba(255,255,255,0.2); transform: translateY(1px); }}
+                                </style>
+                                </head>
+                                <body>
+                                    <button class="btn" onclick="copyToClipboard()">
+                                        <span id="lbl">📋 Copy</span>
+                                    </button>
+                                    <script>
+                                        function copyToClipboard() {{
+                                            navigator.clipboard.writeText('{safe_copy}').then(function() {{
+                                                document.getElementById('lbl').innerText = '✅ Copied!';
+                                                setTimeout(() => {{ document.getElementById('lbl').innerText = '📋 Copy'; }}, 2000);
+                                            }}, function(err) {{
+                                                document.getElementById('lbl').innerText = '❌ Error';
+                                            }});
+                                        }}
+                                    </script>
+                                </body>
+                                </html>
+                                """, height=40)
+                                
+                            st.markdown("<div style='margin-bottom: 6px;'></div>", unsafe_allow_html=True) # Reduced Spacer
 
 
 
