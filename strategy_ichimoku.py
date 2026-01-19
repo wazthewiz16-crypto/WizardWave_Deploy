@@ -3,11 +3,13 @@ import pandas_ta as ta
 import numpy as np
 
 class IchimokuStrategy:
-    def __init__(self, tenkan=20, kijun=60, span_b=120, displacement=30):
+    def __init__(self, tenkan=20, kijun=60, span_b=120, displacement=30, use_adx_filter=True, adx_threshold=20):
         self.tenkan_period = tenkan
         self.kijun_period = kijun
         self.span_b_period = span_b
         self.displacement = displacement
+        self.use_adx_filter = use_adx_filter
+        self.adx_threshold = adx_threshold
         
     def calculate_ichimoku(self, df):
         """
@@ -97,8 +99,27 @@ class IchimokuStrategy:
         # Strong Buy: TK Cross Bull + Above Cloud + Chikou Bull
         # (User Note: "Crosses... outside the cloud carrying higher reliability")
         
+        # Strong Buy: TK Cross Bull + Above Cloud + Chikou Bull
+        # (User Note: "Crosses... outside the cloud carrying higher reliability")
+        
         full_bull = tk_cross_bull & above_cloud & chikou_bull
         full_bear = tk_cross_bear & below_cloud & chikou_bear
+        
+        # 3. ADX Filter (Trend Strength)
+        if self.use_adx_filter:
+            try:
+                # ADX requires a bit of lookback
+                if len(df) > 20:
+                    adx_df = ta.adx(df['high'], df['low'], df['close'], length=14)
+                    if adx_df is not None and not adx_df.empty:
+                        df['adx'] = adx_df['ADX_14']
+                        full_bull = full_bull & (df['adx'] > self.adx_threshold)
+                        full_bear = full_bear & (df['adx'] > self.adx_threshold)
+                    else:
+                        pass # Fallback if adx fails
+            except Exception as e:
+                print(f"ADX Error: {e}")
+                pass
         
         # We can also add "Weak" signals (Inside Cloud) or "Neutral" signals, 
         # but for this automated test, let's stick to "High Quality" signals as requested (Strong Trend).
