@@ -8,16 +8,16 @@ class CLSRangeStrategy:
     1. HTF (e.g. Daily): Identify CLS Candle (Large, Sweeps Liquidity).
        - The Range is the High/Low of this HTF CLS Candle.
     2. LTF (e.g. 1H): Trade the Deviation & Reclaim.
-       - Setup: Price deviates outside the HTF Range on LTF.
-       - Entry: Price closes back inside the HTF Range on LTF.
+       - Volume Confirmation: Requires the HTF sweep to have high volume.
     3. Targets:
        - Mid-Range (50% of HTF Range)
        - Full Range (Opposite side of HTF Range)
     """
 
-    def __init__(self, swing_window=10, atr_multiplier=1.5):
+    def __init__(self, swing_window=10, atr_multiplier=1.5, volume_multiplier=1.2):
         self.swing_window = swing_window
         self.atr_multiplier = atr_multiplier
+        self.volume_multiplier = volume_multiplier
 
     def apply_mtf(self, df_htf: pd.DataFrame, df_ltf: pd.DataFrame) -> pd.DataFrame:
         """
@@ -43,11 +43,15 @@ class CLSRangeStrategy:
         htf['mid_point'] = (htf['high'] + htf['low']) / 2
         htf['close_above_mid'] = htf['close'] > htf['mid_point']
         
+        # Volume Confirmation
+        htf['vol_sma'] = htf['volume'].rolling(20).mean()
+        htf['high_vol'] = htf['volume'] > (htf['vol_sma'] * self.volume_multiplier)
+        
         # Define CLS Candles
-        # Bullish CLS: Large, Swept Low, Strong Close
-        is_cls_bull = htf['is_large'] & htf['swept_low'] & (htf['close_above_mid'] | (htf['close'] > htf['open']))
-        # Bearish CLS: Large, Swept High, Weak Close
-        is_cls_bear = htf['is_large'] & htf['swept_high'] & ((~htf['close_above_mid']) | (htf['close'] < htf['open']))
+        # Bullish CLS: Large, Swept Low, Strong Close, High Volume
+        is_cls_bull = htf['is_large'] & htf['swept_low'] & (htf['close_above_mid'] | (htf['close'] > htf['open'])) & htf['high_vol']
+        # Bearish CLS: Large, Swept High, Weak Close, High Volume
+        is_cls_bear = htf['is_large'] & htf['swept_high'] & ((~htf['close_above_mid']) | (htf['close'] < htf['open'])) & htf['high_vol']
         
         # Mark Ranges
         htf['cls_active_high'] = np.nan

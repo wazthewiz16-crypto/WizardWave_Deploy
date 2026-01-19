@@ -22,8 +22,9 @@ def run_report():
     # Test Matrix
     # 1. Configurations
     configs = [
-        {'name': 'A (Baseline: 2.0x/10)', 'atr': 2.0, 'swing': 10},
-        {'name': 'B (Sensitive: 1.5x/10)', 'atr': 1.5, 'swing': 10}
+        {'name': 'A (Baseline: 2.0x/10)', 'atr': 2.0, 'swing': 10, 'vol': 1.0},
+        {'name': 'B (Sensitive: 1.5x/10)', 'atr': 1.5, 'swing': 10, 'vol': 1.0},
+        {'name': 'C (Winner: 1.5x/10/1.5v)', 'atr': 1.5, 'swing': 10, 'vol': 1.5}
     ]
     
     # 2. Timeframe Pairs (HTF Trigger -> LTF Entry)
@@ -31,7 +32,7 @@ def run_report():
     # limit_ltf should cover the 90 day report window
     tf_pairs = [
         {'label': 'Daily -> 1H', 'htf': '1d', 'ltf': '1h', 'h_lim': 500, 'l_lim': 24*120},
-        {'label': 'Weekly -> 4H', 'htf': '1wk', 'ltf': '4h', 'h_lim': 100, 'l_lim': 6*120} 
+        {'label': 'Weekly -> 4H', 'htf': '1w', 'ltf': '4h', 'h_lim': 100, 'l_lim': 6*120} 
     ]
     
     all_results = []
@@ -67,7 +68,7 @@ def run_report():
                 cutoff = pd.Timestamp.now(tz=df_ltf.index.tz) - pd.Timedelta(days=90)
                 
                 for cfg in configs:
-                    strat = CLSRangeStrategy(swing_window=cfg['swing'], atr_multiplier=cfg['atr'])
+                    strat = CLSRangeStrategy(swing_window=cfg['swing'], atr_multiplier=cfg['atr'], volume_multiplier=cfg['vol'])
                     
                     df = strat.apply_mtf(df_htf, df_ltf)
                     
