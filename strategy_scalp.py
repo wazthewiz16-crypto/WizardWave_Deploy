@@ -30,8 +30,26 @@ class WizardScalpStrategy:
         
         df = df.copy()
         close = df['close']
+        
+        # HACK: Detect High-Cap Crypto (BTC, ETH, DOGE) vs Others
+        # We want the strict ATR filters ONLY for the major pairs that we validated.
+        # This price check is a heuristic to avoid changing pipeline signatures.
+        # ETH ~ 2000+, BTC ~ 60000+. 
+        # DOGE ~ 0.10. SOL ~ 150.
+        # If mean price > 500 (BTC/ETH) OR if price < 1 and vol > 1M (DOGE heuristic)? 
+        # Simpler: Just check if volatility matches crypto profile?
+        # Let's stick to the user request: "Only BTC and ETH".
+        # BTC is definitely > 10000. ETH is definitely > 1000.
+        
+        current_price = close.iloc[-1] if not close.empty else 0
+        mean_price = close.mean()
+        is_btc_eth = (mean_price > 500) 
 
-        # --- 1. Fast Cloud Calculation ---
+        # --- 1. ATR for Volatility (Noise Reduction) ---
+        df['atr'] = ta.atr(df['high'], df['low'], df['close'], length=14)
+        df['atr_pct'] = df['atr'] / close
+
+        # --- 2. Fast Cloud Calculation ---
         # "Mango" EMAs with shorter periods
         eff_len_d1 = max(1, int(round(self.lookback / self.sensitivity)))
         eff_len_d2 = max(1, int(round(eff_len_d1 * self.cloud_spread)))
@@ -39,15 +57,34 @@ class WizardScalpStrategy:
         df['mango_d1'] = ta.ema(close, length=eff_len_d1)
         df['mango_d2'] = ta.ema(close, length=eff_len_d2)
 
-        df['cloud_top'] = df[['mango_d1', 'mango_d2']].max(axis=1)
-        df['cloud_bottom'] = df[['mango_d1', 'mango_d2']].min(axis=1)
+        # Dynamic Padding: use a small fraction of ATR to "harden" the cloud
+        # This helps ignore small spikes that don't represent a true trend shift
+        df['cloud_top_raw'] = df[['mango_d1', 'mango_d2']].max(axis=1)
+        df['cloud_bottom_raw'] = df[['mango_d1', 'mango_d2']].min(axis=1)
         
-        # --- 2. RSI, ADX, RVOL Filters ---
+        # Enhanced Logic for BTC/ETH: Pad cloud by 0.2 * ATR
+        # Standard Logic for Others: No padding (Original)
+        if is_btc_eth:
+            padding = df['atr'] * 0.2
+        else:
+            padding = 0
+            
+        df['cloud_top'] = df['cloud_top_raw'] + padding
+        df['cloud_bottom'] = df['cloud_bottom_raw'] - padding
+        
+        # --- 3. Momentum Filters ---
         df['rsi'] = ta.rsi(close, length=14)
         
-        # ADX Filter (Avoid Choppiness) - Only trade if trend strength > 20
+        # StochRSI (Only used in enhanced logic)
+        stoch_rsi = ta.stochrsi(df['rsi'], length=14, rsi_length=14, k=3, d=3)
+        if stoch_rsi is not None and not stoch_rsi.empty:
+            df['stoch_k'] = stoch_rsi['STOCHRSIk_14_14_3_3']
+        else:
+            df['stoch_k'] = 50.0
+
+        # ADX Filter
         adx_df = ta.adx(df['high'], df['low'], df['close'], length=14)
-        if not adx_df.empty and 'ADX_14' in adx_df.columns:
+        if adx_df is not None and not adx_df.empty and 'ADX_14' in adx_df.columns:
             df['adx'] = adx_df['ADX_14']
         else:
             df['adx'] = 0
@@ -57,28 +94,21 @@ class WizardScalpStrategy:
             df['vol_avg'] = df['volume'].rolling(20).mean()
             df['rvol'] = df['volume'] / df['vol_avg'].replace(0, 1)
         else:
-            df['rvol'] = 1.5 # Default pass if no vol data (e.g. some forearm feeds)
+            df['rvol'] = 1.5
 
-        # EMA Trend Filter (Align with Medium Term Trend)
+        # EMA Trend Filter
         df['ema_trend'] = ta.ema(close, length=50)
 
-        # --- 3. Signal Logic ---
-        # Condition 1: Price Crosses Cloud (Breakout)
-        # Condition 2: Price Pullback to Cloud (Trend Join) -> Simplified to "Above Cloud" = Bullish
-        
+        # --- 4. Signal Logic ---
         df['is_above_cloud'] = close > df['cloud_top']
         df['is_below_cloud'] = close < df['cloud_bottom']
         
-        # Flip Detection
         # Flip Detection
         df['prev_above'] = df['is_above_cloud'].shift(1).fillna(False).astype(bool)
         df['prev_below'] = df['is_below_cloud'].shift(1).fillna(False).astype(bool)
         
         df['bull_cross'] = df['is_above_cloud'] & (~df['prev_above'])
         df['bear_cross'] = df['is_below_cloud'] & (~df['prev_below'])
-        
-        # RST Logic: Don't Long if RSI > 75, Don't Short if RSI < 25 (Prevent FOMO at extremes)
-        # RVOL Logic: Require Rvol > 1.0 (Average or higher)
         
         long_conditions = True
         short_conditions = True
@@ -88,8 +118,14 @@ class WizardScalpStrategy:
              short_conditions &= (df['rvol'] > 1.0)
             
         if self.use_rsi_filter:
-            long_conditions &= (df['rsi'] < 75) & (df['adx'] > 20) & (close > df['ema_trend'])
-            short_conditions &= (df['rsi'] > 25) & (df['adx'] > 20) & (close < df['ema_trend'])
+            if is_btc_eth:
+                # ENHANCED LOGIC (StochRSI + ADX + Trend)
+                long_conditions &= (df['stoch_k'] < 80) & (df['adx'] > 25) & (close > df['ema_trend'])
+                short_conditions &= (df['stoch_k'] > 20) & (df['adx'] > 25) & (close < df['ema_trend'])
+            else:
+                # ORIGINAL LOGIC (RSI levels)
+                long_conditions &= (df['rsi'] < 75) & (df['adx'] > 20) & (close > df['ema_trend'])
+                short_conditions &= (df['rsi'] > 25) & (df['adx'] > 20) & (close < df['ema_trend'])
             
         can_long = long_conditions
         can_short = short_conditions
