@@ -158,8 +158,9 @@ def run_runic_analysis():
             combined_active = pd.concat(active_dfs).sort_values(by='_sort_key', ascending=False)
             
         # Process Discord (Side Effect - OK in thread? Yes, usually I/O)
-        if not combined_active.empty:
-            process_discord_alerts(combined_active)
+        # DISABLE IN APP: Monitor Script handles discordant alerts to avoid duplicates
+        # if not combined_active.empty:
+        #    process_discord_alerts(combined_active)
             
         # Metrics Calculation
         calc_24h = 0.0
