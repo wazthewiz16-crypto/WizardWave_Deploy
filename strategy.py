@@ -47,36 +47,83 @@ class WizardWaveStrategy:
         # Cloud Boundaries
         df['cloud_top'] = df[['mango_d1', 'mango_d2']].max(axis=1)
         df['cloud_bottom'] = df[['mango_d1', 'mango_d2']].min(axis=1)
+        
+        # --- IMPROVEMENT 1: ATR Bands (Noise Reduction) ---
+        # Add a buffer around the cloud based on ATR to prevent whipsaws in ranging markets
+        df['atr'] = ta.atr(df['high'], df['low'], df['close'], length=14)
+        atr_mult = 0.5 
+        df['cloud_top_buf'] = df['cloud_top'] + (df['atr'] * atr_mult).fillna(0)
+        df['cloud_bottom_buf'] = df['cloud_bottom'] - (df['atr'] * atr_mult).fillna(0)
 
-        # Fixed Zones
-        # zone_upper = cloud_top * (1 + zone_pad_pct)
-        # zone_lower = cloud_bottom * (1 - zone_pad_pct)
+        # Fixed Zones (for UI)
         pad = self.zone_pad_pct / 100.0
         df['zone_upper'] = df['cloud_top'] * (1 + pad)
         df['zone_lower'] = df['cloud_bottom'] * (1 - pad)
+        
+        # --- IMPROVEMENT 2: Klinger Volume Oscillator (KVO) ---
+        # Detect true buying pressure behind moves
+        kvo = ta.kvo(df['high'], df['low'], df['close'], df['volume'], fast=34, slow=55, signal=13)
+        if kvo is not None and not kvo.empty:
+            df['kvo'] = kvo['KVO_34_55_13']
+            df['kvo_sig'] = kvo['KVOs_34_55_13']
+        else:
+            df['kvo'] = 0
+            df['kvo_sig'] = 0
+            
+        # --- IMPROVEMENT 3: MTF Trend Confirmation (Simulated) ---
+        # We can't easily fetch other timeframes inside 'apply' without passing them.
+        # Simulation: Use a very slow EMA (200) on current TF as a proxy for HTF Trend
+        df['htf_trend'] = ta.ema(close, length=200)
 
         # --- 3. LOGIC & SIGNALS ---
-        # State Logic
-        df['is_above_cloud'] = close > df['cloud_top']
-        df['is_below_cloud'] = close < df['cloud_bottom']
-        # is_neutral logic handled by not above and not below
-
+        # State Logic: Must break the BUFFERED cloud to flip trend
+        df['is_above_cloud'] = close > df['cloud_top_buf']
+        df['is_below_cloud'] = close < df['cloud_bottom_buf']
+        
         # Trend States
         df['is_bullish'] = df['is_above_cloud']
         df['is_bearish'] = df['is_below_cloud']
-        # Neutral is implicitly neither
 
         # Bid Zone Logic
         df['in_bid_zone'] = (close <= df['zone_upper']) & (close >= df['zone_lower'])
 
         # Trend Flip Logic
-        # Need shifted series for previous value
-        # shift(1) means previous row
         df['prev_is_bullish'] = df['is_bullish'].shift(1).fillna(False).astype(bool)
         df['prev_is_bearish'] = df['is_bearish'].shift(1).fillna(False).astype(bool)
 
         df['trend_flip_bull'] = df['is_bullish'] & (~df['prev_is_bullish'])
         df['trend_flip_bear'] = df['is_bearish'] & (~df['prev_is_bearish'])
+        
+        # Volatility & Volume Confirmation
+        # Bull Flip Valid ONLY if KVO > Signal OR Close > HTF Trend
+        # This filters out "fake pumps" against the macro trend
+        
+        # Default confirmations to True for safety (if data missing)
+        kvo_bull = True
+        kvo_bear = True
+        
+        if 'kvo' in df.columns and 'kvo_sig' in df.columns:
+            # Handle cases where KVO might be NaN even if column exists
+            # Fillna with 0 for comparison
+            k = df['kvo'].fillna(0)
+            ks = df['kvo_sig'].fillna(0)
+            if not k.eq(0).all(): # If we actually have data
+                kvo_bull = k > ks
+                kvo_bear = k < ks
+                
+                
+        # HTF Confirm (EMA 200)
+        # Handle NaN/None in htf_trend (first 200 bars)
+        htf_trend = df['htf_trend'].fillna(0)
+        htf_bull = close > htf_trend
+        htf_bear = close < htf_trend
+        
+        # Combined Confirmation (OR Logic: Volume OR Momenta)
+        bull_confirm = kvo_bull | htf_bull
+        bear_confirm = kvo_bear | htf_bear
+        
+        df['trend_flip_bull'] = df['trend_flip_bull'] & bull_confirm
+        df['trend_flip_bear'] = df['trend_flip_bear'] & bear_confirm
 
         # --- 4. STRATEGY EXECUTION ---
         # Long: (Bullish AND InZone) OR (RevEntry AND BullFlip)
