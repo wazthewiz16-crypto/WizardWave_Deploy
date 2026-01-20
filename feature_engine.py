@@ -132,6 +132,33 @@ def calculate_ml_features(df):
     else:
         df['lower_zone_dist'] = 0.0
 
+    # 11. Seasonality / Cycle Features (Crypto 6-Month Cycle)
+    # Pivot Points: March (3) and September (9)
+    if 'datetime' in df.columns:
+        # Ensure dt accessor works
+        dt_col = df['datetime'].dt
+    else:
+        # If index is datetime
+        dt_col = df.index
+        
+    # Cyclical Month Encoding (So Dec is close to Jan)
+    df['month_sin'] = np.sin(2 * np.pi * dt_col.month / 12)
+    df['month_cos'] = np.cos(2 * np.pi * dt_col.month / 12)
+    
+    # Distance to Pivot (March/Sept)
+    # We want a feature that peaks near Mar/Sept or resets
+    # 3 = March, 9 = Sept.
+    # Dist = min(abs(month - 3), abs(month - 9)) ?
+    # Let's map months 3 & 9 to 0 (Pivot), others higher.
+    # 3->0, 4->1, 9->0, 10->1, 12->3, 1->2...
+    # Easier: Just let RF learn from Sine/Cosine which is precise.
+    
+    # Explicit "Cycle Regime" Feature: 1 for Mar-Aug, -1 for Sept-Feb?
+    # User Theory: Two 6-month blocks.
+    # Mar(3) to Aug(8) => Cycle A
+    # Sept(9) to Feb(2) => Cycle B
+    df['cycle_regime'] = np.where((dt_col.month >= 3) & (dt_col.month <= 8), 1, 0)
+
     # Fill any remaining NaNs (e.g. at start of dataframe)
     df.fillna(0, inplace=True)
     

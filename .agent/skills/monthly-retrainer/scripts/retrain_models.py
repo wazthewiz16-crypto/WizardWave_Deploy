@@ -134,7 +134,8 @@ def retrain():
     # 1. Retrain 1D
     df_1d = prepare_dataset(assets, '1d')
     if not df_1d.empty:
-        feats = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi']
+        # Added Seasonality Features
+        feats = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi', 'rvol', 'month_sin', 'month_cos', 'cycle_regime']
         X = df_1d[feats]
         y = df_1d['target']
         
@@ -149,7 +150,7 @@ def retrain():
     # 2. Retrain 1H
     df_1h = prepare_dataset(assets, '1h')
     if not df_1h.empty:
-        feats = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi']
+        feats = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi', 'rvol']
         X = df_1h[feats]
         y = df_1h['target']
         

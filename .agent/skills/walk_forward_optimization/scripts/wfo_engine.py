@@ -83,7 +83,8 @@ def train_model(train_df):
                  df.at[indexer[i], 'target'] = 1
     
     # Clean
-    features = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi'] 
+    # MATCHING PRODUCTION FEATURE SET
+    features = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi', 'rvol', 'month_sin', 'month_cos', 'cycle_regime'] 
     # Check intersection
     valid_feats = [f for f in features if f in df.columns]
     
@@ -103,13 +104,18 @@ def train_model(train_df):
     return model, valid_feats
 
 def backtest_period(df, model, features, start_date, end_date):
-    """Simulate trading on test data."""
+    """Simulate trading on test data using Full Strategy Logic."""
     mask = (df.index >= start_date) & (df.index < end_date)
     test_df = df.loc[mask].copy()
     
     if test_df.empty: return 0.0, 0
     
-    # Calculate Features (should already be done globally or re-done)
+    # 1. Apply Strategy Logic (The Cloud, KVO, etc.)
+    # We default to WizardWave (1D) for WFO validation
+    strategy = WizardWaveStrategy() 
+    test_df = strategy.apply(test_df)
+
+    # 2. Calculate ML Features
     test_df = calculate_ml_features(test_df)
     
     # Fill Nans
@@ -117,44 +123,67 @@ def backtest_period(df, model, features, start_date, end_date):
         if f not in test_df.columns: test_df[f] = 0
     test_df[features] = test_df[features].fillna(0)
     
-    # Predict
-    test_df['prob'] = model.predict_proba(test_df[features])[:, 1]
+    # 3. Predict Probabilities
+    if model:
+        test_df['prob'] = model.predict_proba(test_df[features])[:, 1]
+    else:
+        test_df['prob'] = 0.5
     
-    # Simulate Strategy (Simplified Logic for WFO Metric)
-    # Buy if Prob > 0.42 (Production 1D Threshold)
-    
+    test_df['prob'] = test_df['prob'].fillna(0.0)
+
+    # 4. Simulate Trades (Triple Barrier + Strategy Entry)
     balance = 1000.0
     position = 0
     entry_price = 0
-    
     trades = 0
     pnl_pct_accum = 0.0
     
+    # Production Threshold
     prod_threshold = 0.42
     
+    # Production TP/SL (1D Crypto)
+    tp_pct = 0.09
+    sl_pct = 0.03
+    
     for idx, row in test_df.iterrows():
-        prob = row['prob']
         price = row['close']
+        prob = row['prob']
+        sig = row.get('signal_type', 'NONE')
         
-        if position == 0:
-            if prob > prod_threshold:
+        # EXIT
+        if position != 0:
+            pnl = 0
+            exit_trade = False
+            
+            if position == 1: # LONG
+                if price >= entry_price * (1 + tp_pct): # TP
+                    pnl = (price - entry_price) / entry_price
+                    exit_trade = True
+                elif price <= entry_price * (1 - sl_pct): # SL
+                    pnl = (price - entry_price) / entry_price
+                    exit_trade = True
+            elif position == -1: # SHORT
+                if price <= entry_price * (1 - tp_pct): # TP
+                    pnl = (entry_price - price) / entry_price
+                    exit_trade = True
+                elif price >= entry_price * (1 + sl_pct): # SL
+                    pnl = (entry_price - price) / entry_price
+                    exit_trade = True
+            
+            if exit_trade:
+                pnl_pct_accum += pnl
+                position = 0
+        
+        # ENTRY (Must match Strategy Signal + ML Confidence)
+        if position == 0 and prob >= prod_threshold:
+            if 'LONG' in sig: # Matches LONG_ZONE, LONG_REV
                 position = 1
                 entry_price = price
                 trades += 1
-        elif position == 1:
-            # Exit rules - PRODUCTION 1D CRYPTO
-            # TP: 9%
-            # SL: 3%
-            
-            if price >= entry_price * 1.09:
-                pnl = (price - entry_price) / entry_price
-                pnl_pct_accum += pnl
-                position = 0
-            # Stop Loss
-            elif price <= entry_price * 0.97:
-                pnl = (price - entry_price) / entry_price
-                pnl_pct_accum += pnl
-                position = 0
+            elif 'SHORT' in sig: # Matches SHORT_ZONE, SHORT_REV
+                position = -1
+                entry_price = price
+                trades += 1
                 
     return pnl_pct_accum, trades
 
