@@ -141,6 +141,16 @@ async def main():
         return
 
     print("--- Starting Automated Mango Scraper (30m Interval) ---")
+
+    # Ensure browsers are installed (Critical for Streamlit Cloud)
+    import subprocess
+    import sys
+    try:
+        print("[*] Checking/Installing Playwright Browsers...")
+        # Only install chromium to save time/space
+        subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"], check=True)
+    except Exception as e:
+        print(f"[!] Warning: Failed to run playwright install: {e}")
     
     while True:
         start_time = datetime.now()
