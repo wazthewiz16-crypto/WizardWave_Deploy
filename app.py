@@ -210,11 +210,15 @@ from datetime import datetime, date
 STATE_FILE = "user_grimoire.json"
 
 # Load Strategy Config
+config_file = 'strategy_config.json'
+if os.path.exists('strategy_config_experimental.json'):
+    config_file = 'strategy_config_experimental.json'
+
 try:
-    with open('strategy_config.json', 'r') as f:
+    with open(config_file, 'r') as f:
         config = json.load(f)
 except Exception as e:
-    print(f"Error loading strategy_config.json: {e}")
+    print(f"Error loading {config_file}: {e}")
     config = {} # Fallback
 
 
@@ -430,7 +434,12 @@ def load_ml_models_v2():
         try:
             filename = config.get('models', {}).get(key, {}).get('model_file', f"model_{key}.pkl")
             if os.path.exists(filename):
-                models[key] = joblib.load(filename)
+                loaded_obj = joblib.load(filename)
+                # Handle wrapped models
+                if isinstance(loaded_obj, dict) and 'model' in loaded_obj:
+                    models[key] = loaded_obj['model']
+                else:
+                    models[key] = loaded_obj
                 print(f"Successfully loaded model for {key} from {filename}")
             else:
                 print(f"Model file {filename} not found.")
@@ -2063,7 +2072,8 @@ def show_runic_alerts():
 
         with c_btn:
             refresh_click = st.button("↻", key="refresh_top", help="Refresh", use_container_width=True)
-            
+            if refresh_click:
+                st.rerun()
 
 
     # --- Render Active List Helper ---
@@ -2751,6 +2761,17 @@ with st.sidebar.expander("Debug Info", expanded=False):
         import pipeline
         pipeline.run_pipeline()
         st.success("Pipeline Run Initiated!")
+        
+    st.divider()
+    st.write("Playwright Scraper (Mango)")
+    if st.button("Invoke Scraper"):
+        with st.spinner("Invoking Playwright Scraper..."):
+            try:
+                import subprocess
+                subprocess.Popen(["python", "scrape_tv_indicators.py"])
+                st.info("Scraper started in background. Refresh in 1-2 mins.")
+            except Exception as e:
+                st.error(f"Failed to start scraper: {e}")
 
 # Layout Columns
 col_left, col_center, col_right = st.columns([0.25, 0.5, 0.25], gap="small")
@@ -3196,8 +3217,305 @@ with col_center:
              st.markdown("Upload your trade screenshots here for NLP analysis and feedback.")
              st.file_uploader("Analyze Rune (Upload)", type=['png', 'jpg'], label_visibility="collapsed")
              
-             # Placeholder for future "Spellbook" features (Journal, logs, etc)
-             st.info("The Grimoire is open. Future enchantments pending.")
+             # --- REALMS (Moved from Right Col) ---
+             st.markdown("---")
+             st.markdown('<div class="runic-header">REALMS</div>', unsafe_allow_html=True)
+             
+             # Session Data (EST)
+             sessions = [
+                 {'name': 'Sydney', 'start': 17, 'end': 26}, # 5PM - 2AM (Next day = +24 = 26)
+                 {'name': 'Tokyo', 'start': 19, 'end': 28}, # 7PM - 4AM (Next day = +24 = 28)
+                 {'name': 'London', 'start': 3, 'end': 11},  # 3AM - 11AM
+                 {'name': 'New York', 'start': 8, 'end': 17} # 8AM - 5PM
+             ]
+             
+             now_est = pd.Timestamp.now(tz='America/New_York')
+             curr_hour = now_est.hour
+             curr_min = now_est.minute
+             
+             # Calculate current time percentage for marker (00:00 to 24:00)
+             current_time_pct = ((curr_hour * 60 + curr_min) / (24 * 60)) * 100
+             
+             session_html = ""
+             
+             for sess in sessions:
+                 s_real = sess['start']
+                 e_real = sess['end']
+                 
+                 is_active = False
+                 s_mod = s_real % 24
+                 e_mod = e_real % 24
+                 if s_mod > e_mod: # Wraps midnight
+                     if curr_hour >= s_mod or curr_hour < e_mod: is_active = True
+                 else:
+                     if s_mod <= curr_hour < e_mod: is_active = True
+                 
+                 # Text Logic
+                 status_text = ""
+                 if is_active:
+                     target_h = e_mod
+                     if target_h < curr_hour: target_h += 24
+                     
+                     diff_h = target_h - curr_hour
+                     diff_m = 0 - curr_min
+                     total_min = diff_h * 60 + diff_m
+                     h_left = total_min // 60
+                     m_left = total_min % 60
+                     status_text = f"Ends in {h_left}hr {m_left}min"
+                     bar_color = "#00ff88" # Green
+                     text_color = "#fff"
+                 else:
+                     target_h = s_mod
+                     if target_h < curr_hour: target_h += 24 
+                     
+                     diff_h = target_h - curr_hour
+                     diff_m = 0 - curr_min
+                     total_min = diff_h * 60 + diff_m
+                     h_left = total_min // 60
+                     m_left = total_min % 60
+                     
+                     status_text = f"Begins in {h_left}hr {m_left}min"
+                     bar_color = "#4a4a60" # Grey
+                     text_color = "#aaa"
+                     
+                 # Render Bars
+                 bars_svg = ""
+                 def draw_rect(s, e, col):
+                     width = (e - s) / 24 * 100
+                     left = (s / 24) * 100
+                     return f'<div style="position: absolute; left: {left}%; top: 5px; height: 20px; width: {width}%; background-color: {col}; border-radius: 4px; display: flex; align-items: center; padding-left: 5px; white-space: nowrap; overflow: hidden;"></div>'
+                 
+                 if s_real >= 24: pass
+                 elif e_real > 24:
+                     bars_svg += draw_rect(s_real, 24, bar_color)
+                     bars_svg += draw_rect(0, e_real-24, bar_color)
+                 else:
+                     bars_svg += draw_rect(s_real, e_real, bar_color)
+                     
+                 session_html += f"""
+     <div class="realm-row" title="{status_text}" style="margin-bottom: 8px; position: relative; height: 30px; display: flex; align-items: center;">
+         <div style="width: 70px; font-size: 0.75rem; font-weight: bold; color: {text_color if not is_active else '#fff'}; text-align: right; margin-right: 10px;">{sess['name']}</div>
+         <div style="flex-grow: 1; position: relative; height: 100%; background: #1a1a2e; border-radius: 4px; overflow: hidden;">
+             {bars_svg}
+             <div style="position: absolute; top:0; left:5px; font-size: 0.7rem; color: {text_color if is_active else '#888'}; line-height: 30px; font-weight: bold; z-index: 2; text-shadow: 0 1px 3px rgba(0,0,0,0.9);">{status_text if is_active else ''}</div>
+         </div>
+     </div>
+                 """
+     
+             st.markdown(f"""
+     <div style="padding: 10px 0;">
+     <div style="display: flex; margin-left: 80px; font-size: 0.6rem; color: #666; margin-bottom: 5px; justify-content: space-between;">
+     <span>12AM</span><span>4AM</span><span>8AM</span><span>12PM</span><span>4PM</span><span>8PM</span><span>12AM</span>
+     </div>
+     {session_html}
+     <div style="text-align: center; font-size: 0.7rem; color: #666; margin-top: 5px;">
+     Current Time: {now_est.strftime('%H:%M')} EST
+     </div>
+     <div class="realm-overlay"></div>
+     </div>
+     <style>
+     .realm-overlay {{
+     position: absolute;
+     left: calc(80px + (100% - 80px) * ({current_time_pct:.2f}/100));
+     top: 40px; 
+     bottom: 25px;
+     width: 2px;
+     background-color: #ffd700;
+     box-shadow: 0 0 5px #ffd700;
+     z-index: 10;
+     pointer-events: none;
+     }}
+     </style>
+             """, unsafe_allow_html=True)
+             
+             # --- ORACLE (Moved from Right Col) ---
+             st.markdown("---")
+             st.markdown('<div class="runic-header">ORACLE</div>', unsafe_allow_html=True)
+             
+             # Economic Calendar
+             # Note: Dates are best estimates based on standard schedules (CPI ~13th, NFP ~1st Friday, FOMC ~Wed)
+             economic_events = [
+                 # late 2025
+                 {"event": "PCE Price Index", "datetime": "2025-12-23 08:30:00"},
+                 
+                 # Jan 2026
+                 {"event": "Non-Farm Payrolls", "datetime": "2026-01-09 08:30:00"},
+                 {"event": "CPI Inflation Data", "datetime": "2026-01-13 08:30:00"},
+                 {"event": "PPI Inflation Data", "datetime": "2026-01-14 08:30:00"},
+                 {"event": "FOMC Rate Decision", "datetime": "2026-01-28 14:00:00"},
+                 {"event": "PCE Price Index", "datetime": "2026-01-30 08:30:00"},
+                 
+                 # Feb 2026
+                 {"event": "Non-Farm Payrolls", "datetime": "2026-02-06 08:30:00"},
+                 {"event": "CPI Inflation Data", "datetime": "2026-02-11 08:30:00"}, # Estimated
+                 {"event": "PCE Price Index", "datetime": "2026-02-27 08:30:00"},
+
+                 # Mar 2026
+                 {"event": "Non-Farm Payrolls", "datetime": "2026-03-06 08:30:00"},
+                 {"event": "CPI Inflation Data", "datetime": "2026-03-12 08:30:00"},
+                 {"event": "FOMC Rate Decision", "datetime": "2026-03-18 14:00:00"},
+                 {"event": "PCE Price Index", "datetime": "2026-03-27 08:30:00"},
+
+                 # Apr 2026
+                 {"event": "Non-Farm Payrolls", "datetime": "2026-04-03 08:30:00"},
+                 {"event": "CPI Inflation Data", "datetime": "2026-04-14 08:30:00"},
+                 {"event": "FOMC Rate Decision", "datetime": "2026-04-29 14:00:00"},
+                 {"event": "PCE Price Index", "datetime": "2026-04-24 08:30:00"},
+
+                 # May 2026
+                 {"event": "Non-Farm Payrolls", "datetime": "2026-05-08 08:30:00"},
+                 {"event": "CPI Inflation Data", "datetime": "2026-05-13 08:30:00"},
+                 {"event": "PCE Price Index", "datetime": "2026-05-29 08:30:00"},
+
+                 # Jun 2026
+                 {"event": "Non-Farm Payrolls", "datetime": "2026-06-05 08:30:00"},
+                 {"event": "CPI Inflation Data", "datetime": "2026-06-12 08:30:00"},
+                 {"event": "FOMC Rate Decision", "datetime": "2026-06-17 14:00:00"},
+                 {"event": "PCE Price Index", "datetime": "2026-06-26 08:30:00"},
+                 
+                 # Jul 2026
+                 {"event": "Non-Farm Payrolls", "datetime": "2026-07-03 08:30:00"},
+                 {"event": "CPI Inflation Data", "datetime": "2026-07-14 08:30:00"},
+                 {"event": "FOMC Rate Decision", "datetime": "2026-07-29 14:00:00"},
+                 {"event": "PCE Price Index", "datetime": "2026-07-31 08:30:00"},
+
+                 # Aug 2026
+                 {"event": "Non-Farm Payrolls", "datetime": "2026-08-07 08:30:00"},
+                 {"event": "CPI Inflation Data", "datetime": "2026-08-13 08:30:00"},
+                 {"event": "PCE Price Index", "datetime": "2026-08-28 08:30:00"},
+
+                 # Sep 2026
+                 {"event": "Non-Farm Payrolls", "datetime": "2026-09-04 08:30:00"},
+                 {"event": "CPI Inflation Data", "datetime": "2026-09-15 08:30:00"},
+                 {"event": "FOMC Rate Decision", "datetime": "2026-09-16 14:00:00"},
+                 {"event": "PCE Price Index", "datetime": "2026-09-25 08:30:00"},
+
+                 # Oct 2026
+                 {"event": "Non-Farm Payrolls", "datetime": "2026-10-02 08:30:00"},
+                 {"event": "CPI Inflation Data", "datetime": "2026-10-13 08:30:00"},
+                 {"event": "FOMC Rate Decision", "datetime": "2026-10-28 14:00:00"},
+                 {"event": "PCE Price Index", "datetime": "2026-10-30 08:30:00"},
+                 
+                 # Nov 2026
+                 {"event": "Non-Farm Payrolls", "datetime": "2026-11-06 08:30:00"},
+                 {"event": "CPI Inflation Data", "datetime": "2026-11-13 08:30:00"},
+                 {"event": "PCE Price Index", "datetime": "2026-11-25 08:30:00"},
+                 
+                 # Dec 2026
+                 {"event": "Non-Farm Payrolls", "datetime": "2026-12-04 08:30:00"},
+                 {"event": "CPI Inflation Data", "datetime": "2026-12-11 08:30:00"},
+                 {"event": "FOMC Rate Decision", "datetime": "2026-12-09 14:00:00"},
+                 {"event": "PCE Price Index", "datetime": "2026-12-23 08:30:00"},
+             ]
+             
+             # Find Next Event
+             now_est = pd.Timestamp.now(tz='America/New_York')
+             next_event = None
+             
+             for e in economic_events:
+                 dt = pd.Timestamp(e['datetime']).tz_localize('America/New_York')
+                 if dt > now_est:
+                     next_event = e
+                     target_dt = dt
+                     break
+             
+             if next_event:
+                 # Calculate Countdown
+                 diff = target_dt - now_est
+                 days = diff.days
+                 hours = diff.seconds // 3600
+                 minutes = (diff.seconds % 3600) // 60
+                 
+                 # Format Date
+                 date_str = target_dt.strftime("%b %d, %H:%M EST")
+                 event_name = next_event['event'].upper()
+                 
+                 # Color Logic (Red for very close)
+                 time_color = "white"
+                 if days < 1: time_color = "#ff3344"
+                 
+                 # Load Background Image for Oracle
+                 oracle_bg = ""
+                 try:
+                     import base64
+                     with open("Crystall Ball.png", "rb") as img_file:
+                         b64_ball = base64.b64encode(img_file.read()).decode()
+                     oracle_bg = f"background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.6)), url('data:image/png;base64,{b64_ball}'); background-size: cover; background-position: center;"
+                 except Exception as e:
+                     pass
+
+                 st.markdown(f"""
+                     <div style="
+                         text-align: center; 
+                         min-height: 200px; 
+                         display: flex; 
+                         flex-direction: column; 
+                         justify-content: flex-start;
+                         padding-top: 20px;
+                         margin-bottom: 15px;
+                         border-radius: 8px;
+                         {oracle_bg}
+                     ">
+                         <div style="background: rgba(11, 12, 21, 0.85); padding: 15px; border-radius: 6px; border: 1px solid #4a4a60; margin: 0 15px; box-shadow: 0 0 15px rgba(0,0,0,0.8);">
+                             <div style="font-size: 0.8rem; color: #a0c5e8; margin-bottom: 5px;">NEXT EVENT: <span style="color: #ffd700;">{event_name}</span></div>
+                             <div style="font-size: 0.9rem; color: #ccc; margin-bottom: 5px;">{date_str}</div>
+                             <div style="font-size: 2.2rem; font-weight: bold; color: {time_color}; text-shadow: 0 0 10px {time_color};">
+                                 {days}d {hours}h {minutes}m
+                             </div>
+                         </div>
+                     </div>
+                 """, unsafe_allow_html=True)
+             else:
+                 st.markdown(f"""
+                     <div style="text-align: center; min-height: 180px; display: flex; flex-direction: column; justify-content: center;">
+                         <div style="font-size: 0.8rem; color: #a0c5e8;">NO UPCOMING EVENTS</div>
+                         <div style="font-size: 2.5rem; font-weight: bold; color: white; text-shadow: 0 0 10px #a0c5e8;">--:--:--</div>
+                     </div>
+                 """, unsafe_allow_html=True)
+                 
+             # --- GREAT SORCERER (Moved from Right Col) ---
+             st.markdown("---")
+             st.markdown('<div class="runic-header">GREAT SORCERER</div>', unsafe_allow_html=True)
+             
+             quotes = [
+                 "The market is a mirror of the mind.",
+                 "Clarity comes not from the chart, but from the discipline within.",
+                 "Do not chase the dragon; let it come to you.",
+                 "Patience is the wizard's greatest spell.",
+                 "Risk is the mana you pay for the reward you seek.",
+                 "A calm mind sees the trend; a chaotic mind sees only noise.",
+                 "I am a risk manager. My edge is my patience. I don’t gamble; I execute a system.",
+                 "I accept the outcome of any single trade because I am focused on the long-term survival of my capital.",
+                 "Passion = Emotion | Commitment = Discipline",
+                 "Reminder: You don’t have to trade everyday!",
+                 "You are a robot executing code. You don’t “feel” or “hope” the market will move a certain way.",
+                 "You are a sniper with 2 bullets. You are not a machine gunner spraying. You reject good trades to wait for great trades.",
+                 "You are a risk manager, not a profit generator. Your job is to protect your capital. Profit is just a byproduct of good survival skills"
+             ]
+             import random
+             selected_quote = random.choice(quotes)
+             
+             # Load Background Image
+             bg_style = ""
+             try:
+                 import base64
+                 with open("great_sorcerer.png", "rb") as img_file:
+                     b64_img = base64.b64encode(img_file.read()).decode()
+                 bg_style = f"background-image: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.6)), url('data:image/png;base64,{b64_img}'); background-size: cover; background-position: center;"
+             except Exception as e:
+                 pass
+             
+             # Shuffle Button
+             if st.button("🔮 Shuffle Wisdom", key="shuffle_wis"):
+                 st.rerun()
+
+             st.markdown(f"""
+                 <div style="padding: 20px; border-radius: 10px; color: #f0f0f0; text-align: center; min-height: 250px; display: flex; align-items: flex-end; justify-content: center; {bg_style} box-shadow: 0 4px 15px rgba(0,0,0,0.5); border: 1px solid #4a4a60; margin-top: 10px;">
+                     <div style="background: rgba(0,0,0,0.7); padding: 15px; border-radius: 6px; width: 100%; backdrop-filter: blur(2px);">
+                         <div style="font-size: 1.1rem; font-style: italic; font-family: 'Georgia', serif;">“{selected_quote}”</div>
+                     </div>
+                 </div>
+             """, unsafe_allow_html=True)
 
         elif st.session_state.active_tab == 'SCRIPTURE':
             st.markdown("""
@@ -3424,351 +3742,83 @@ with col_center:
 
 # --- RIGHT COLUMN: STATS, ORACLE, WIZARD ---
 with col_right:
-    # 1. Realms (Market Sessions)
+    # 1. Fractal Alignment (Replacing Realms)
     with st.container(border=True):
-        st.markdown('<div class="runic-header">REALMS</div>', unsafe_allow_html=True)
+        st.markdown('<div class="runic-header">FRACTAL ALIGNMENT</div>', unsafe_allow_html=True)
         
-        # Current Time EST
-        now_est = pd.Timestamp.now(tz='America/New_York')
-        curr_hour = now_est.hour
-        curr_min = now_est.minute
-        
-        # Sessions (Start Hour, End Hour, Name). Using 0-24 scale.
-        # Sydney: 5pm - 2am (17 - 2)
-        # Tokyo: 7pm - 4am (19 - 4)
-        # London: 3am - 12pm (3 - 12)
-        # New York: 8am - 5pm (8 - 17)
-        
-        sessions = [
-            {"name": "Sydney", "start": 17, "end": 26}, # 26 = 2am next day
-            {"name": "Tokyo", "start": 19, "end": 28}, # 28 = 4am next day
-            {"name": "London", "start": 3, "end": 12},
-            {"name": "New York", "start": 8, "end": 17}
-        ]
-        
-        # HTML Gen
-        session_html = ""
-        current_time_pct = ((curr_hour + curr_min/60) / 24) * 100
-        
-        for sess in sessions:
-            # Normalize for timeline 0-24
-            # Handle wrapping: if start > end (e.g. 17 - 2), we treat it as 17 to 26 for calc, but display might need split?
-            # Easiest: Canvas is 0-24. 
-            # Sydney (17-26) -> 17-24 (Part 1) AND 0-2 (Part 2)
-            
-            s_real = sess['start']
-            e_real = sess['end']
-            
-            # Check Active
-            # Convert current hour to 'extended' if needed? 
-            # Simpler: Check interval
-            is_active = False
-            
-            # Adjusted current for check
-            # if 17 <= curr < 24 OR 0 <= curr < 2
-            
-            # Logic for wrapping check
-            s_mod = s_real % 24
-            e_mod = e_real % 24
-            if s_mod > e_mod: # Wraps midnight
-                if curr_hour >= s_mod or curr_hour < e_mod: is_active = True
-            else:
-                if s_mod <= curr_hour < e_mod: is_active = True
-            
-            # Text Logic
-            status_text = ""
-            if is_active:
-                # Calc time left
-                # Target is End
-                # handle wrap
-                target_h = e_mod
-                if target_h < curr_hour: target_h += 24
-                
-                diff_h = target_h - curr_hour
-                diff_m = 0 - curr_min
-                total_min = diff_h * 60 + diff_m
-                h_left = total_min // 60
-                m_left = total_min % 60
-                status_text = f"Ends in {h_left}hr {m_left}min"
-                bar_color = "#00ff88" # Green
-                text_color = "#fff"
-            else:
-                # Calc time to start
-                target_h = s_mod
-                if target_h < curr_hour: target_h += 24 # Begins tomorrow
-                
-                diff_h = target_h - curr_hour
-                diff_m = 0 - curr_min
-                total_min = diff_h * 60 + diff_m
-                h_left = total_min // 60
-                m_left = total_min % 60
-                
-                status_text = f"Begins in {h_left}hr {m_left}min"
-                bar_color = "#4a4a60" # Grey
-                text_color = "#aaa"
-                
-            # Render Bars (Handles wrapping by drawing two if needed)
-            bars_svg = ""
-            
-            # Helper to draw rect
-            def draw_rect(s, e, col):
-                width = (e - s) / 24 * 100
-                left = (s / 24) * 100
-                return f'<div style="position: absolute; left: {left}%; top: 5px; height: 20px; width: {width}%; background-color: {col}; border-radius: 4px; display: flex; align-items: center; padding-left: 5px; white-space: nowrap; overflow: hidden;"></div>'
-            
-            if s_real >= 24: # Should not happen with initial definition
-                pass
-            elif e_real > 24:
-                # Split: Start->24 using green/grey
-                bars_svg += draw_rect(s_real, 24, bar_color)
-                # Split: 0->End-24
-                bars_svg += draw_rect(0, e_real-24, bar_color)
-            else:
-                bars_svg += draw_rect(s_real, e_real, bar_color)
-                
-            # Text Overlay (Centered relative to container or explicit?)
-            # Just use a row layout similar to Forex Factory
-            # [Name  Time]  [Bar area]
-            
-                
-            session_html += f"""
-<div class="realm-row" title="{status_text}" style="margin-bottom: 8px; position: relative; height: 30px; display: flex; align-items: center;">
-    <div style="width: 70px; font-size: 0.75rem; font-weight: bold; color: {text_color if not is_active else '#fff'}; text-align: right; margin-right: 10px;">{sess['name']}</div>
-    <div style="flex-grow: 1; position: relative; height: 100%; background: #1a1a2e; border-radius: 4px; overflow: hidden;">
-        {bars_svg}
-        <div style="position: absolute; top:0; left:5px; font-size: 0.7rem; color: {text_color if is_active else '#888'}; line-height: 30px; font-weight: bold; z-index: 2; text-shadow: 0 1px 3px rgba(0,0,0,0.9);">{status_text if is_active else ''}</div>
-    </div>
-</div>
-            """
-
-        st.markdown(f"""
-<div style="padding: 10px 0;">
-<!-- Timeline Header 0 - 24 -->
-<div style="display: flex; margin-left: 80px; font-size: 0.6rem; color: #666; margin-bottom: 5px; justify-content: space-between;">
-<span>12AM</span><span>4AM</span><span>8AM</span><span>12PM</span><span>4PM</span><span>8PM</span><span>12AM</span>
-</div>
-{session_html}
-<div style="text-align: center; font-size: 0.7rem; color: #666; margin-top: 5px;">
-Current Time: {now_est.strftime('%H:%M')} EST
-</div>
-<div class="realm-overlay"></div>
-</div>
-<style>
-.realm-overlay {{
-position: absolute;
-left: calc(80px + (100% - 80px) * ({current_time_pct:.2f}/100));
-top: 40px; 
-bottom: 25px;
-width: 2px;
-background-color: #ffd700;
-box-shadow: 0 0 5px #ffd700;
-z-index: 10;
-pointer-events: none;
-}}
-</style>
-        """, unsafe_allow_html=True)
-
-    
-    # 2. Oracle (Countdown to next Economic Event)
-    with st.container(border=True):
-        st.markdown('<div class="runic-header">ORACLE</div>', unsafe_allow_html=True)
-        
-        # Economic Calendar (Hardcoded for 2025/2026)
-        # Note: Dates are best estimates based on standard schedules (CPI ~13th, NFP ~1st Friday, FOMC ~Wed)
-        economic_events = [
-            # late 2025
-            {"event": "PCE Price Index", "datetime": "2025-12-23 08:30:00"},
-            
-            # Jan 2026
-            {"event": "Non-Farm Payrolls", "datetime": "2026-01-09 08:30:00"},
-            {"event": "CPI Inflation Data", "datetime": "2026-01-13 08:30:00"},
-            {"event": "PPI Inflation Data", "datetime": "2026-01-14 08:30:00"},
-            {"event": "FOMC Rate Decision", "datetime": "2026-01-28 14:00:00"},
-            {"event": "PCE Price Index", "datetime": "2026-01-30 08:30:00"},
-            
-            # Feb 2026
-            {"event": "Non-Farm Payrolls", "datetime": "2026-02-06 08:30:00"},
-            {"event": "CPI Inflation Data", "datetime": "2026-02-11 08:30:00"}, # Estimated
-            {"event": "PCE Price Index", "datetime": "2026-02-27 08:30:00"},
-
-            # Mar 2026
-            {"event": "Non-Farm Payrolls", "datetime": "2026-03-06 08:30:00"},
-            {"event": "CPI Inflation Data", "datetime": "2026-03-12 08:30:00"},
-            {"event": "FOMC Rate Decision", "datetime": "2026-03-18 14:00:00"},
-            {"event": "PCE Price Index", "datetime": "2026-03-27 08:30:00"},
-
-            # Apr 2026
-            {"event": "Non-Farm Payrolls", "datetime": "2026-04-03 08:30:00"},
-            {"event": "CPI Inflation Data", "datetime": "2026-04-14 08:30:00"},
-            {"event": "FOMC Rate Decision", "datetime": "2026-04-29 14:00:00"},
-            {"event": "PCE Price Index", "datetime": "2026-04-24 08:30:00"},
-
-            # May 2026
-            {"event": "Non-Farm Payrolls", "datetime": "2026-05-08 08:30:00"},
-            {"event": "CPI Inflation Data", "datetime": "2026-05-13 08:30:00"},
-            {"event": "PCE Price Index", "datetime": "2026-05-29 08:30:00"},
-
-            # Jun 2026
-            {"event": "Non-Farm Payrolls", "datetime": "2026-06-05 08:30:00"},
-            {"event": "CPI Inflation Data", "datetime": "2026-06-12 08:30:00"},
-            {"event": "FOMC Rate Decision", "datetime": "2026-06-17 14:00:00"},
-            {"event": "PCE Price Index", "datetime": "2026-06-26 08:30:00"},
-            
-            # Jul 2026
-            {"event": "Non-Farm Payrolls", "datetime": "2026-07-03 08:30:00"},
-            {"event": "CPI Inflation Data", "datetime": "2026-07-14 08:30:00"},
-            {"event": "FOMC Rate Decision", "datetime": "2026-07-29 14:00:00"},
-            {"event": "PCE Price Index", "datetime": "2026-07-31 08:30:00"},
-
-            # Aug 2026
-            {"event": "Non-Farm Payrolls", "datetime": "2026-08-07 08:30:00"},
-            {"event": "CPI Inflation Data", "datetime": "2026-08-13 08:30:00"},
-            {"event": "PCE Price Index", "datetime": "2026-08-28 08:30:00"},
-
-            # Sep 2026
-            {"event": "Non-Farm Payrolls", "datetime": "2026-09-04 08:30:00"},
-            {"event": "CPI Inflation Data", "datetime": "2026-09-15 08:30:00"},
-            {"event": "FOMC Rate Decision", "datetime": "2026-09-16 14:00:00"},
-            {"event": "PCE Price Index", "datetime": "2026-09-25 08:30:00"},
-
-            # Oct 2026
-            {"event": "Non-Farm Payrolls", "datetime": "2026-10-02 08:30:00"},
-            {"event": "CPI Inflation Data", "datetime": "2026-10-13 08:30:00"},
-            {"event": "FOMC Rate Decision", "datetime": "2026-10-28 14:00:00"},
-            {"event": "PCE Price Index", "datetime": "2026-10-30 08:30:00"},
-            
-            # Nov 2026
-            {"event": "Non-Farm Payrolls", "datetime": "2026-11-06 08:30:00"},
-            {"event": "CPI Inflation Data", "datetime": "2026-11-13 08:30:00"},
-            {"event": "PCE Price Index", "datetime": "2026-11-25 08:30:00"},
-            
-            # Dec 2026
-            {"event": "Non-Farm Payrolls", "datetime": "2026-12-04 08:30:00"},
-            {"event": "CPI Inflation Data", "datetime": "2026-12-11 08:30:00"},
-            {"event": "FOMC Rate Decision", "datetime": "2026-12-09 14:00:00"},
-            {"event": "PCE Price Index", "datetime": "2026-12-23 08:30:00"},
-        ]
-        
-        # Find Next Event
-        now_est = pd.Timestamp.now(tz='America/New_York')
-        next_event = None
-        
-        for e in economic_events:
-            dt = pd.Timestamp(e['datetime']).tz_localize('America/New_York')
-            if dt > now_est:
-                next_event = e
-                target_dt = dt
-                break
-        
-        if next_event:
-            # Calculate Countdown
-            diff = target_dt - now_est
-            days = diff.days
-            hours = diff.seconds // 3600
-            minutes = (diff.seconds % 3600) // 60
-            
-            # Format Date
-            date_str = target_dt.strftime("%b %d, %H:%M EST")
-            event_name = next_event['event'].upper()
-            
-            # Color Logic (Red for very close)
-            time_color = "white"
-            if days < 1: time_color = "#ff3344"
-            
-            # Load Background Image for Oracle
-            oracle_bg = ""
-            try:
-                import base64
-                with open("Crystall Ball.png", "rb") as img_file:
-                    b64_ball = base64.b64encode(img_file.read()).decode()
-                oracle_bg = f"background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.6)), url('data:image/png;base64,{b64_ball}'); background-size: cover; background-position: center;"
-            except Exception as e:
-                pass
-
-            st.markdown(f"""
-                <div style="
-                    text-align: center; 
-                    min-height: 200px; 
-                    display: flex; 
-                    flex-direction: column; 
-                    justify-content: flex-start;
-                    padding-top: 20px;
-                    margin-bottom: 15px;
-                    border-radius: 8px;
-                    {oracle_bg}
-                ">
-                    <div style="background: rgba(11, 12, 21, 0.85); padding: 15px; border-radius: 6px; border: 1px solid #4a4a60; margin: 0 15px; box-shadow: 0 0 15px rgba(0,0,0,0.8);">
-                        <div style="font-size: 0.8rem; color: #a0c5e8; margin-bottom: 5px;">NEXT EVENT: <span style="color: #ffd700;">{event_name}</span></div>
-                        <div style="font-size: 0.9rem; color: #ccc; margin-bottom: 5px;">{date_str}</div>
-                        <div style="font-size: 2.2rem; font-weight: bold; color: {time_color}; text-shadow: 0 0 10px {time_color};">
-                            {days}d {hours}h {minutes}m
-                        </div>
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
-        else:
-            st.markdown(f"""
-                <div style="text-align: center; min-height: 180px; display: flex; flex-direction: column; justify-content: center;">
-                    <div style="font-size: 0.8rem; color: #a0c5e8;">NO UPCOMING EVENTS</div>
-                    <div style="font-size: 2.5rem; font-weight: bold; color: white; text-shadow: 0 0 10px #a0c5e8;">--:--:--</div>
-                </div>
-            """, unsafe_allow_html=True)
-    
-    # 3. Great Sorcerer
-    with st.container(border=True):
-        st.markdown('<div class="runic-header">GREAT SORCERER</div>', unsafe_allow_html=True)
-        
-        quotes = [
-            "The market is a mirror of the mind.",
-            "Clarity comes not from the chart, but from the discipline within.",
-            "Do not chase the dragon; let it come to you.",
-            "Patience is the wizard's greatest spell.",
-            "Risk is the mana you pay for the reward you seek.",
-            "A calm mind sees the trend; a chaotic mind sees only noise.",
-            "I am a risk manager. My edge is my patience. I don’t gamble; I execute a system.",
-            "I accept the outcome of any single trade because I am focused on the long-term survival of my capital.",
-            "Passion = Emotion | Commitment = Discipline",
-            "Reminder: You don’t have to trade everyday!",
-            "You are a robot executing code. You don’t “feel” or “hope” the market will move a certain way.",
-            "You are a sniper with 2 bullets. You are not a machine gunner spraying. You reject good trades to wait for great trades.",
-            "You are a risk manager, not a profit generator. Your job is to protect your capital. Profit is just a byproduct of good survival skills"
-        ]
-        import random
-        selected_quote = random.choice(quotes)
-        
-        # Load Background Image
-        bg_style = ""
-        try:
-            import base64
-            with open("great_sorcerer.png", "rb") as img_file:
-                b64_str = base64.b64encode(img_file.read()).decode()
-            bg_style = f"background-image: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.8)), url('data:image/png;base64,{b64_str}'); background-size: cover; background-position: center;"
-        except Exception as e:
-            pass # Fallback to default dark theme
-            
-        st.markdown(f"""
-            <div style="
-                font-family: 'Cinzel', serif; 
-                color: #f0e6d2; 
-                text-align: center; 
-                font-style: italic; 
-                line-height: 1.6; 
-                min-height: 210px;
-                display: flex; 
-                align-items: center; 
-                justify-content: center;
-                padding: 15px;
-                margin-top: 15px;
-                margin-bottom: 5px;
-                border-radius: 8px;
-                text-shadow: 0 2px 4px rgba(0,0,0,0.9);
-                {bg_style}
-            ">
-                <div style="background: rgba(11, 12, 21, 0.7); padding: 20px; border: 1px solid #c5a059; border-radius: 2px; box-shadow: 0 0 20px rgba(0,0,0,0.8); font-size: 0.95rem;">
-                    "{selected_quote}"
+        # Guide Header for Timeframes
+        st.markdown("""
+            <div style="display: flex; justify-content: space-between; padding: 0 10px; margin-bottom: 5px; border-bottom: 1px solid #c5a05930; padding-bottom: 2px;">
+                <span style="font-size: 0.65rem; color: #888; font-weight: bold;">ASSET</span>
+                <div style="display: flex; gap: 12px;">
+                    <span style="font-size: 0.65rem; color: #888; width: 30px; text-align: center; font-weight: bold;">1D</span>
+                    <span style="font-size: 0.65rem; color: #888; width: 30px; text-align: center; font-weight: bold;">4H</span>
+                    <span style="font-size: 0.65rem; color: #888; width: 30px; text-align: center; font-weight: bold;">1H</span>
                 </div>
             </div>
         """, unsafe_allow_html=True)
+
+        if os.path.exists("mango_dynamic_data.json"):
+            try:
+                with open("mango_dynamic_data.json", "r") as f:
+                    mango_data = json.load(f)
+                
+                if mango_data:
+                    # Sort alphabetical
+                    sorted_assets = sorted(mango_data.items())
+                    
+                    for asset, tfs in sorted_assets:
+                        # Explicitly filter out Forex pairs if they linger in data
+                        if asset in ["EURUSD", "GBPUSD", "AUDUSD"]:
+                            continue
+
+                        lights = ""
+                        lights = ""
+                        # Reordered: 1d -> 4h -> 1h
+                        for tf in ["1d", "4h", "1h"]:
+                            d = tfs.get(tf, {})
+                            trend = d.get("Trend", "Unknown")
+                            
+                            # Accessibility Optimization: Color + Unique Symbol
+                            color = "#444" 
+                            symbol = "●" # Default
+                            
+                            if "Bullish" in trend: 
+                                color = "#00ff88"
+                                symbol = "▲"
+                            elif "Bearish" in trend: 
+                                color = "#ff3344"
+                                symbol = "▼"
+                            elif "Neutral" in trend: 
+                                color = "#ffd700"
+                                symbol = "◆"
+                            
+                            lights += f'<div title="{tf.upper()}: {trend}" style="color: {color}; text-shadow: 0 0 8px {color}60; width: 30px; text-align: center; font-size: 1.1rem; font-weight: bold;">{symbol}</div>'
+                        
+                        st.markdown(f"""
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: rgba(255,255,255,0.02); border-radius: 4px; margin-bottom: 3px; border-left: 3px solid #c5a05940;">
+                                <span style="font-size: 0.85rem; font-weight: bold; color: #eee;">{asset}</span>
+                                <div style="display: flex; gap: 12px;">{lights}</div>
+                            </div>
+                        """, unsafe_allow_html=True)
+
+                    # Legend for Color Blindness & Clarity
+                    st.markdown("""
+                        <div style="display: flex; justify-content: center; gap: 20px; margin-top: 12px; padding: 6px; background: rgba(0,0,0,0.3); border-radius: 4px; border: 1px solid #c5a05920;">
+                            <span style="font-size: 0.7rem; color: #00ff88; font-weight: bold;">▲ BULL</span>
+                            <span style="font-size: 0.7rem; color: #ff3344; font-weight: bold;">▼ BEAR</span>
+                            <span style="font-size: 0.7rem; color: #ffd700; font-weight: bold;">◆ NEUT</span>
+                        </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.info("No alignment data found.")
+            except Exception as e:
+                st.error(f"Error loading alignment: {e}")
+        else:
+            st.info("Scraper not yet run. Use 'Invoke Scraper' in sidebar.")
+
+
+    
 
 # --- LEFT COLUMN: MANA, SPELLS, ALERTS ---
 with col_left:
