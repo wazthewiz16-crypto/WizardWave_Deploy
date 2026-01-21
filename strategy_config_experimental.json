@@ -1,0 +1,35 @@
+{
+    "assets": [
+        "BTC/USDT",
+        "ETH/USDT",
+        "SOL/USDT",
+        "DOGE/USDT",
+        "EURUSD=X",
+        "GBPUSD=X",
+        "GC=F"
+    ],
+    "strategies": {
+        "cls_daily": {
+            "description": "Daily CLS Range trading on 1H timeframe",
+            "htf_source": "1h",
+            "htf_resample": "1D",
+            "ltf_trade": "1h",
+            "params": {
+                "swing_window": 10,
+                "atr_multiplier": 1.5,
+                "volume_multiplier": 1.2
+            }
+        },
+        "cls_weekly": {
+            "description": "Weekly CLS Range trading on 4H timeframe",
+            "htf_source": "4h",
+            "htf_resample": "1W",
+            "ltf_trade": "4h",
+            "params": {
+                "swing_window": 5,
+                "atr_multiplier": 1.2,
+                "volume_multiplier": 1.1
+            }
+        }
+    }
+}

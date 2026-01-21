@@ -165,24 +165,20 @@ def apply_triple_barrier(df, symbol, tf, model_config):
             raw_ret = ret * 100
             outcome = 1 if raw_ret > 0 else 0
             
-        labels.append({
+        item = {
             'entry_time': start_time,
             'symbol': symbol,
             'signal_type': signal_type,
-            'volatility': row['volatility'],
-            'rsi': row['rsi'],
-            'ma_dist': row['ma_dist'],
-            'adx': row['adx'],
-            'mom': row['mom'],
-            'rvol': row.get('rvol', 0),
-            'bb_width': row.get('bb_width', 0),
-            'candle_ratio': row.get('candle_ratio', 0),
-            'atr_pct': row.get('atr_pct', 0),
-            'mfi': row.get('mfi', 50),
             'raw_ret': raw_ret,
             'label': outcome,
             'weight': sample_weight
-        })
+        }
+        # Dynamic Feature Gathering
+        for f in ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi', 'month_sin', 'cycle_regime', 'close_frac']:
+            if f in row: item[f] = row[f]
+            else: item[f] = 0.0
+            
+        labels.append(item)
         
     return pd.DataFrame(labels)
 
@@ -234,13 +230,21 @@ def train_model(model_name, model_config):
         print(f"Not enough data ({len(full_dataset)}) to train {model_name}.")
         return
 
+    full_dataset.sort_values('entry_time', inplace=True)
+    full_dataset.dropna(inplace=True)
+    
     # Train
-    features = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi']
+    features = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi', 'month_sin', 'cycle_regime', 'close_frac']
     target = 'label'
     
-    X = full_dataset[features]
-    y = full_dataset[target]
-    w = full_dataset['weight']
+    # Purged Split (OOS Validation)
+    split_idx = int(len(full_dataset) * 0.8)
+    train_data = full_dataset.iloc[:split_idx]
+    test_data = full_dataset.iloc[split_idx:]
+    
+    X_train = train_data[features]
+    y_train = train_data[target]
+    w_train = train_data['weight']
     
     clf = RandomForestClassifier(
         n_estimators=config['model']['n_estimators'],
@@ -249,15 +253,15 @@ def train_model(model_name, model_config):
         class_weight='balanced'
     )
     
-    clf.fit(X, y, sample_weight=w)
+    clf.fit(X_train, y_train, sample_weight=w_train)
     
     model_file = model_config['model_file']
     joblib.dump(clf, model_file)
     print(f"Saved {model_file}")
     
-    # Simple Eval
-    preds = clf.predict(X)
-    print(f"Training Accuracy: {accuracy_score(y, preds):.2f}")
+    # Validation on Test Set (Out-of-Sample)
+    test_preds = clf.predict(test_data[features])
+    print(f"Validation Accuracy: {accuracy_score(test_data[target], test_preds):.2f}")
 
 def run_pipeline():
     models = config.get('models', {})

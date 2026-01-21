@@ -257,19 +257,30 @@ def run_analysis_cycle():
         tb = model_conf['triple_barrier']
         conf_threshold = model_conf.get('confidence_threshold', 0.50)
         
-        # Default Features
-        features_list = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi']
-        
+        # Run Strategy & Features
         for tf in timeframes:
+            # Fetch Macro Data (DXY & BTC) for this timeframe
+            macro_df = None
+            crypto_macro_df = None
+            try:
+                macro_df = fetch_data('DX-Y.NYB', asset_type='trad', timeframe=tf, limit=300)
+                crypto_macro_df = fetch_data('BTC/USDT', asset_type='crypto', timeframe=tf, limit=300)
+            except: pass
+
             for symbol in CONFIG['assets']:
                 try:
+                    # Determine Dynamic Features from Model
+                    if hasattr(model, 'feature_names_in_'):
+                        features_list = list(model.feature_names_in_)
+                    else:
+                        features_list = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi']
+                    
                     # Asset Type
                     asset_type = get_asset_type(symbol)
                     fetch_type = 'trad' if asset_type == 'forex' or asset_type == 'trad' else 'crypto'
                     if '-' in symbol or '^' in symbol or '=' in symbol: fetch_type = 'trad'
                     
                     # --- FILTER: SKIP FOREX ON SWING TIMEFRAMES ---
-                    # User Request: Remove Forex swing signals
                     if asset_type == 'forex' and tf in ['4h', '12h', '1d', '4d']:
                         continue
 
@@ -284,8 +295,13 @@ def run_analysis_cycle():
                         strat = WizardScalpStrategy(lookback=8)
                     
                     df = strat.apply(df)
-                    df = calculate_ml_features(df)
+                    df = calculate_ml_features(df, macro_df=macro_df, crypto_macro_df=crypto_macro_df)
                     
+                    # Ensure all features exist
+                    for f in features_list:
+                        if f not in df.columns:
+                            df[f] = 0.0
+                            
                     # Sigma for Dynamic Barriers
                     crypto_use_dynamic = tb.get('crypto_use_dynamic', False)
                     if crypto_use_dynamic and asset_type == 'crypto':
@@ -314,8 +330,8 @@ def run_analysis_cycle():
                                   pt_pct = k_pt * sigma
                                   sl_pct = k_sl * sigma
                             else:
-                                 sl_pct = tb['crypto_sl'] if asset_type=='crypto' else tb.get('forex_sl' if asset_type=='forex' else 'trad_sl', 0.01)
-                                 pt_pct = tb['crypto_pt'] if asset_type=='crypto' else tb.get('forex_pt' if asset_type=='forex' else 'trad_pt', 0.02)
+                                 sl_pct = tb.get('crypto_sl' if asset_type=='crypto' else ('forex_sl' if asset_type=='forex' else 'trad_sl'), 0.01)
+                                 pt_pct = tb.get('crypto_pt' if asset_type=='crypto' else ('forex_pt' if asset_type=='forex' else 'trad_pt'), 0.02)
                                  
                             sl_price = price * (1 - sl_pct)
                             pt_price = price * (1 + pt_pct)

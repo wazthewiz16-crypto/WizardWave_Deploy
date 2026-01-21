@@ -422,15 +422,16 @@ if state_needs_update:
 # --- ML Model Integration ---
 @st.cache_resource(ttl=3600) # Add TTL to prevent stale models
 def load_ml_models_v2():
-    """Load all 6 specific timeframe models"""
+    """Load all 6 specific timeframe models using filenames from config"""
     models = {}
     model_keys = ["4d", "1d", "12h", "4h", "1h", "15m"]
     
     for key in model_keys:
         try:
-            filename = f"model_{key}.pkl"
+            filename = config.get('models', {}).get(key, {}).get('model_file', f"model_{key}.pkl")
             if os.path.exists(filename):
                 models[key] = joblib.load(filename)
+                print(f"Successfully loaded model for {key} from {filename}")
             else:
                 print(f"Model file {filename} not found.")
                 models[key] = None
@@ -569,6 +570,14 @@ def analyze_timeframe(timeframe_label, silent=False):
     if not silent and status_text:
         status_text.text(f"[{timeframe_label}] Fetching data for {len(ASSETS)} assets...")
 
+    # --- Macro Integration (DXY & BTC) ---
+    macro_df = None
+    crypto_macro_df = None
+    try:
+        macro_df = fetch_data('DX-Y.NYB', 'trad', timeframe=tf_code, limit=300)
+        crypto_macro_df = fetch_data('BTC/USDT', 'crypto', timeframe=tf_code, limit=300)
+    except: pass
+
     def log_debug(msg):
         try:
             with open("debug_signal_log.txt", "a", encoding="utf-8") as f:
@@ -601,7 +610,7 @@ def analyze_timeframe(timeframe_label, silent=False):
             df_strat = strat.apply(df)
             
             # ML Features & Prediction
-            df_strat = calculate_ml_features(df_strat)
+            df_strat = calculate_ml_features(df_strat, macro_df=macro_df, crypto_macro_df=crypto_macro_df)
             
             # --- Calculate Sigma for Dynamic Barriers ---
             if crypto_use_dynamic and asset['type'] == 'crypto':

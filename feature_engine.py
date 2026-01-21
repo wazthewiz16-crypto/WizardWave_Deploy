@@ -2,30 +2,85 @@ import pandas as pd
 import pandas_ta as ta
 import numpy as np
 
-def calculate_ml_features(df):
+def get_frac_diff_weights(d, size):
+    """Lopez de Prado Fractional Differentiation weights."""
+    w = [1.0]
+    for k in range(1, size):
+        w_ = -w[-1] / k * (d - k + 1)
+        w.append(w_)
+    w = np.array(w[::-1]).reshape(-1, 1)
+    return w
+
+def frac_diff(series, d, thres=0.01):
+    """
+    Apply Fractional Differentiation to a series.
+    This preserves more memory than a standard d=1 difference.
+    """
+    # 1. Generate weights
+    weights = get_frac_diff_weights(d, len(series))
+    
+    # 2. Find weight cutoff (skip small weights for efficiency)
+    # Using a simple fixed window for stability in production
+    window = 100 
+    if len(series) < window: return series.diff().fillna(0)
+    
+    weights = get_frac_diff_weights(d, window)
+    res = series.rolling(window).apply(lambda x: np.dot(x, weights).item(), raw=True)
+    return res.fillna(0)
+
+def calculate_ml_features(df, macro_df=None, crypto_macro_df=None):
     """
     Calculates technical features for the ML model.
     Shared logic between pipeline.py (Training) and app.py (Inference).
     
-    Features:
-    - volatility (20 period rolling std dev of returns)
-    - rsi (14)
-    - ma_dist (Distance from SMA 50)
-    - adx (Trend Strength)
-    - mom (Momentum ROC 10)
-    - rvol (Relative Volume)
-    - bb_width (Bollinger Band Width - Volatility State)
-    - candle_ratio (Body / High-Low Range - Conviction)
+    macro_df: Optional dataframe containing global indicators like DXY.
+    crypto_macro_df: Optional dataframe containing BTC-USD for altcoin correlation.
     """
     df = df.copy()
+    
+    # --- 0. Pre-Feature: Macro Integration ---
+    if macro_df is not None and not macro_df.empty:
+        # Align macro data to the main df index
+        macro_aligned = macro_df['close'].reindex(df.index, method='ffill')
+        if not macro_aligned.isna().all():
+            df['dxy_close'] = macro_aligned
+            df['dxy_ret'] = df['dxy_close'].pct_change()
+            df['dxy_corr'] = df['close'].pct_change().rolling(20).corr(df['dxy_ret'])
+            df['dxy_dist'] = df['dxy_close'] / df['dxy_close'].rolling(50).mean() - 1
+        else:
+            df['dxy_ret'] = 0.0
+            df['dxy_corr'] = 0.0
+            df['dxy_dist'] = 0.0
+    else:
+        df['dxy_ret'] = 0.0
+        df['dxy_corr'] = 0.0
+        df['dxy_dist'] = 0.0
+
+    if crypto_macro_df is not None and not crypto_macro_df.empty:
+        # Correlation with BTC (Crypto Beta)
+        btc_aligned = crypto_macro_df['close'].reindex(df.index, method='ffill')
+        if not btc_aligned.isna().all():
+            df['btc_corr'] = df['close'].pct_change().rolling(20).corr(btc_aligned.pct_change())
+            # BTC Momentum as a feature
+            df['btc_mom'] = btc_aligned.pct_change(10)
+        else:
+            df['btc_corr'] = 0.0
+            df['btc_mom'] = 0.0
+    else:
+        df['btc_corr'] = 0.0
+        df['btc_mom'] = 0.0
     
     # Ensure necessary columns exist
     if df.empty or 'close' not in df.columns:
         return df
 
-    # 1. Volatility
+    # 1. Volatility & Stationarity
     df['returns'] = df['close'].pct_change()
     df['volatility'] = df['returns'].rolling(20).std()
+    
+    # 1b. Fractional Differentiation (Preserves price memory better than returns)
+    # Using d=0.4 as standard FML starting point
+    df['close_frac'] = frac_diff(df['close'], d=0.4)
     
     # 2. RSI
     df['rsi'] = ta.rsi(df['close'], length=14)

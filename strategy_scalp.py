@@ -1,6 +1,9 @@
 import pandas as pd
 import pandas_ta as ta
 import numpy as np
+import os
+import joblib
+from feature_engine import calculate_ml_features
 
 class WizardScalpStrategy:
     """
@@ -17,12 +20,24 @@ class WizardScalpStrategy:
                  sensitivity: float = 1.0, 
                  cloud_spread: float = 0.4, 
                  use_rsi_filter: bool = True,
-                 use_vol_filter: bool = True):
+                 use_vol_filter: bool = True,
+                 daily_loss_limit: float = -2.0): # -2% Daily Cap
         self.lookback = lookback
         self.sensitivity = sensitivity
         self.cloud_spread = cloud_spread
         self.use_rsi_filter = use_rsi_filter
         self.use_vol_filter = use_vol_filter
+        self.daily_loss_limit = daily_loss_limit
+        
+        # Load ML Filter
+        self.model_data = None
+        model_path = os.path.join(os.path.dirname(__file__), 'wizard_scalp_ml_model.pkl')
+        if os.path.exists(model_path):
+            try:
+                self.model_data = joblib.load(model_path)
+                print("[SUCCESS] Scalp ML Filter Loaded.")
+            except:
+                print("[WARNING] Failed to load Scalp ML.")
 
     def apply(self, df: pd.DataFrame) -> pd.DataFrame:
         if df.empty:
@@ -144,6 +159,40 @@ class WizardScalpStrategy:
             "SCALP_SHORT"
         ]
         df['signal_type'] = np.select(conditions, choices, default="NONE")
+        
+        # --- 5. ML Meta-Labeling Filter ---
+        if self.model_data and 'signal_type' in df.columns:
+            df = calculate_ml_features(df)
+            features = self.model_data['features']
+            model = self.model_data['model']
+            thresh = self.model_data['threshold']
+            
+            sig_mask = df['signal_type'] != 'NONE'
+            if sig_mask.any():
+                X = df.loc[sig_mask, features].fillna(0).values
+                probs = model.predict_proba(X)[:, 1]
+                
+                # Apply filter: if prob < threshold, reset signal to NONE
+                # We do this using a list comprehension or mapping back to the df
+                prob_idx = 0
+                for idx, row in df[sig_mask].iterrows():
+                    if probs[prob_idx] < thresh:
+                        df.at[idx, 'signal_type'] = "NONE"
+                    prob_idx += 1
+
+        # --- 6. Triple Barrier Generation (SL/TP) ---
+        # Fixed 1.0% SL / 1.5% TP for Scalps
+        df['stop_loss'] = 0.0
+        df['target_price'] = 0.0
+        
+        long_mask = df['signal_type'] == 'SCALP_LONG'
+        short_mask = df['signal_type'] == 'SCALP_SHORT'
+        
+        df.loc[long_mask, 'stop_loss'] = df['close'] * 0.99 # 1.0%
+        df.loc[long_mask, 'target_price'] = df['close'] * 1.015 # 1.5%
+        
+        df.loc[short_mask, 'stop_loss'] = df['close'] * 1.01
+        df.loc[short_mask, 'target_price'] = df['close'] * 0.985
         
         # Store Trend State for UI
         df['is_bullish'] = df['is_above_cloud']

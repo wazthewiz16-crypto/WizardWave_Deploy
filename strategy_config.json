@@ -44,12 +44,12 @@
                 "1d"
             ],
             "strategy": "WizardWave",
-            "model_file": "model_1d.pkl",
-            "confidence_threshold": 0.42,
+            "model_file": "wizard_wave_ml_model.pkl",
+            "confidence_threshold": 0.45,
             "triple_barrier": {
                 "time_limit_bars": 21,
                 "crypto_pt": 0.09,
-                "crypto_sl": 0.03,
+                "crypto_sl": 0.033,
                 "trad_pt": 0.04,
                 "trad_sl": 0.02,
                 "forex_pt": 0.03,
@@ -95,11 +95,11 @@
                 "1h"
             ],
             "strategy": "WizardScalp",
-            "model_file": "model_1h.pkl",
+            "model_file": "wizard_scalp_ml_model.pkl",
             "confidence_threshold": 0.60,
             "triple_barrier": {
                 "time_limit_bars": 24,
-                "crypto_pt": 0.02,
+                "crypto_pt": 0.015,
                 "crypto_sl": 0.01,
                 "trad_pt": 0.01,
                 "trad_sl": 0.005,

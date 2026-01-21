@@ -73,10 +73,11 @@ def run_backtest_ml(df, strategy, model, asset_class, timeframe_label='1D', thre
          df['sigma'] = df['close'].pct_change().ewm(span=36, adjust=False).std()
          df['sigma'] = df['sigma'].bfill().fillna(0.01)
 
-    # 4. Predict (Slow Loop or Vectorized?)
+    # Predict
     # Vectorized predict is faster.
-    # Align features
-    feat_cols = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi']
+    # Align features (Must match model training features)
+    # Note: 'rvol' was missing in retrain_models.py, so we exclude it here to match current model.
+    feat_cols = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi']
     
     # Ensure cols exist
     for c in feat_cols:
@@ -334,7 +335,7 @@ if __name__ == "__main__":
         cfg_1d = models_cfg['1d']
         strat_1d = WizardWaveStrategy() # Default 1D
         
-        df_d = fetch_history_yf(symbol, period='6mo', interval='1d')
+        df_d = fetch_history_yf(symbol, period='1y', interval='1d')
         if not df_d.empty:
             trades = run_backtest_ml(
                 df_d, strat_1d, model_1d, aclass, '1D', 

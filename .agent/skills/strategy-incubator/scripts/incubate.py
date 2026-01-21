@@ -19,10 +19,7 @@ def incubate_experiment(name):
     # 1. Check Git Status
     success, stdout, stderr = run_command("git status --porcelain")
     if stdout.strip():
-        print("❌ Error: Git working directory is not clean. Please commit or stash changes first.")
-        # Continuing anyway for the sake of the task if the user wants, but standard is to fail.
-        # But for an agentic flow, let's be safe.
-        # return
+        print("[!] Warning: Git working directory is not clean. It is recommended to commit or stash changes first.")
     
     # 2. Create Branch
     branch_name = f"feature/{name}"
@@ -38,7 +35,7 @@ def incubate_experiment(name):
         shutil.copy("strategy_config.json", "strategy_config_experimental.json")
     
     # 4. Suggest Next Steps
-    print("\n✅ Sandbox Environment Ready!")
+    print("\nDONE: Sandbox Environment Ready!")
     print(f"Current Branch: {branch_name}")
     print("Config: strategy_config_experimental.json")
     print("-" * 50)
