@@ -50,14 +50,28 @@ async def scrape_asset_data(browser_context, asset):
         await page.goto(url, wait_until="load", timeout=90000)
         await asyncio.sleep(10) # Initial heavy load
         
-        # Ensure Data Window is open (it is often closed by default)
-        # Attempt to click Data Window tab button if not open
-        await page.evaluate("""() => {
-            const dataWindowBtn = document.querySelector('[data-name="data-window"]');
-            if (dataWindowBtn && dataWindowBtn.getAttribute('aria-selected') !== 'true') {
-                dataWindowBtn.click();
-            }
-        }""")
+        # Explicitly Open Data Window (Critical Fix)
+        try:
+            # Wait for the right toolbar to be visible
+            await page.wait_for_selector('[class*="right-toolbar"]', timeout=5000)
+            
+            # Click the Data Window button (usually the 4th item, index 3, or distinct icon)
+            # data-name="data-window" is the reliable attribute
+            await page.evaluate("""() => {
+                const btn = document.querySelector('[data-name="data-window"]');
+                if (btn) {
+                    // Check if it's already active (often has a specific class or aria-selected)
+                    const isActive = btn.classList.contains('active') || btn.getAttribute('aria-selected') === 'true';
+                    if (!isActive) {
+                        btn.click();
+                    }
+                }
+            }""")
+            print("    [>] Clicked Data Window button")
+        except Exception as e:
+            print(f"    [!] Failed to click Data Window: {e}")
+
+        await asyncio.sleep(2)
         await asyncio.sleep(2)
 
         for tf in TIMEFRAMES:
@@ -136,7 +150,25 @@ async def scrape_asset_data(browser_context, asset):
 
     except Exception as e:
         print(f"  [!] Error scraping {asset['name']}: {e}")
+        try:
+            await page.screenshot(path=f"debug_error_{asset['name']}.png")
+        except:
+            pass
     finally:
+        # Check if we got valid data, if not, screenshot state
+        try:
+            has_data = False
+            for tf in TIMEFRAMES:
+                if results.get(tf, {}).get("Trend") != "Unknown":
+                    has_data = True
+                    break
+            
+            if not has_data:
+                print(f"  [?] No data found for {asset['name']}, saving debug screenshot...")
+                await page.screenshot(path=f"debug_empty_{asset['name']}.png")
+        except:
+            pass
+            
         await page.close()
     
     return results
@@ -167,12 +199,22 @@ async def main():
         
         async with async_playwright() as p:
             try:
-                # Launching headless but with a real user agent
-                browser = await p.chromium.launch(headless=True)
+                # Launching headless with robust cloud settings
+                browser = await p.chromium.launch(
+                    headless=True,
+                    args=[
+                        '--disable-dev-shm-usage', # Crucial for Docker/Cloud
+                        '--no-sandbox', 
+                        '--disable-setuid-sandbox',
+                        '--disable-gpu',
+                        '--disable-software-rasterizer',
+                        # '--single-process' # Removed as it causes instability
+                    ]
+                )
                 context = await browser.new_context(
                     storage_state=STATE_FILE,
                     user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                    viewport={'width': 1920, 'height': 1080}
+                    viewport={'width': 1280, 'height': 720} # Smaller viewport saves VRAM
                 )
                 
                 # Load existing results to update incrementally
