@@ -8,8 +8,8 @@ pyperclip
 tqdm
 joblib
 ccxt
-yfinance
-scikit-learn
+yfinance>=0.2.66
+scikit-learn==1.7.2
 st-copy-to-clipboard
 pandas_ta
 matplotlib

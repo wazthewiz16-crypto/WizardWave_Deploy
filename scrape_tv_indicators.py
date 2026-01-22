@@ -60,11 +60,16 @@ async def scrape_asset_data(browser_context, asset):
             await page.evaluate("""() => {
                 const btn = document.querySelector('[data-name="data-window"]');
                 if (btn) {
-                    // Check if it's already active (often has a specific class or aria-selected)
-                    const isActive = btn.classList.contains('active') || btn.getAttribute('aria-selected') === 'true';
-                    if (!isActive) {
-                        btn.click();
-                    }
+                    btn.click(); // Initial click attempt
+                    
+                    // Simple logic: Wait a sec, if no window, click again
+                     setTimeout(() => {
+                        const dw = document.querySelector('[data-name="data-window"]'); // checking if active class is there
+                        const isNowActive = btn.classList.contains('active') || btn.getAttribute('aria-selected') === 'true';
+                        if (!isNowActive) {
+                            btn.click();
+                        }
+                    }, 1000);
                 }
             }""")
             print("    [>] Clicked Data Window button")
