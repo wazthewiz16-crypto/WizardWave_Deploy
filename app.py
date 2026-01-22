@@ -209,6 +209,46 @@ from datetime import datetime, date
 # --- Persistence Logic ---
 STATE_FILE = "user_grimoire.json"
 
+# --- Cloud Bootstrap (One-time) ---
+@st.cache_resource
+def bootstrap_system():
+    import subprocess
+    import sys
+    import os
+    
+    print("[*] Bootstrapping System...")
+    
+    # 1. Ensure Playwright is installed
+    try:
+        import playwright
+    except ImportError:
+        print("[!] Installing Playwright package...")
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "playwright==1.49.0"])
+        
+    # 2. Ensure Chromium is installed
+    try:
+        subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"], check=True)
+    except Exception as e:
+        print(f"[!] Browser install warning: {e}")
+
+    # 3. Auto-start Scraper if not already running (approx check)
+    # Using a simple file-based lock for cloud persistence
+    lock_file = "/tmp/scraper.lock"
+    if not os.path.exists(lock_file):
+        try:
+            with open(lock_file, "w") as f:
+                f.write(str(os.getpid()))
+            print("[*] Starting Background Scraper...")
+            subprocess.Popen([sys.executable, "scrape_tv_indicators.py"])
+        except Exception as e:
+            print(f"[!] Scraper start failed: {e}")
+            if os.path.exists(lock_file): os.remove(lock_file)
+            
+    return True
+
+# Run bootstrap
+bootstrap_system()
+
 # Load Strategy Config
 config_file = 'strategy_config.json'
 if os.path.exists('strategy_config_experimental.json'):
@@ -227,7 +267,6 @@ except Exception as e:
             "15m": {"triple_barrier": {"time_limit_bars": 12, "crypto_pt": 0.015, "crypto_sl": 0.0075, "trad_pt": 0.005, "trad_sl": 0.0025, "forex_pt": 0.0025, "forex_sl": 0.0015}},
         }
     } # Fallback
-
 
 def load_grimoire():
     today = date.today()
