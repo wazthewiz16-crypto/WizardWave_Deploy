@@ -2,8 +2,17 @@ import asyncio
 import os
 import json
 import re
-from playwright.async_api import async_playwright
+import subprocess
+import sys
 from datetime import datetime
+
+# Self-healing: Install playwright if missing (Streamlit Cloud sometimes misses requirements on fast updates)
+try:
+    from playwright.async_api import async_playwright
+except ImportError:
+    print("[!] Playwright module missing. Installing at runtime...")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "playwright==1.49.0"])
+    from playwright.async_api import async_playwright
 
 # Full Assets List
 ASSETS = [
