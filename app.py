@@ -219,7 +219,14 @@ try:
         config = json.load(f)
 except Exception as e:
     print(f"Error loading {config_file}: {e}")
-    config = {} # Fallback
+    config = {
+        "models": {
+            "1d": {"triple_barrier": {"time_limit_bars": 21, "crypto_pt": 0.09, "crypto_sl": 0.033, "trad_pt": 0.04, "trad_sl": 0.02, "forex_pt": 0.03, "forex_sl": 0.015}},
+            "4h": {"triple_barrier": {"time_limit_bars": 12, "crypto_pt": 0.04, "crypto_sl": 0.02, "trad_pt": 0.02, "trad_sl": 0.01, "forex_pt": 0.01, "forex_sl": 0.005}},
+            "1h": {"triple_barrier": {"time_limit_bars": 24, "crypto_pt": 0.015, "crypto_sl": 0.01, "trad_pt": 0.01, "trad_sl": 0.005, "forex_pt": 0.005, "forex_sl": 0.0025}},
+            "15m": {"triple_barrier": {"time_limit_bars": 12, "crypto_pt": 0.015, "crypto_sl": 0.0075, "trad_pt": 0.005, "trad_sl": 0.0025, "forex_pt": 0.0025, "forex_sl": 0.0015}},
+        }
+    } # Fallback
 
 
 def load_grimoire():
