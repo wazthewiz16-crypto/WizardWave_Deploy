@@ -118,6 +118,8 @@ def fetch_data(symbol: str, asset_type: str, timeframe: str = '1h', limit: int =
             'volume': 'sum'
         }
         # Resample and drop incomplete bins
+        # Remove duplicate indices before resampling to prevent 'cannot reindex...' error
+        df = df[~df.index.duplicated(keep='first')]
         final_df = df.resample(resample_rule).agg(agg_dict).dropna()
         
     # --- SAVE GENERIC CACHE ---
