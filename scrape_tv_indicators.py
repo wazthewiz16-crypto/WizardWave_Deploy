@@ -115,11 +115,11 @@ async def scrape_asset_data(browser_context, asset):
                          }
                     }
                     
-                    // Fallback: Check Legend specifically (often has class 'title-wrapper' or similar, but text search is safer)
+                    // Fallback: Check Legend specifically
                     if (results["Bid Zone"] === "Unknown") {
-                         const legendText = document.body.innerText; # Global search fallback
-                         if (legendText.includes('Bid Zone: Yes')) results["Bid Zone"] = "Yes";
-                         else if (legendText.includes('Bid Zone: No')) results["Bid Zone"] = "No";
+                         const legendText = document.body.innerText;
+                         if (legendText.includes('Bid Zone: Yes') || legendText.includes('Bid Zone Yes')) results["Bid Zone"] = "Yes";
+                         else if (legendText.includes('Bid Zone: No') || legendText.includes('Bid Zone No')) results["Bid Zone"] = "No";
                     }
 
                     // 2. Extract Numerical Plot Values as fallback/confirmation

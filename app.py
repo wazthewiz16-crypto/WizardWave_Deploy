@@ -199,24 +199,24 @@ from src.strategies.strategy import WizardWaveStrategy
 from src.strategies.strategy_scalp import WizardScalpStrategy
 from src.strategies.strategy_cls import CLSRangeStrategy
 from src.strategies.strategy_ichimoku import IchimokuStrategy
-from src.utils.paths import get_model_path
+from src.utils.paths import get_model_path, get_config_path
 
 # Load ML Models for New Strats
 try:
     ICHI_MODEL = joblib.load(get_model_path("model_ichimoku.pkl"))
-    # (Assuming features_ichimoku.json is also in a data/config path if we wanted, 
-    # but let's keep it simple for now or check paths)
-    with open("features_ichimoku.json", "r") as f:
+    with open(get_config_path("features_ichimoku.json"), "r") as f:
         ICHI_FEATS = json.load(f)
-except:
+except Exception as e:
+    print(f"Error loading Ichimoku Model: {e}")
     ICHI_MODEL = None
     ICHI_FEATS = []
     
 try:
     CLS_MODEL = joblib.load(get_model_path("model_cls.pkl"))
-    with open("features_cls.json", "r") as f:
+    with open(get_config_path("features_cls.json"), "r") as f:
         CLS_FEATS = json.load(f)
-except:
+except Exception as e:
+    print(f"Error loading CLS Model: {e}")
     CLS_MODEL = None
     CLS_FEATS = []
 import streamlit.components.v1 as components
@@ -518,17 +518,21 @@ def load_ml_models_v2():
     
     for key in model_keys:
         try:
-            filename = config.get('models', {}).get(key, {}).get('model_file', f"model_{key}.pkl")
-            if os.path.exists(filename):
-                loaded_obj = joblib.load(filename)
+            rel_path = config.get('models', {}).get(key, {}).get('model_file', f"model_{key}.pkl")
+            # If path already includes 'data/models/', strip it so get_model_path works correctly
+            filename = os.path.basename(rel_path)
+            full_path = get_model_path(filename)
+            
+            if os.path.exists(full_path):
+                loaded_obj = joblib.load(full_path)
                 # Handle wrapped models
                 if isinstance(loaded_obj, dict) and 'model' in loaded_obj:
                     models[key] = loaded_obj['model']
                 else:
                     models[key] = loaded_obj
-                print(f"Successfully loaded model for {key} from {filename}")
+                print(f"Successfully loaded model for {key} from {full_path}")
             else:
-                print(f"Model file {filename} not found.")
+                print(f"Model file {full_path} not found.")
                 models[key] = None
         except Exception as e:
             print(f"Error loading {key} model: {e}")
