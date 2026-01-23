@@ -3821,16 +3821,15 @@ with col_right:
                         lights = ""
                         lights = ""
                         
-                        # Bid Zone Check (Focus on 1H or 4H immediate interaction)
-                        # We use 1H by default as it's the tactical timeframe
+                        # Bid Zone Check (Focus on 4H as requested)
                         bid_zone_active = False
-                        if tfs.get("1h", {}).get("Bid Zone", "No") == "Yes":
+                        if tfs.get("4h", {}).get("Bid Zone", "No") == "Yes":
                             bid_zone_active = True
                         
                         bid_marker = ""
                         if bid_zone_active:
                             # User requested a "red box" for Bid Zone
-                            bid_marker = '<span style="display:inline-block; width: 8px; height: 8px; background-color: #ff3344; border-radius: 2px; margin-left: 6px; box-shadow: 0 0 5px #ff3344;" title="In Bid Zone (1H)"></span>'
+                            bid_marker = '<span style="display:inline-block; width: 8px; height: 8px; background-color: #ff3344; border-radius: 2px; margin-left: 6px; box-shadow: 0 0 5px #ff3344;" title="In Bid Zone (4H)"></span>'
 
                         # Reordered: 1d -> 4h -> 1h
                         for tf in ["1d", "4h", "1h"]:
