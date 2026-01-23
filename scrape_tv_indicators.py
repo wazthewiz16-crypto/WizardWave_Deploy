@@ -103,9 +103,24 @@ async def scrape_asset_data(browser_context, asset):
                          results.Tempo = textLines[tempoIdx].split(':')[1].trim();
                     }
                     
-                    const bidIdx = textLines.findIndex(l => l.includes('Bid Zone:'));
-                    if (bidIdx !== -1) {
-                         results["Bid Zone"] = textLines[bidIdx].split(':')[1].trim();
+                    const bidLine = textLines.find(l => l.includes('Bid Zone') || l.includes('Bid Zone:'));
+                    if (bidLine) {
+                         // Attempt split by colon
+                         const parts = bidLine.split(':');
+                         if (parts.length > 1) {
+                             results["Bid Zone"] = parts[1].trim();
+                         } else {
+                             // Sometimes it's "Bid Zone Yes" without colon in Legend
+                             if (bidLine.includes('Yes')) results["Bid Zone"] = "Yes";
+                             else if (bidLine.includes('No')) results["Bid Zone"] = "No";
+                         }
+                    }
+                    
+                    // Fallback: Check Legend specifically (often has class 'title-wrapper' or similar, but text search is safer)
+                    if (results["Bid Zone"] === "Unknown") {
+                         const legendText = document.body.innerText; # Global search fallback
+                         if (legendText.includes('Bid Zone: Yes')) results["Bid Zone"] = "Yes";
+                         else if (legendText.includes('Bid Zone: No')) results["Bid Zone"] = "No";
                     }
 
                     // 2. Extract Numerical Plot Values as fallback/confirmation
