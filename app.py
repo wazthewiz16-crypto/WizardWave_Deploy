@@ -236,45 +236,58 @@ def bootstrap_system():
     import sys
     import os
     
-    print("[*] Bootstrapping System...")
+    print("[*] Performing System Bootstrap...")
     
-    # 1. Ensure Chromium is installed for Playwright
-    # Playwright library should be installed via requirements.txt
+    # 1. Check for Playwright
     try:
         import playwright
-        # Check if browser binaries likely exist
-        cache_dir = os.path.expanduser("~/.cache/ms-playwright")
-        if not os.path.exists(cache_dir):
-            print("[!] Installing browser binaries for Playwright...")
-            subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"], check=True)
+        # Check if browser binaries likely exist in common locations
+        cache_dirs = [
+            os.path.expanduser("~/.cache/ms-playwright"),
+            "/usr/bin/chromium-browser",
+            "/usr/bin/chromium"
+        ]
+        
+        if not any(os.path.exists(d) for d in cache_dirs):
+             print("[!] Installing browser binaries for Playwright...")
+             # Redirect output to /dev/null if it causes issues, or keep it for logs
+             subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"], capture_output=True)
     except ImportError:
-        print("[!] Playwright library missing. Add 'playwright' to requirements.txt")
+        print("[!] Playwright library missing from environment.")
     except Exception as e:
-        print(f"[!] Browser install warning: {e}")
+        print(f"[!] Bootstrap warning: {e}")
 
-    # 2. Auto-start Scraper if not already running
-    lock_file = "/tmp/scraper.lock"
-    if not os.path.exists(lock_file):
+    # 2. Auto-start Scraper if not running
+    # Use a more reliable background process check
+    lock_file = os.path.join(os.getcwd(), "data", "scraper.lock")
+    scraper_script = "scrape_tv_indicators.py"
+    
+    if os.path.exists(scraper_script) and not os.path.exists(lock_file):
         try:
+            # Ensure data dir exists
+            os.makedirs("data", exist_ok=True)
+            
             with open(lock_file, "w") as f:
                 f.write(str(os.getpid()))
             
-            scraper_script = "scrape_tv_indicators.py"
-            if os.path.exists(scraper_script):
-                print(f"[*] Starting Background Scraper ({scraper_script})...")
-                # Cross-platform background launch
-                creation_flags = 0x08000000 if os.name == 'nt' else 0
-                subprocess.Popen([sys.executable, scraper_script], creationflags=creation_flags)
+            print(f"[*] Starting Background Scraper...")
+            # Use proper background logic for both OS
+            if os.name == 'nt':
+                 subprocess.Popen([sys.executable, scraper_script], creationflags=0x08000000)
             else:
-                print(f"[!] Scraper script not found: {scraper_script}")
+                 # Standard Unix background
+                 subprocess.Popen([sys.executable, scraper_script], start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except Exception as e:
             print(f"[!] Scraper start failed: {e}")
             if os.path.exists(lock_file): os.remove(lock_file)
             
     return True
 
-# Run bootstrap
-bootstrap_system()
+# Call bootstrap later or here? Let's keep it here but with more safety.
+try:
+    bootstrap_system()
+except:
+    pass
 
 # Load Strategy Config
 config_file = os.path.join('config', 'strategy_config.json')
