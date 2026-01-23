@@ -53,13 +53,13 @@ async def scrape_asset_data(browser_context, asset):
         # Explicitly Open Data Window (Critical Fix)
         # Explicitly Open Data Window using Hotkey (Shift + D) - Most Reliable Method
         try:
-            print("    [>] Toggling Data Window via Hotkey (Shift+D)...")
+            print("    [>] Toggling Data Window via Hotkey (Alt+D)...")
             # Focus on chart area first
             await page.mouse.click(500, 300) 
             await asyncio.sleep(1)
             
             # Press hotkey
-            await page.keyboard.press("Shift+D")
+            await page.keyboard.press("Alt+D")
             await asyncio.sleep(2)
         except Exception as e:
             print(f"    [!] Hotkey failed: {e}")
