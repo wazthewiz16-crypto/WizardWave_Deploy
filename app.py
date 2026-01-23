@@ -3822,14 +3822,12 @@ with col_right:
                         lights = ""
                         
                         # Bid Zone Check (Focus on 4H as requested)
-                        bid_zone_active = False
-                        if tfs.get("4h", {}).get("Bid Zone", "No") == "Yes":
-                            bid_zone_active = True
+                        bid_value = tfs.get("4h", {}).get("Bid Zone", "No") # Default to No if missing
                         
-                        bid_marker = ""
-                        if bid_zone_active:
-                            # User requested a "red box" for Bid Zone
-                            bid_marker = '<span style="display:inline-block; width: 8px; height: 8px; background-color: #ff3344; border-radius: 2px; margin-left: 6px; box-shadow: 0 0 5px #ff3344;" title="In Bid Zone (4H)"></span>'
+                        # Style based on Yes/No?
+                        # User image shows roughly same white text. Let's keep it clean.
+                        # We separate Asset and Bid Zone with some space.
+                        bid_display = f'<span style="font-size: 0.75rem; color: #ccc; margin-left: 15px;">Bid Zone: {bid_value}</span>'
 
                         # Reordered: 1d -> 4h -> 1h
                         for tf in ["1d", "4h", "1h"]:
@@ -3852,7 +3850,7 @@ with col_right:
                             
                             lights += f'<div title="{tf.upper()}: {trend}" style="color: {color}; text-shadow: 0 0 8px {color}60; width: 30px; text-align: center; font-size: 1.1rem; font-weight: bold;">{symbol}</div>'
                         
-                        st.markdown(f'<div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: rgba(255,255,255,0.02); border-radius: 4px; margin-bottom: 3px; border-left: 3px solid #c5a05940;"><div style="display: flex; align-items: center;"><span style="font-size: 0.85rem; font-weight: bold; color: #eee;">{asset}</span>{bid_marker}</div><div style="display: flex; gap: 12px;">{lights}</div></div>', unsafe_allow_html=True)
+                        st.markdown(f'<div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: rgba(255,255,255,0.02); border-radius: 4px; margin-bottom: 3px; border-left: 3px solid #c5a05940;"><div style="display: flex; align-items: center;"><span style="font-size: 0.85rem; font-weight: bold; color: #eee; width: 60px;">{asset}</span>{bid_display}</div><div style="display: flex; gap: 12px;">{lights}</div></div>', unsafe_allow_html=True)
 
                     # Legend for Color Blindness & Clarity
                     st.markdown("""
