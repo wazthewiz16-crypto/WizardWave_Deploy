@@ -168,7 +168,7 @@ async def scrape_asset_data(browser_context, asset):
     except Exception as e:
         print(f"  [!] Error scraping {asset['name']}: {e}")
         try:
-            await page.screenshot(path=f"debug_error_{asset['name']}.png")
+            await page.screenshot(path=os.path.join("data", "reports", f"debug_error_{asset['name']}.png"))
         except:
             pass
     finally:
@@ -182,7 +182,7 @@ async def scrape_asset_data(browser_context, asset):
             
             if not has_data:
                 print(f"  [?] No data found for {asset['name']}, saving debug screenshot...")
-                await page.screenshot(path=f"debug_empty_{asset['name']}.png")
+                await page.screenshot(path=os.path.join("data", "reports", f"debug_empty_{asset['name']}.png"))
         except:
             pass
             
@@ -191,8 +191,8 @@ async def scrape_asset_data(browser_context, asset):
     return results
 
 async def main():
-    STATE_FILE = "tv_state.json"
-    OUTPUT_FILE = "mango_dynamic_data.json"
+    STATE_FILE = os.path.join("data", "tv_state.json")
+    OUTPUT_FILE = os.path.join("data", "mango_dynamic_data.json")
 
     if not os.path.exists(STATE_FILE):
         print(f"[ERROR] {STATE_FILE} not found. Run setup_tv_session.py.")

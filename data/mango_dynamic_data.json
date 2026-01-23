@@ -1,0 +1,772 @@
+{
+    "BTC": {
+        "1h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:57:52.037130"
+        },
+        "4h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:58:02.117920"
+        },
+        "1d": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:58:12.179653"
+        }
+    },
+    "ETH": {
+        "1h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:58:38.977637"
+        },
+        "4h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:58:49.520924"
+        },
+        "1d": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:58:59.579725"
+        }
+    },
+    "SOL": {
+        "1h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:49:29.544683"
+        },
+        "4h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:49:39.590285"
+        },
+        "1d": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:49:49.657554"
+        }
+    },
+    "DOGE": {
+        "1h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:50:23.426856"
+        },
+        "4h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:50:33.466495"
+        },
+        "1d": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:50:43.803143"
+        }
+    },
+    "XRP": {
+        "1h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:51:17.189784"
+        },
+        "4h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:51:27.240310"
+        },
+        "1d": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:51:37.290656"
+        }
+    },
+    "BNB": {
+        "1h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:52:10.630592"
+        },
+        "4h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:52:20.689920"
+        },
+        "1d": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:52:30.739735"
+        }
+    },
+    "LINK": {
+        "1h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:53:09.185999"
+        },
+        "4h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:53:19.235488"
+        },
+        "1d": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:53:29.300478"
+        }
+    },
+    "NDX": {
+        "1h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:54:02.018578"
+        },
+        "4h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:54:12.068227"
+        },
+        "1d": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:54:22.133243"
+        }
+    },
+    "SPX": {
+        "1h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:54:58.765823"
+        },
+        "4h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:55:08.821495"
+        },
+        "1d": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:55:18.861636"
+        }
+    },
+    "AUS200": {
+        "1h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:55:52.535276"
+        },
+        "4h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:56:02.580380"
+        },
+        "1d": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:56:12.634490"
+        }
+    },
+    "DXY": {
+        "1h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:56:45.875481"
+        },
+        "4h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:56:55.920450"
+        },
+        "1d": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:57:05.974430"
+        }
+    },
+    "GOLD": {
+        "1h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:36:23.743036"
+        },
+        "4h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:36:33.825097"
+        },
+        "1d": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:36:43.906826"
+        }
+    },
+    "OIL": {
+        "1h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:37:10.039924"
+        },
+        "4h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:37:20.087421"
+        },
+        "1d": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:37:30.152210"
+        }
+    },
+    "EURUSD": {
+        "1h": {
+            "Trend": "Bearish",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": 1.16742,
+                "MangoD1": 1.16986,
+                "MangoD2": 1.17026
+            },
+            "Timestamp": "2026-01-21T18:34:39.872300"
+        },
+        "4h": {
+            "Trend": "Bearish",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": 1.16746,
+                "MangoD1": 1.16923,
+                "MangoD2": 1.16823
+            },
+            "Timestamp": "2026-01-21T18:34:50.003325"
+        },
+        "1d": {
+            "Trend": "Neutral",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": 1.16747,
+                "MangoD1": 1.16696,
+                "MangoD2": 1.16808
+            },
+            "Timestamp": "2026-01-21T18:35:00.122583"
+        }
+    },
+    "GBPUSD": {
+        "1h": {
+            "Trend": "Bearish",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": 1.34229,
+                "MangoD1": 1.34311,
+                "MangoD2": 1.34351
+            },
+            "Timestamp": "2026-01-21T18:35:27.101074"
+        },
+        "4h": {
+            "Trend": "Neutral",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": 1.3423,
+                "MangoD1": 1.34302,
+                "MangoD2": 1.34226
+            },
+            "Timestamp": "2026-01-21T18:35:37.136270"
+        },
+        "1d": {
+            "Trend": "Bullish",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": 1.34225,
+                "MangoD1": 1.34148,
+                "MangoD2": 1.34211
+            },
+            "Timestamp": "2026-01-21T18:35:47.178494"
+        }
+    },
+    "AUDUSD": {
+        "1h": {
+            "Trend": "Bullish",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": 0.67588,
+                "MangoD1": 0.67546,
+                "MangoD2": 0.67535
+            },
+            "Timestamp": "2026-01-21T18:06:18.583135"
+        },
+        "4h": {
+            "Trend": "Bullish",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": 0.67585,
+                "MangoD1": 0.6733,
+                "MangoD2": 0.67278
+            },
+            "Timestamp": "2026-01-21T18:06:28.684350"
+        },
+        "1d": {
+            "Trend": "Bullish",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": 0.6758,
+                "MangoD1": 0.66923,
+                "MangoD2": 0.66887
+            },
+            "Timestamp": "2026-01-21T18:06:38.827523"
+        }
+    },
+    "SILVER": {
+        "1h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:37:57.228749"
+        },
+        "4h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:38:07.279927"
+        },
+        "1d": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:38:17.340974"
+        }
+    },
+    "ARB": {
+        "1h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:38:43.288564"
+        },
+        "4h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:38:53.380313"
+        },
+        "1d": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:39:03.452517"
+        }
+    },
+    "AVAX": {
+        "1h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:39:29.674384"
+        },
+        "4h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:39:39.732944"
+        },
+        "1d": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-22T10:39:49.813138"
+        }
+    },
+    "ADA": {
+        "1h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-21T21:53:15.412440"
+        },
+        "4h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-21T21:53:25.495025"
+        },
+        "1d": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-21T21:53:35.567951"
+        }
+    },
+    "BTC.D": {
+        "1h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-21T21:54:01.779801"
+        },
+        "4h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-21T21:54:11.871766"
+        },
+        "1d": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-21T21:54:21.955531"
+        }
+    },
+    "USDT.D": {
+        "1h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-21T21:54:47.605862"
+        },
+        "4h": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-21T21:54:57.659005"
+        },
+        "1d": {
+            "Trend": "Unknown",
+            "Tempo": "Unknown",
+            "Bid Zone": "Unknown",
+            "PlotValues": {
+                "Close": null,
+                "MangoD1": null,
+                "MangoD2": null
+            },
+            "Timestamp": "2026-01-21T21:55:07.734987"
+        }
+    }
+}

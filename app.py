@@ -11,7 +11,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.simplefilter(action='ignore', category=ResourceWarning)
 pd.set_option('future.no_silent_downcasting', True)
 
-import manage_trades
+from src.strategies import manage_trades
 import subprocess
 import sys
 import os
@@ -19,7 +19,7 @@ import os
 # --- AUTO-START BACKGROUND MONITOR ---
 def ensure_monitor_running():
     """Starts the separate monitor_signals.py script if not already running."""
-    pid_file = "monitor.pid"
+    pid_file = os.path.join("data", "monitor.pid")
     
     if os.path.exists(pid_file):
         try:
@@ -41,7 +41,7 @@ def ensure_monitor_running():
         creation_flags = 0x08000000 if os.name == 'nt' else 0
         
         process = subprocess.Popen(
-            [sys.executable, "monitor_signals.py"],
+            [sys.executable, os.path.join("src", "core", "monitor_signals.py")],
             cwd=os.getcwd(),
             creationflags=creation_flags
         )
@@ -193,12 +193,12 @@ def run_runic_analysis():
         thread_manager.finish_run(None)
 
 import joblib
-from data_fetcher import fetch_data
-from feature_engine import calculate_ml_features
-from strategy import WizardWaveStrategy
-from strategy_scalp import WizardScalpStrategy
-from strategy_cls import CLSRangeStrategy
-from strategy_ichimoku import IchimokuStrategy
+from src.core.data_fetcher import fetch_data
+from src.core.feature_engine import calculate_ml_features
+from src.strategies.strategy import WizardWaveStrategy
+from src.strategies.strategy_scalp import WizardScalpStrategy
+from src.strategies.strategy_cls import CLSRangeStrategy
+from src.strategies.strategy_ichimoku import IchimokuStrategy
 import streamlit.components.v1 as components
 import json
 import urllib.request
@@ -207,7 +207,7 @@ from datetime import datetime, date
 
 
 # --- Persistence Logic ---
-STATE_FILE = "user_grimoire.json"
+STATE_FILE = os.path.join("data", "user_grimoire.json")
 
 # --- Cloud Bootstrap (One-time) ---
 @st.cache_resource
@@ -250,9 +250,9 @@ def bootstrap_system():
 bootstrap_system()
 
 # Load Strategy Config
-config_file = 'strategy_config.json'
-if os.path.exists('strategy_config_experimental.json'):
-    config_file = 'strategy_config_experimental.json'
+config_file = os.path.join('config', 'strategy_config.json')
+if os.path.exists(os.path.join('config', 'strategy_config_experimental.json')):
+    config_file = os.path.join('config', 'strategy_config_experimental.json')
 
 try:
     with open(config_file, 'r') as f:
@@ -1974,17 +1974,17 @@ def process_discord_alerts(df):
     """
     try:
         # Load Config
-        if not os.path.exists('discord_config.json'):
+        if not os.path.exists(os.path.join('config', 'discord_config.json')):
             return
 
-        with open('discord_config.json', 'r') as f:
-            config = json.load(f)
-            webhook_url = config.get('webhook_url')
+        with open(os.path.join('config', 'discord_config.json'), 'r') as f:
+            disc_config = json.load(f)
+            webhook_url = disc_config.get('webhook_url')
             
         if not webhook_url:
             return
 
-        processed_file = 'processed_signals.json'
+        processed_file = os.path.join('data', 'processed_signals.json')
         
         # Max Age for Alert (e.g. 1.5 hours). 
         # Prevents flooding old alerts if app restarts.
@@ -3804,9 +3804,9 @@ with col_right:
             </div>
         """, unsafe_allow_html=True)
 
-        if os.path.exists("mango_dynamic_data.json"):
+        if os.path.exists(os.path.join("data", "mango_dynamic_data.json")):
             try:
-                with open("mango_dynamic_data.json", "r") as f:
+                with open(os.path.join("data", "mango_dynamic_data.json"), "r") as f:
                     mango_data = json.load(f)
                 
                 if mango_data:
