@@ -102,6 +102,11 @@ async def scrape_asset_data(browser_context, asset):
                     if (tempoIdx !== -1) {
                          results.Tempo = textLines[tempoIdx].split(':')[1].trim();
                     }
+                    
+                    const bidIdx = textLines.findIndex(l => l.includes('Bid Zone:'));
+                    if (bidIdx !== -1) {
+                         results["Bid Zone"] = textLines[bidIdx].split(':')[1].trim();
+                    }
 
                     // 2. Extract Numerical Plot Values as fallback/confirmation
                     // We look for the main price (Close) and the Mango levels
