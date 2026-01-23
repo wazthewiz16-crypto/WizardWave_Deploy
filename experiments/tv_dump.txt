@@ -1,0 +1,189 @@
+11
+BTCUSDT
+5m
+15m
+1h
+2h
+4h
+12h
+D
+2D
+3D
+4D
+W
+2W
+M
+3M
+12M
+V
+6
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+R
+B
+ 
+M
+M
+M
+ 
+ 
+ 
+ Swing Strategy 1D/4H
+Save
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+A
+E
+Trade
+Publish
+B
+BTCUSDT
+1h
+Binance
+O
+90,355.56
+H
+90,377.00
+L
+89,392.00
+C
+90,181.87
+−173.69 (−0.19%)
+90,181.86
+SELL
+0.01
+90,181.87
+BUY
+Mango Dynamic V5
+89,279.42
+89,298.37
+89,031.03
+90,003.98
+88,812.17
+Vol · BTC
+1.05 K
+AG FX - Watermark
+USDT
+Mango Equilibrium Tracker
+0.92
+1.05
+1.15
+0.84
+Mango Delta X (%)
+−2.51
+−3.65
+B
+BTCUSDT
+1D
+Binance
+O
+88,427.66
+H
+90,574.00
+L
+87,263.53
+C
+90,181.87
++1,754.21 (+1.98%)
+90,181.86
+SELL
+0.01
+90,181.87
+BUY
+Mango Dynamic V5
+91,946.65
+92,059.45
+93,353.97
+93,896.17
+90,740.96
+Vol · BTC
+19.2 K
+AG FX - Watermark
+USDT
+Mango Equilibrium Tracker
+1.08
+0.91
+1.00
+1.01
+Mango Delta X (%)
+−9.05
+−7.28
+1D
+5D
+1M
+3M
+6M
+YTD
+1Y
+5Y
+All
+15:58:42 UTC-5
+99+
+99+
+6
+Object Tree
+Data Window
+Date
+Wed 21 Jan '26
+Time
+15:00
+BTCUSDT · 1h · Binance
+Open
+90,355.56
+High
+90,377.00
+Low
+89,392.00
+Close
+90,181.87
+Change
+−173.69 (−0.19%)
+Vol
+1.05 K
+Last day change
++1,754.21 (+1.98%)
+Vol · BTC
+Volume
+1.05 K
+Mango Dynamic V5
+MangoD1
+89,279.42
+MangoD2
+89,298.37
+BuyOp
+89,031.03
+Entry Zone Upper
+90,003.98
+Entry Zone Lower
+88,812.17
+Mango Equilibrium Tracker
+Upper VolB
+0.92
+Lower VolB -
+1.05
+eqband
+1.15
+eqband2
+0.84
+Mango Delta X (%)
+Mango Delta (%)
+−2.51
+Momentum
+−3.65
+Trading Panel

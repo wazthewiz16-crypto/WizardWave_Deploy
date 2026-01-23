@@ -1,16 +1,38 @@
 __pycache__/
-*.pkl
-!model.pkl
-!model_htf.pkl
-!model_ltf.pkl
-!model_4d.pkl
-!model_1d.pkl
-!model_12h.pkl
-!model_4h.pkl
-!model_1h.pkl
-!model_15m.pkl
-.venv
+*.py[cod]
+*$py.class
 .env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.streamlit/
+
+# Models
+data/models/*.pkl
+!data/models/model_htf.pkl
+!data/models/model_ltf.pkl
+!data/models/wizard_wave_ml_model.pkl
+!data/models/wizard_scalp_ml_model.pkl
+
+# Data / State
+data/processed_signals.json
+data/user_grimoire.json
+data/cache/
+data/market_data_cache/
+
+# Config
+# config/discord_config.json
+
+# System
 .DS_Store
-backtest_result.png
-processed_signals.json
+Thumbs.db
+monitor.pid
+data/monitor.pid
+
+# Graphics/Reports
+*.png
+*.csv
+!config/*.json

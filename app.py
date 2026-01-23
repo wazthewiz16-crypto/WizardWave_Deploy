@@ -11,7 +11,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.simplefilter(action='ignore', category=ResourceWarning)
 pd.set_option('future.no_silent_downcasting', True)
 
-import manage_trades
+from src.strategies import manage_trades
 import subprocess
 import sys
 import os
@@ -19,7 +19,7 @@ import os
 # --- AUTO-START BACKGROUND MONITOR ---
 def ensure_monitor_running():
     """Starts the separate monitor_signals.py script if not already running."""
-    pid_file = "monitor.pid"
+    pid_file = os.path.join("data", "monitor.pid")
     
     if os.path.exists(pid_file):
         try:
@@ -41,7 +41,7 @@ def ensure_monitor_running():
         creation_flags = 0x08000000 if os.name == 'nt' else 0
         
         process = subprocess.Popen(
-            [sys.executable, "monitor_signals.py"],
+            [sys.executable, os.path.join("src", "core", "monitor_signals.py")],
             cwd=os.getcwd(),
             creationflags=creation_flags
         )
@@ -158,8 +158,9 @@ def run_runic_analysis():
             combined_active = pd.concat(active_dfs).sort_values(by='_sort_key', ascending=False)
             
         # Process Discord (Side Effect - OK in thread? Yes, usually I/O)
-        if not combined_active.empty:
-            process_discord_alerts(combined_active)
+        # DISABLE IN APP: Monitor Script handles discordant alerts to avoid duplicates
+        # if not combined_active.empty:
+        #    process_discord_alerts(combined_active)
             
         # Metrics Calculation
         calc_24h = 0.0
@@ -192,13 +193,19 @@ def run_runic_analysis():
         thread_manager.finish_run(None)
 
 import joblib
-from data_fetcher import fetch_data
-from feature_engine import calculate_ml_features, calculate_ichi_features, calculate_cls_features
-import joblib
+from src.core.data_fetcher import fetch_data
+from src.core.feature_engine import calculate_ml_features, calculate_ichi_features, calculate_cls_features
+from src.strategies.strategy import WizardWaveStrategy
+from src.strategies.strategy_scalp import WizardScalpStrategy
+from src.strategies.strategy_cls import CLSRangeStrategy
+from src.strategies.strategy_ichimoku import IchimokuStrategy
+from src.utils.paths import get_model_path
 
 # Load ML Models for New Strats
 try:
-    ICHI_MODEL = joblib.load("model_ichimoku.pkl")
+    ICHI_MODEL = joblib.load(get_model_path("model_ichimoku.pkl"))
+    # (Assuming features_ichimoku.json is also in a data/config path if we wanted, 
+    # but let's keep it simple for now or check paths)
     with open("features_ichimoku.json", "r") as f:
         ICHI_FEATS = json.load(f)
 except:
@@ -206,17 +213,12 @@ except:
     ICHI_FEATS = []
     
 try:
-    CLS_MODEL = joblib.load("model_cls.pkl")
+    CLS_MODEL = joblib.load(get_model_path("model_cls.pkl"))
     with open("features_cls.json", "r") as f:
         CLS_FEATS = json.load(f)
 except:
     CLS_MODEL = None
     CLS_FEATS = []
-
-from strategy import WizardWaveStrategy
-from strategy_scalp import WizardScalpStrategy
-from strategy_cls import CLSRangeStrategy
-from strategy_ichimoku import IchimokuStrategy
 import streamlit.components.v1 as components
 import json
 import urllib.request
@@ -225,16 +227,66 @@ from datetime import datetime, date
 
 
 # --- Persistence Logic ---
-STATE_FILE = "user_grimoire.json"
+STATE_FILE = os.path.join("data", "user_grimoire.json")
+
+# --- Cloud Bootstrap (One-time) ---
+@st.cache_resource
+def bootstrap_system():
+    import subprocess
+    import sys
+    import os
+    
+    print("[*] Bootstrapping System...")
+    
+    # 1. Ensure Playwright is installed
+    try:
+        import playwright
+    except ImportError:
+        print("[!] Installing Playwright package...")
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "playwright==1.49.0"])
+        
+    # 2. Ensure Chromium is installed
+    try:
+        subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"], check=True)
+    except Exception as e:
+        print(f"[!] Browser install warning: {e}")
+
+    # 3. Auto-start Scraper if not already running (approx check)
+    # Using a simple file-based lock for cloud persistence
+    lock_file = "/tmp/scraper.lock"
+    if not os.path.exists(lock_file):
+        try:
+            with open(lock_file, "w") as f:
+                f.write(str(os.getpid()))
+            print("[*] Starting Background Scraper...")
+            subprocess.Popen([sys.executable, "scrape_tv_indicators.py"])
+        except Exception as e:
+            print(f"[!] Scraper start failed: {e}")
+            if os.path.exists(lock_file): os.remove(lock_file)
+            
+    return True
+
+# Run bootstrap
+bootstrap_system()
 
 # Load Strategy Config
+config_file = os.path.join('config', 'strategy_config.json')
+if os.path.exists(os.path.join('config', 'strategy_config_experimental.json')):
+    config_file = os.path.join('config', 'strategy_config_experimental.json')
+
 try:
-    with open('strategy_config.json', 'r') as f:
+    with open(config_file, 'r') as f:
         config = json.load(f)
 except Exception as e:
-    print(f"Error loading strategy_config.json: {e}")
-    config = {} # Fallback
-
+    print(f"Error loading {config_file}: {e}")
+    config = {
+        "models": {
+            "1d": {"triple_barrier": {"time_limit_bars": 21, "crypto_pt": 0.09, "crypto_sl": 0.033, "trad_pt": 0.04, "trad_sl": 0.02, "forex_pt": 0.03, "forex_sl": 0.015}},
+            "4h": {"triple_barrier": {"time_limit_bars": 12, "crypto_pt": 0.04, "crypto_sl": 0.02, "trad_pt": 0.02, "trad_sl": 0.01, "forex_pt": 0.01, "forex_sl": 0.005}},
+            "1h": {"triple_barrier": {"time_limit_bars": 24, "crypto_pt": 0.015, "crypto_sl": 0.01, "trad_pt": 0.01, "trad_sl": 0.005, "forex_pt": 0.005, "forex_sl": 0.0025}},
+            "15m": {"triple_barrier": {"time_limit_bars": 12, "crypto_pt": 0.015, "crypto_sl": 0.0075, "trad_pt": 0.005, "trad_sl": 0.0025, "forex_pt": 0.0025, "forex_sl": 0.0015}},
+        }
+    } # Fallback
 
 def load_grimoire():
     today = date.today()
@@ -296,8 +348,34 @@ st.set_page_config(
     page_title="Arcane Portal",
     page_icon="🧙‍♂️",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
+
+# --- TRADING PLAN SIDEBAR ---
+with st.sidebar:
+    st.markdown("### 📜 My Trading Plan")
+    st.info("Define your rules to streamline your process.")
+    
+    # 1. Filters
+    st.caption("Auto-Filtering")
+    plan_active = st.checkbox("Apply Plan Filters", value=False, help="Automatically filter Runic Alerts & History based on rules.")
+    
+    min_conf_plan = st.slider("Min Confidence", 0, 100, 55, step=5, key="plan_slider_conf")
+    
+    # Map common TFs
+    tf_opts = ["15m", "1H", "4H", "12H", "1D", "4D"]
+    allowed_tfs_plan = st.multiselect(
+        "Allowed Timeframes", 
+        tf_opts,
+        default=["4H", "1D", "4D"],
+        help="Select timeframes you want to focus on.",
+        key="plan_multiselect_tf"
+    )
+
+    # Store in Session State for Global Access
+    st.session_state['plan_active'] = plan_active
+    st.session_state['plan_min_conf'] = min_conf_plan
+    st.session_state['plan_allowed_tfs'] = allowed_tfs_plan
 
 # Custom CSS for styling
 st.markdown("""
@@ -414,15 +492,21 @@ if state_needs_update:
 # --- ML Model Integration ---
 @st.cache_resource(ttl=3600) # Add TTL to prevent stale models
 def load_ml_models_v2():
-    """Load all 6 specific timeframe models"""
+    """Load all 6 specific timeframe models using filenames from config"""
     models = {}
     model_keys = ["4d", "1d", "12h", "4h", "1h", "15m"]
     
     for key in model_keys:
         try:
-            filename = f"model_{key}.pkl"
+            filename = config.get('models', {}).get(key, {}).get('model_file', f"model_{key}.pkl")
             if os.path.exists(filename):
-                models[key] = joblib.load(filename)
+                loaded_obj = joblib.load(filename)
+                # Handle wrapped models
+                if isinstance(loaded_obj, dict) and 'model' in loaded_obj:
+                    models[key] = loaded_obj['model']
+                else:
+                    models[key] = loaded_obj
+                print(f"Successfully loaded model for {key} from {filename}")
             else:
                 print(f"Model file {filename} not found.")
                 models[key] = None
@@ -561,6 +645,14 @@ def analyze_timeframe(timeframe_label, silent=False):
     if not silent and status_text:
         status_text.text(f"[{timeframe_label}] Fetching data for {len(ASSETS)} assets...")
 
+    # --- Macro Integration (DXY & BTC) ---
+    macro_df = None
+    crypto_macro_df = None
+    try:
+        macro_df = fetch_data('DX-Y.NYB', 'trad', timeframe=tf_code, limit=300)
+        crypto_macro_df = fetch_data('BTC/USDT', 'crypto', timeframe=tf_code, limit=300)
+    except: pass
+
     def log_debug(msg):
         try:
             with open("debug_signal_log.txt", "a", encoding="utf-8") as f:
@@ -575,6 +667,12 @@ def analyze_timeframe(timeframe_label, silent=False):
             current_limit = 1000
             if "Day" in timeframe_label:
                 current_limit = 300 
+
+            # --- FILTER: SKIP FOREX ON SWING TIMEFRAMES ---
+            # User Request: Remove Forex swing signals (poor performance)
+            if asset['type'] == 'forex' and tf_code in ['4h', '12h', '1d', '4d']:
+                 log_debug(f"Skipping Forex on Swing TF: {asset['symbol']} {tf_code}")
+                 return None, None, None
             
             # Fetch Data
             df = fetch_data(asset['symbol'], asset['type'], timeframe=tf_code, limit=current_limit)
@@ -587,7 +685,7 @@ def analyze_timeframe(timeframe_label, silent=False):
             df_strat = strat.apply(df)
             
             # ML Features & Prediction
-            df_strat = calculate_ml_features(df_strat)
+            df_strat = calculate_ml_features(df_strat, macro_df=macro_df, crypto_macro_df=crypto_macro_df)
             
             # --- Calculate Sigma for Dynamic Barriers ---
             if crypto_use_dynamic and asset['type'] == 'crypto':
@@ -597,7 +695,12 @@ def analyze_timeframe(timeframe_label, silent=False):
             prob = 0.0
             if model:
                 # Standard Features List
-                features_list = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi']
+                # Robustness: Use model's expected features if available to prevent crashes (rvol mismatch)
+                if hasattr(model, 'feature_names_in_'):
+                    features_list = list(model.feature_names_in_)
+                else:
+                    # Fallback for older sklearn versions or models without metadata
+                    features_list = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi']
                 
                 # Check for feature columns presence
                 missing_feats = [f for f in features_list if f not in df_strat.columns]
@@ -985,6 +1088,9 @@ def analyze_timeframe(timeframe_label, silent=False):
                            exit_trade = True
                            
                    if exit_trade:
+                       raw_tp_price = entry_price * (1 + curr_tp_pct) if position == 'LONG' else entry_price * (1 - curr_tp_pct)
+                       raw_sl_price = entry_price * (1 - curr_sl_pct) if position == 'LONG' else entry_price * (1 + curr_sl_pct)
+
                        trades.append({
                             "_sort_key": entry_time,
                             "Asset": asset['name'],
@@ -997,7 +1103,10 @@ def analyze_timeframe(timeframe_label, silent=False):
                             "Model": "✅",
                             "Return_Pct": pnl, 
                             "SL_Pct": curr_sl_pct,
-                            "Status": status
+                            "Status": status,
+                            "Strategy": strat_name,
+                            "Raw_TP": raw_tp_price,
+                            "Raw_SL": raw_sl_price
                        })
                        position = None
 
@@ -1027,6 +1136,9 @@ def analyze_timeframe(timeframe_label, silent=False):
                                    last_close_pnl = -curr_sl_pct
                                    status_label = "HIT SL 🔴"
                                    
+                               raw_tp_price = entry_price * (1 + curr_tp_pct) if position == 'LONG' else entry_price * (1 - curr_tp_pct)
+                               raw_sl_price = entry_price * (1 - curr_sl_pct) if position == 'LONG' else entry_price * (1 + curr_sl_pct)
+
                                trades.append({
                                     "_sort_key": entry_time,
                                     "Asset": asset['name'],
@@ -1040,7 +1152,9 @@ def analyze_timeframe(timeframe_label, silent=False):
                                     "Return_Pct": last_close_pnl, 
                                     "SL_Pct": curr_sl_pct,
                                     "Status": status_label,
-                                    "Strategy": strat_name
+                                    "Strategy": strat_name,
+                                    "Raw_TP": raw_tp_price,
+                                    "Raw_SL": raw_sl_price
                                })
                                # Prepare for new entry
                                position = None 
@@ -1052,6 +1166,8 @@ def analyze_timeframe(timeframe_label, silent=False):
                                entry_time = idx
                                entry_int_idx = int_idx # Store integer index for time limit check
                                entry_conf = model_prob
+                               entry_tp_pct = curr_tp_pct
+                               entry_sl_pct = curr_sl_pct
 
                    # --- TIME LIMIT CHECK ---
                    if position is not None:
@@ -1068,6 +1184,9 @@ def analyze_timeframe(timeframe_label, silent=False):
                            else:
                                tl_pnl = (entry_price - close) / entry_price
                                
+                           raw_tp_price = entry_price * (1 + curr_tp_pct) if position == 'LONG' else entry_price * (1 - curr_tp_pct)
+                           raw_sl_price = entry_price * (1 - curr_sl_pct) if position == 'LONG' else entry_price * (1 + curr_sl_pct)
+
                            trades.append({
                                 "_sort_key": entry_time,
                                 "Asset": asset['name'],
@@ -1081,7 +1200,9 @@ def analyze_timeframe(timeframe_label, silent=False):
                                 "Return_Pct": tl_pnl, 
                                 "SL_Pct": curr_sl_pct,
                                 "Status": "TIME LIMIT ⌛",
-                                "Strategy": strat_name
+                                "Strategy": strat_name,
+                                "Raw_TP": raw_tp_price,
+                                "Raw_SL": raw_sl_price
                            })
                            position = None
                                
@@ -1096,6 +1217,13 @@ def analyze_timeframe(timeframe_label, silent=False):
                     else:
                         pnl = (entry_price - last_price) / entry_price
                         
+                    if position == 'LONG':
+                        raw_tp_price = entry_price * (1 + entry_tp_pct)
+                        raw_sl_price = entry_price * (1 - entry_sl_pct)
+                    else:
+                        raw_tp_price = entry_price * (1 - entry_tp_pct)
+                        raw_sl_price = entry_price * (1 + entry_sl_pct)
+
                     trades.append({
                         "_sort_key": entry_time,
                         "Asset": asset['name'],
@@ -1109,7 +1237,9 @@ def analyze_timeframe(timeframe_label, silent=False):
                         "Return_Pct": pnl, 
                         "SL_Pct": curr_sl_pct,
                         "Status": "OPEN",
-                        "Strategy": strat_name
+                        "Strategy": strat_name,
+                        "Raw_TP": raw_tp_price,
+                        "Raw_SL": raw_sl_price
                     })
 
 
@@ -1901,17 +2031,17 @@ def process_discord_alerts(df):
     """
     try:
         # Load Config
-        if not os.path.exists('discord_config.json'):
+        if not os.path.exists(os.path.join('config', 'discord_config.json')):
             return
 
-        with open('discord_config.json', 'r') as f:
-            config = json.load(f)
-            webhook_url = config.get('webhook_url')
+        with open(os.path.join('config', 'discord_config.json'), 'r') as f:
+            disc_config = json.load(f)
+            webhook_url = disc_config.get('webhook_url')
             
         if not webhook_url:
             return
 
-        processed_file = 'processed_signals.json'
+        processed_file = os.path.join('data', 'processed_signals.json')
         
         # Max Age for Alert (e.g. 1.5 hours). 
         # Prevents flooding old alerts if app restarts.
@@ -2045,7 +2175,8 @@ def show_runic_alerts():
 
         with c_btn:
             refresh_click = st.button("↻", key="refresh_top", help="Refresh", use_container_width=True)
-            
+            if refresh_click:
+                st.rerun()
 
 
     # --- Render Active List Helper ---
@@ -2065,7 +2196,31 @@ def show_runic_alerts():
             df_display = combined_active.copy()
             if show_take_only and 'Action' in df_display.columns:
                 df_display = df_display[df_display['Action'].str.contains("TAKE")]
-            
+
+            # --- TRADING PLAN FILTERING ---
+            if st.session_state.get('plan_active', False):
+                # 1. Confidence
+                plan_conf = st.session_state.get('plan_min_conf', 55)
+                # Parse conf if string
+                def _parse_conf_plan(x):
+                    try: return float(str(x).replace('%',''))
+                    except: return 0.0
+                if 'Confidence' in df_display.columns:
+                    df_display = df_display[df_display['Confidence'].apply(_parse_conf_plan) >= plan_conf]
+                
+                # 2. Timeframes
+                plan_tfs = st.session_state.get('plan_allowed_tfs', [])
+                if plan_tfs:
+                    # Map standard TFs to what might be in DF (e.g. '1H' -> '1 Hour' matching?)
+                    # Data uses "15 Minutes", "1 Hour", "4 Hours", "1 Day"?
+                    # Or "15m", "1H", "4H", "1D"?
+                    # DF usually has mixed or standard. "15 Minutes" (Monitor) vs "1D" (Ichimoku).
+                    # We create a loose match.
+                    # normalize plan_tfs to simplistic list
+                    # "4 Hours" should match "4H"
+                    
+                    df_display = df_display[df_display['Timeframe'].apply(lambda tf: any(p_tf in str(tf) or (p_tf == "1H" and "1 Hour" in str(tf)) or (p_tf == "4H" and "4 Hours" in str(tf)) or (p_tf == "12H" and "12 Hours" in str(tf)) or (p_tf == "1D" and "1 Day" in str(tf)) for p_tf in plan_tfs))]
+
             # --- Manual Mode Filters ---
             if st.session_state.get('manual_mode', False):
                 # 1. Filter out 15m
@@ -2101,11 +2256,8 @@ def show_runic_alerts():
                 
                 for index, row in current_batch.iterrows():
                     with st.container():
-                        # --- NEW "DATAPAD" RUNIC CARD DESIGN ---
-                        # Split: Content (85%) | Buttons (15%)
-                        c_content, c_btn = st.columns([0.85, 0.15], gap="small", vertical_alignment="center")
-                        
-                        with c_content:
+                        # --- NEW "DATAPAD" RUNIC CARD DESIGN (Full Width) ---
+                        with st.container():
                             is_long = "LONG" in row.get('Type', '')
                             direction_color = "#00ff88" if is_long else "#ff3344"
                             asset_name = row['Asset']
@@ -2127,95 +2279,145 @@ def show_runic_alerts():
                             pnl_display_str = f"{net_pnl_val:.2f}%"
                             pnl_color = "#00ff88" if net_pnl_val >= 0 else "#ff3344"
                             
-                            # CSS Hack to fix button buttons
-                            st.markdown("""
-                            <style>
-                            div[data-testid="stHorizontalBlock"] button[kind="tertiary"] {
-                                border: none !important;
-                                background: transparent !important;
-                                padding: 0px !important;
-                                margin-top: 10px !important;
-                            }
-                            </style>
-                            """, unsafe_allow_html=True)
-                            lbl_pnl = "Net" if st.session_state.get('manual_mode', False) or fee_cost > 0 else "PnL"
-
-                            # --- HTML CARD ---
-                            # formatting entry time
+                            # Formatting entry time
                             try:
                                 et_str = str(row.get('Entry_Time', ''))
-                                # Try to extract full date-time if ISO format (YYYY-MM-DDT...), or just display what we have
-                                # Expected format: 2025-12-25 14:30:00 or similar
                                 if len(et_str) > 10:
-                                    # Just take MM-DD HH:MM
-                                    # Assuming YYYY-MM-DD HH:MM:SS format
-                                    # 5:10 is MM-DD, 11:16 is HH:MM
                                     et_disp = f"{et_str[5:10]} {et_str[11:16]}"
                                 else:
                                     et_disp = et_str
                             except: et_disp = ""
 
+                            # --- Action Bar Prep & IDs ---
+                            unique_id = f"{row['Asset']}_{row.get('Timeframe','')}_{row.get('Entry_Time','')}"
+                            unique_id = "".join(c for c in unique_id if c.isalnum() or c in ['_','-'])
+
+                            # Custom CSS
+                            st.markdown("""
+                            <style>
+                            div[data-testid="stHorizontalBlock"] {
+                                gap: 0rem;
+                            }
+                            button[kind="secondary"] {
+                                border-radius: 0 !important;
+                                border: 1px solid rgba(255,255,255,0.1) !important;
+                                border-top: none !important;
+                                background-color: rgba(0,0,0,0.3) !important;
+                            }
+                            button[kind="secondary"]:hover {
+                                background-color: rgba(255,255,255,0.1) !important;
+                            }
+                            </style>
+                            """, unsafe_allow_html=True)
+                            
+                            import streamlit.components.v1 as components
+
+                            # Calculate R:R
+                            try:
+                                ep_val = float(str(row.get('Entry_Price',0)).replace(',',''))
+                                tp_val = float(str(row.get('Take_Profit',0)).replace(',',''))
+                                sl_val = float(str(row.get('Stop_Loss',0)).replace(',',''))
+                                
+                                if ep_val > 0 and tp_val > 0 and sl_val > 0:
+                                    dist_tp = abs(tp_val - ep_val)
+                                    dist_sl = abs(ep_val - sl_val)
+                                    if dist_sl > 0:
+                                        rr_val = dist_tp / dist_sl
+                                        rr_str = f"{rr_val:.2f}R"
+                                    else: rr_str = "N/A"
+                                else: rr_str = "-"
+                            except: rr_str = "-"
+
+                            # HTML Card Content (Reduced Spacing)
                             st.markdown(f"""
-<div style="font-family: 'Lato', sans-serif; background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); padding: 10px; margin-bottom: 12px; min-height: 90px; display: flex; flex-direction: column; justify-content: center;">
-<div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px; margin-bottom: 8px;">
-<div style="display: flex; align-items: center; gap: 8px;">
-<span style="font-size: 1.1rem; color: #f0f0f0;">{icon_char}</span>
-<span style="font-weight: 800; font-size: 0.95rem; color: #fff;">{asset_name}</span>
-<span style="font-size: 0.65rem; font-weight: bold; padding: 1px 5px; border-radius: 4px; background: {direction_color}25; color: {direction_color}; border: 1px solid {direction_color}30;">{action_text}</span>
-<span style="font-size: 0.75rem; font-weight: bold; color: {pnl_color}; margin-left: 5px;">{pnl_display_str}</span>
-</div>
-<div style="font-size: 0.8rem; font-weight: bold; color: #ff3344;">{row.get('Timeframe')}</div>
-</div>
-<div style="font-size: 0.75rem; color: #ccc; line-height: 1.5;">
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
-<div><span style="color:#777">Sig:</span> <span style="font-weight:bold; color:#eee">{row.get('Action')}</span> <span style="color:#FFB74D">{row.get('Confidence')}</span></div>
-<div style="text-align: right;"><span style="color:#777">Ent:</span> <span style="color:#00ff88; font-family:monospace">{row.get('Entry_Price')}</span> <span style="color:#555">|</span> <span style="color:#777">Now:</span> <span style="color:#ffd700; font-family:monospace">{row.get('Current_Price', 'N/A')}</span></div>
-<div><span style="color:#777">TP:</span> <span style="color:#eee">{row.get('Take_Profit')}</span> <span style="color:#777">SL:</span> <span style="color:#d8b4fe">{row.get('Stop_Loss')}</span></div>
-<div style="text-align: right;"><span style="font-size:0.65rem; color:#00eaff; font-weight:bold; margin-right:5px;">{row.get('Strategy','WizardWave')}</span> <span style="color:#888; font-size: 0.7rem;">🕒 {et_disp}</span></div>
-</div>
-</div>
-</div>
-""", unsafe_allow_html=True)
-                        
-                        with c_btn:
-                             unique_id = f"{row['Asset']}_{row.get('Timeframe','')}_{row.get('Entry_Time','')}"
-                             unique_id = "".join(c for c in unique_id if c.isalnum() or c in ['_','-'])
-                             
-                             # Grid Layout for Buttons to save vertical space
-                             # [ View ] [ Calc ]
-                             # [      Copy     ]
-                             
-                             br1_c1, br1_c2 = st.columns([0.5, 0.5], gap="small")
-                             
-                             with br1_c1:
-                                 if st.button("👁️", key=f"btn_v_{unique_id}", use_container_width=True, help="View", type="tertiary"):
-                                     tv_sym = get_tv_symbol({'symbol': row.get('Symbol', '')})
-                                     try: tv_int = get_tv_interval(row['Timeframe'])
-                                     except: tv_int = '60'
-                                     st.session_state.active_tv_symbol = tv_sym
-                                     st.session_state.active_tv_interval = tv_int
-                                     st.session_state.active_signal = row.to_dict()
-                                     st.session_state.active_view_mode = 'details'
-                                     st.rerun()
-                             with br1_c2:
-                                 if st.button("🧮", key=f"btn_c_{unique_id}", use_container_width=True, help="Calc", type="tertiary"):
-                                     tv_sym = get_tv_symbol({'symbol': row.get('Symbol', '')})
-                                     try: tv_int = get_tv_interval(row['Timeframe'])
-                                     except: tv_int = '60'
-                                     st.session_state.active_tv_symbol = tv_sym
-                                     st.session_state.active_tv_interval = tv_int
-                                     st.session_state.active_signal = row.to_dict()
-                                     st.session_state.active_view_mode = 'calculator' 
-                                     st.session_state.active_tab = 'RISK' 
-                                     try:
-                                         ep = float(str(row['Entry_Price']).replace(',',''))
-                                         st.session_state.calc_entry_input = ep
-                                     except: st.session_state.calc_entry_input = 0.0
-                                     st.rerun()
-                             
-                             # Full Width Separator below the columns
-                             # Full Width Separator below the columns
-                        # Removed, using card style instead
+                            <div style="font-family: 'Lato', sans-serif; background: rgba(0,0,0,0.2); border-radius: 8px 8px 0 0; border: 1px solid rgba(255,255,255,0.05); padding: 8px 10px; margin-bottom: 0px; display: flex; flex-direction: column;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px; margin-bottom: 6px;">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span style="font-size: 1.0rem; color: #f0f0f0;">{icon_char}</span>
+                                        <span style="font-weight: 800; font-size: 0.9rem; color: #fff;">{asset_name}</span>
+                                        <span style="font-size: 0.6rem; font-weight: bold; padding: 1px 4px; border-radius: 4px; background: {direction_color}25; color: {direction_color}; border: 1px solid {direction_color}30;">{action_text}</span>
+                                        <span style="font-size: 0.7rem; font-weight: bold; color: {pnl_color}; margin-left: 5px;">{pnl_display_str}</span>
+                                    </div>
+                                    <div style="font-size: 0.75rem; font-weight: bold; color: #ff3344;">{row.get('Timeframe')}</div>
+                                </div>
+                                <div style="font-size: 0.7rem; color: #ccc; line-height: 1.4;">
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+                                        <div><span style="color:#777">Sig:</span> <span style="font-weight:bold; color:#eee">{row.get('Action')}</span> <span style="color:#FFB74D">{row.get('Confidence')}</span></div>
+                                        <div style="text-align: right;"><span style="color:#777">Ent:</span> <span style="color:#00ff88; font-family:monospace">{row.get('Entry_Price')}</span> <span style="color:#555">|</span> <span style="color:#777">R:R</span> <span style="color:#ffd700; font-family:monospace">{rr_str}</span></div>
+                                        <div><span style="color:#777">TP:</span> <span style="color:#eee">{row.get('Take_Profit')}</span> <span style="color:#777">SL:</span> <span style="color:#d8b4fe">{row.get('Stop_Loss')}</span></div>
+                                        <div style="text-align: right;"><span style="font-size:0.6rem; color:#00eaff; font-weight:bold; margin-right:5px;">{row.get('Strategy','WizardWave')}</span> <span style="color:#888; font-size: 0.65rem;">🕒 {et_disp}</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            ac1, ac2, ac3 = st.columns(3, gap="small")
+                            
+                            # Standardized Button Style
+                            btn_style = "border: 1px solid rgba(255,255,255,0.1); background-color: rgba(0,0,0,0.3); color: white; padding: 0.25rem 0.5rem; font-size: 0.8rem; cursor: pointer; width: 100%; border-radius: 4px; text-align: center;"
+                            
+                            with ac1:
+                                if st.button("👁️ View", key=f"btn_v_{unique_id}", use_container_width=True, type="secondary"):
+                                    st.session_state['active_signal'] = row.to_dict()
+                                    st.session_state['active_view_mode'] = 'details' 
+                                    tv_sym = get_tv_symbol({'symbol': row.get('Symbol', row.get('Asset'))})
+                                    st.session_state['active_tv_symbol'] = tv_sym
+                                    st.session_state['active_tab'] = 'PORTAL' 
+                                    st.rerun()
+                            with ac2:
+                                if st.button("🧮 Calc", key=f"btn_c_{unique_id}", use_container_width=True, type="secondary"):
+                                    st.session_state['active_signal'] = row.to_dict()
+                                    st.session_state['active_view_mode'] = 'calculator'
+                                    st.session_state['active_tab'] = 'RISK'
+                                    try:
+                                        ep = float(str(row['Entry_Price']).replace(',',''))
+                                        st.session_state.calc_entry_input = ep
+                                    except: st.session_state.calc_entry_input = 0.0
+                                    st.rerun()
+                            with ac3:
+                                # Custom HTML Component for Copy to Clipboard to match style
+                                copy_text_pl = f"{asset_name} {action_text} @ {row['Entry_Price']} | TP: {row['Take_Profit']} | SL: {row['Stop_Loss']}"
+                                # Escaping quotes for JS
+                                safe_copy = copy_text_pl.replace("'", "\\'")
+                                
+                                # HTML Button that clicks copy
+                                # We use height=37 to match Streamlit buttons approx
+                                components.html(f"""
+                                <html>
+                                <head>
+                                <style>
+                                    body {{ margin: 0; padding: 0; background: transparent; }}
+                                    .btn {{
+                                        {btn_style}
+                                        display: flex; align-items: center; justify-content: center;
+                                        font-family: "Source Sans Pro", sans-serif;
+                                        height: 38px;
+                                        box-sizing: border-box;
+                                        transition: background-color 0.2s;
+                                    }}
+                                    .btn:hover {{ background-color: rgba(255,255,255,0.1); }}
+                                    .btn:active {{ background-color: rgba(255,255,255,0.2); transform: translateY(1px); }}
+                                </style>
+                                </head>
+                                <body>
+                                    <button class="btn" onclick="copyToClipboard()">
+                                        <span id="lbl">📋 Copy</span>
+                                    </button>
+                                    <script>
+                                        function copyToClipboard() {{
+                                            navigator.clipboard.writeText('{safe_copy}').then(function() {{
+                                                document.getElementById('lbl').innerText = '✅ Copied!';
+                                                setTimeout(() => {{ document.getElementById('lbl').innerText = '📋 Copy'; }}, 2000);
+                                            }}, function(err) {{
+                                                document.getElementById('lbl').innerText = '❌ Error';
+                                            }});
+                                        }}
+                                    </script>
+                                </body>
+                                </html>
+                                """, height=40)
+                                
+                            st.markdown("<div style='margin-bottom: 6px;'></div>", unsafe_allow_html=True) # Reduced Spacer
 
 
 
@@ -2662,6 +2864,17 @@ with st.sidebar.expander("Debug Info", expanded=False):
         import pipeline
         pipeline.run_pipeline()
         st.success("Pipeline Run Initiated!")
+        
+    st.divider()
+    st.write("Playwright Scraper (Mango)")
+    if st.button("Invoke Scraper"):
+        with st.spinner("Invoking Playwright Scraper..."):
+            try:
+                import subprocess
+                subprocess.Popen(["python", "scrape_tv_indicators.py"])
+                st.info("Scraper started in background. Refresh in 1-2 mins.")
+            except Exception as e:
+                st.error(f"Failed to start scraper: {e}")
 
 # Layout Columns
 col_left, col_center, col_right = st.columns([0.25, 0.5, 0.25], gap="small")
@@ -2787,6 +3000,23 @@ with col_center:
                      
                  # 2. Filter Open Trades (New)
                  if show_open_only:
+                     filtered_df = filtered_df[filtered_df['Status'] == 'OPEN']
+
+                 # --- TRADING PLAN FILTERING ---
+                 if st.session_state.get('plan_active', False):
+                     # 1. Confidence
+                     plan_conf = st.session_state.get('plan_min_conf', 55)
+                     def _parse_conf_plan_hist(x):
+                         try: return float(str(x).replace('%',''))
+                         except: return 0.0
+                     if 'Confidence' in filtered_df.columns:
+                         filtered_df = filtered_df[filtered_df['Confidence'].apply(_parse_conf_plan_hist) >= plan_conf]
+                     
+                     # 2. Timeframes
+                     plan_tfs = st.session_state.get('plan_allowed_tfs', [])
+                     if plan_tfs:
+                         filtered_df = filtered_df[filtered_df['Timeframe'].apply(lambda tf: any(p_tf in str(tf) or (p_tf == "1H" and "1 Hour" in str(tf)) or (p_tf == "4H" and "4 Hours" in str(tf)) or (p_tf == "12H" and "12 Hours" in str(tf)) or (p_tf == "1D" and "1 Day" in str(tf)) for p_tf in plan_tfs))]
+                 if show_open_only:
                      if 'Status' in filtered_df.columns:
                          filtered_df = filtered_df[filtered_df['Status'] == 'OPEN']
                      
@@ -2822,10 +3052,9 @@ with col_center:
                          selected_short = st.multiselect("Timeframes", options=sorted_tfs, key="history_tf_filter")
                          
                          # 2. Strategy Select
-                         if "strategies_initialized" not in st.session_state:
-                             st.session_state.history_strat_filter = unique_strats
-                             st.session_state.strategies_initialized = True
-                             
+                         # Initialize default to all if key missing
+                         if "history_strat_filter" not in st.session_state:
+                              st.session_state.history_strat_filter = unique_strats
                          selected_strats = st.multiselect("Strategies", options=unique_strats, key="history_strat_filter")
                          
                      # Apply Filters
@@ -2913,8 +3142,10 @@ with col_center:
                  with st.expander("⭐ My Trades", expanded=False):
                      my_trades_list = manage_trades.load_trades()
                      if my_trades_list:
-                         st.dataframe(pd.DataFrame(my_trades_list))
-                         if st.button("Clear All Saved Trades"):
+                         mt_df = pd.DataFrame(my_trades_list)
+                         st.dataframe(mt_df, use_container_width=True)
+                         
+                         if st.button("Clear All"):
                              manage_trades.save_trades_list([])
                              st.rerun()
                      else:
@@ -2928,7 +3159,18 @@ with col_center:
                      else:
                          filtered_df['Strategy'] = filtered_df['Strategy'].fillna('WizardWave')
 
-                     display_cols = ['Time', 'Asset', 'Timeframe', 'Type', 'Confidence', 'Price', 'Exit Time', 'Return_Pct', 'Status', 'Strategy']
+                     # Format TP/SL for Display
+                     if 'Raw_TP' in filtered_df.columns:
+                         filtered_df['TP'] = filtered_df['Raw_TP'].fillna(0.0).apply(lambda x: f"{x:.4f}" if isinstance(x, (int, float)) else x)
+                     else:
+                         filtered_df['TP'] = "0.0000"
+                         
+                     if 'Raw_SL' in filtered_df.columns:
+                         filtered_df['SL'] = filtered_df['Raw_SL'].fillna(0.0).apply(lambda x: f"{x:.4f}" if isinstance(x, (int, float)) else x)
+                     else:
+                         filtered_df['SL'] = "0.0000"
+
+                     display_cols = ['Time', 'Asset', 'Timeframe', 'Type', 'Confidence', 'Price', 'TP', 'SL', 'Exit Time', 'Return_Pct', 'Status', 'Strategy']
                      # Fill Status if missing
                      if 'Status' not in filtered_df.columns:
                          filtered_df['Status'] = 'CLOSED'
@@ -3077,8 +3319,305 @@ with col_center:
              st.markdown("Upload your trade screenshots here for NLP analysis and feedback.")
              st.file_uploader("Analyze Rune (Upload)", type=['png', 'jpg'], label_visibility="collapsed")
              
-             # Placeholder for future "Spellbook" features (Journal, logs, etc)
-             st.info("The Grimoire is open. Future enchantments pending.")
+             # --- REALMS (Moved from Right Col) ---
+             st.markdown("---")
+             st.markdown('<div class="runic-header">REALMS</div>', unsafe_allow_html=True)
+             
+             # Session Data (EST)
+             sessions = [
+                 {'name': 'Sydney', 'start': 17, 'end': 26}, # 5PM - 2AM (Next day = +24 = 26)
+                 {'name': 'Tokyo', 'start': 19, 'end': 28}, # 7PM - 4AM (Next day = +24 = 28)
+                 {'name': 'London', 'start': 3, 'end': 11},  # 3AM - 11AM
+                 {'name': 'New York', 'start': 8, 'end': 17} # 8AM - 5PM
+             ]
+             
+             now_est = pd.Timestamp.now(tz='America/New_York')
+             curr_hour = now_est.hour
+             curr_min = now_est.minute
+             
+             # Calculate current time percentage for marker (00:00 to 24:00)
+             current_time_pct = ((curr_hour * 60 + curr_min) / (24 * 60)) * 100
+             
+             session_html = ""
+             
+             for sess in sessions:
+                 s_real = sess['start']
+                 e_real = sess['end']
+                 
+                 is_active = False
+                 s_mod = s_real % 24
+                 e_mod = e_real % 24
+                 if s_mod > e_mod: # Wraps midnight
+                     if curr_hour >= s_mod or curr_hour < e_mod: is_active = True
+                 else:
+                     if s_mod <= curr_hour < e_mod: is_active = True
+                 
+                 # Text Logic
+                 status_text = ""
+                 if is_active:
+                     target_h = e_mod
+                     if target_h < curr_hour: target_h += 24
+                     
+                     diff_h = target_h - curr_hour
+                     diff_m = 0 - curr_min
+                     total_min = diff_h * 60 + diff_m
+                     h_left = total_min // 60
+                     m_left = total_min % 60
+                     status_text = f"Ends in {h_left}hr {m_left}min"
+                     bar_color = "#00ff88" # Green
+                     text_color = "#fff"
+                 else:
+                     target_h = s_mod
+                     if target_h < curr_hour: target_h += 24 
+                     
+                     diff_h = target_h - curr_hour
+                     diff_m = 0 - curr_min
+                     total_min = diff_h * 60 + diff_m
+                     h_left = total_min // 60
+                     m_left = total_min % 60
+                     
+                     status_text = f"Begins in {h_left}hr {m_left}min"
+                     bar_color = "#4a4a60" # Grey
+                     text_color = "#aaa"
+                     
+                 # Render Bars
+                 bars_svg = ""
+                 def draw_rect(s, e, col):
+                     width = (e - s) / 24 * 100
+                     left = (s / 24) * 100
+                     return f'<div style="position: absolute; left: {left}%; top: 5px; height: 20px; width: {width}%; background-color: {col}; border-radius: 4px; display: flex; align-items: center; padding-left: 5px; white-space: nowrap; overflow: hidden;"></div>'
+                 
+                 if s_real >= 24: pass
+                 elif e_real > 24:
+                     bars_svg += draw_rect(s_real, 24, bar_color)
+                     bars_svg += draw_rect(0, e_real-24, bar_color)
+                 else:
+                     bars_svg += draw_rect(s_real, e_real, bar_color)
+                     
+                 session_html += f"""
+     <div class="realm-row" title="{status_text}" style="margin-bottom: 8px; position: relative; height: 30px; display: flex; align-items: center;">
+         <div style="width: 70px; font-size: 0.75rem; font-weight: bold; color: {text_color if not is_active else '#fff'}; text-align: right; margin-right: 10px;">{sess['name']}</div>
+         <div style="flex-grow: 1; position: relative; height: 100%; background: #1a1a2e; border-radius: 4px; overflow: hidden;">
+             {bars_svg}
+             <div style="position: absolute; top:0; left:5px; font-size: 0.7rem; color: {text_color if is_active else '#888'}; line-height: 30px; font-weight: bold; z-index: 2; text-shadow: 0 1px 3px rgba(0,0,0,0.9);">{status_text if is_active else ''}</div>
+         </div>
+     </div>
+                 """
+     
+             st.markdown(f"""
+     <div style="padding: 10px 0;">
+     <div style="display: flex; margin-left: 80px; font-size: 0.6rem; color: #666; margin-bottom: 5px; justify-content: space-between;">
+     <span>12AM</span><span>4AM</span><span>8AM</span><span>12PM</span><span>4PM</span><span>8PM</span><span>12AM</span>
+     </div>
+     {session_html}
+     <div style="text-align: center; font-size: 0.7rem; color: #666; margin-top: 5px;">
+     Current Time: {now_est.strftime('%H:%M')} EST
+     </div>
+     <div class="realm-overlay"></div>
+     </div>
+     <style>
+     .realm-overlay {{
+     position: absolute;
+     left: calc(80px + (100% - 80px) * ({current_time_pct:.2f}/100));
+     top: 40px; 
+     bottom: 25px;
+     width: 2px;
+     background-color: #ffd700;
+     box-shadow: 0 0 5px #ffd700;
+     z-index: 10;
+     pointer-events: none;
+     }}
+     </style>
+             """, unsafe_allow_html=True)
+             
+             # --- ORACLE (Moved from Right Col) ---
+             st.markdown("---")
+             st.markdown('<div class="runic-header">ORACLE</div>', unsafe_allow_html=True)
+             
+             # Economic Calendar
+             # Note: Dates are best estimates based on standard schedules (CPI ~13th, NFP ~1st Friday, FOMC ~Wed)
+             economic_events = [
+                 # late 2025
+                 {"event": "PCE Price Index", "datetime": "2025-12-23 08:30:00"},
+                 
+                 # Jan 2026
+                 {"event": "Non-Farm Payrolls", "datetime": "2026-01-09 08:30:00"},
+                 {"event": "CPI Inflation Data", "datetime": "2026-01-13 08:30:00"},
+                 {"event": "PPI Inflation Data", "datetime": "2026-01-14 08:30:00"},
+                 {"event": "FOMC Rate Decision", "datetime": "2026-01-28 14:00:00"},
+                 {"event": "PCE Price Index", "datetime": "2026-01-30 08:30:00"},
+                 
+                 # Feb 2026
+                 {"event": "Non-Farm Payrolls", "datetime": "2026-02-06 08:30:00"},
+                 {"event": "CPI Inflation Data", "datetime": "2026-02-11 08:30:00"}, # Estimated
+                 {"event": "PCE Price Index", "datetime": "2026-02-27 08:30:00"},
+
+                 # Mar 2026
+                 {"event": "Non-Farm Payrolls", "datetime": "2026-03-06 08:30:00"},
+                 {"event": "CPI Inflation Data", "datetime": "2026-03-12 08:30:00"},
+                 {"event": "FOMC Rate Decision", "datetime": "2026-03-18 14:00:00"},
+                 {"event": "PCE Price Index", "datetime": "2026-03-27 08:30:00"},
+
+                 # Apr 2026
+                 {"event": "Non-Farm Payrolls", "datetime": "2026-04-03 08:30:00"},
+                 {"event": "CPI Inflation Data", "datetime": "2026-04-14 08:30:00"},
+                 {"event": "FOMC Rate Decision", "datetime": "2026-04-29 14:00:00"},
+                 {"event": "PCE Price Index", "datetime": "2026-04-24 08:30:00"},
+
+                 # May 2026
+                 {"event": "Non-Farm Payrolls", "datetime": "2026-05-08 08:30:00"},
+                 {"event": "CPI Inflation Data", "datetime": "2026-05-13 08:30:00"},
+                 {"event": "PCE Price Index", "datetime": "2026-05-29 08:30:00"},
+
+                 # Jun 2026
+                 {"event": "Non-Farm Payrolls", "datetime": "2026-06-05 08:30:00"},
+                 {"event": "CPI Inflation Data", "datetime": "2026-06-12 08:30:00"},
+                 {"event": "FOMC Rate Decision", "datetime": "2026-06-17 14:00:00"},
+                 {"event": "PCE Price Index", "datetime": "2026-06-26 08:30:00"},
+                 
+                 # Jul 2026
+                 {"event": "Non-Farm Payrolls", "datetime": "2026-07-03 08:30:00"},
+                 {"event": "CPI Inflation Data", "datetime": "2026-07-14 08:30:00"},
+                 {"event": "FOMC Rate Decision", "datetime": "2026-07-29 14:00:00"},
+                 {"event": "PCE Price Index", "datetime": "2026-07-31 08:30:00"},
+
+                 # Aug 2026
+                 {"event": "Non-Farm Payrolls", "datetime": "2026-08-07 08:30:00"},
+                 {"event": "CPI Inflation Data", "datetime": "2026-08-13 08:30:00"},
+                 {"event": "PCE Price Index", "datetime": "2026-08-28 08:30:00"},
+
+                 # Sep 2026
+                 {"event": "Non-Farm Payrolls", "datetime": "2026-09-04 08:30:00"},
+                 {"event": "CPI Inflation Data", "datetime": "2026-09-15 08:30:00"},
+                 {"event": "FOMC Rate Decision", "datetime": "2026-09-16 14:00:00"},
+                 {"event": "PCE Price Index", "datetime": "2026-09-25 08:30:00"},
+
+                 # Oct 2026
+                 {"event": "Non-Farm Payrolls", "datetime": "2026-10-02 08:30:00"},
+                 {"event": "CPI Inflation Data", "datetime": "2026-10-13 08:30:00"},
+                 {"event": "FOMC Rate Decision", "datetime": "2026-10-28 14:00:00"},
+                 {"event": "PCE Price Index", "datetime": "2026-10-30 08:30:00"},
+                 
+                 # Nov 2026
+                 {"event": "Non-Farm Payrolls", "datetime": "2026-11-06 08:30:00"},
+                 {"event": "CPI Inflation Data", "datetime": "2026-11-13 08:30:00"},
+                 {"event": "PCE Price Index", "datetime": "2026-11-25 08:30:00"},
+                 
+                 # Dec 2026
+                 {"event": "Non-Farm Payrolls", "datetime": "2026-12-04 08:30:00"},
+                 {"event": "CPI Inflation Data", "datetime": "2026-12-11 08:30:00"},
+                 {"event": "FOMC Rate Decision", "datetime": "2026-12-09 14:00:00"},
+                 {"event": "PCE Price Index", "datetime": "2026-12-23 08:30:00"},
+             ]
+             
+             # Find Next Event
+             now_est = pd.Timestamp.now(tz='America/New_York')
+             next_event = None
+             
+             for e in economic_events:
+                 dt = pd.Timestamp(e['datetime']).tz_localize('America/New_York')
+                 if dt > now_est:
+                     next_event = e
+                     target_dt = dt
+                     break
+             
+             if next_event:
+                 # Calculate Countdown
+                 diff = target_dt - now_est
+                 days = diff.days
+                 hours = diff.seconds // 3600
+                 minutes = (diff.seconds % 3600) // 60
+                 
+                 # Format Date
+                 date_str = target_dt.strftime("%b %d, %H:%M EST")
+                 event_name = next_event['event'].upper()
+                 
+                 # Color Logic (Red for very close)
+                 time_color = "white"
+                 if days < 1: time_color = "#ff3344"
+                 
+                 # Load Background Image for Oracle
+                 oracle_bg = ""
+                 try:
+                     import base64
+                     with open("Crystall Ball.png", "rb") as img_file:
+                         b64_ball = base64.b64encode(img_file.read()).decode()
+                     oracle_bg = f"background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.6)), url('data:image/png;base64,{b64_ball}'); background-size: cover; background-position: center;"
+                 except Exception as e:
+                     pass
+
+                 st.markdown(f"""
+                     <div style="
+                         text-align: center; 
+                         min-height: 200px; 
+                         display: flex; 
+                         flex-direction: column; 
+                         justify-content: flex-start;
+                         padding-top: 20px;
+                         margin-bottom: 15px;
+                         border-radius: 8px;
+                         {oracle_bg}
+                     ">
+                         <div style="background: rgba(11, 12, 21, 0.85); padding: 15px; border-radius: 6px; border: 1px solid #4a4a60; margin: 0 15px; box-shadow: 0 0 15px rgba(0,0,0,0.8);">
+                             <div style="font-size: 0.8rem; color: #a0c5e8; margin-bottom: 5px;">NEXT EVENT: <span style="color: #ffd700;">{event_name}</span></div>
+                             <div style="font-size: 0.9rem; color: #ccc; margin-bottom: 5px;">{date_str}</div>
+                             <div style="font-size: 2.2rem; font-weight: bold; color: {time_color}; text-shadow: 0 0 10px {time_color};">
+                                 {days}d {hours}h {minutes}m
+                             </div>
+                         </div>
+                     </div>
+                 """, unsafe_allow_html=True)
+             else:
+                 st.markdown(f"""
+                     <div style="text-align: center; min-height: 180px; display: flex; flex-direction: column; justify-content: center;">
+                         <div style="font-size: 0.8rem; color: #a0c5e8;">NO UPCOMING EVENTS</div>
+                         <div style="font-size: 2.5rem; font-weight: bold; color: white; text-shadow: 0 0 10px #a0c5e8;">--:--:--</div>
+                     </div>
+                 """, unsafe_allow_html=True)
+                 
+             # --- GREAT SORCERER (Moved from Right Col) ---
+             st.markdown("---")
+             st.markdown('<div class="runic-header">GREAT SORCERER</div>', unsafe_allow_html=True)
+             
+             quotes = [
+                 "The market is a mirror of the mind.",
+                 "Clarity comes not from the chart, but from the discipline within.",
+                 "Do not chase the dragon; let it come to you.",
+                 "Patience is the wizard's greatest spell.",
+                 "Risk is the mana you pay for the reward you seek.",
+                 "A calm mind sees the trend; a chaotic mind sees only noise.",
+                 "I am a risk manager. My edge is my patience. I don’t gamble; I execute a system.",
+                 "I accept the outcome of any single trade because I am focused on the long-term survival of my capital.",
+                 "Passion = Emotion | Commitment = Discipline",
+                 "Reminder: You don’t have to trade everyday!",
+                 "You are a robot executing code. You don’t “feel” or “hope” the market will move a certain way.",
+                 "You are a sniper with 2 bullets. You are not a machine gunner spraying. You reject good trades to wait for great trades.",
+                 "You are a risk manager, not a profit generator. Your job is to protect your capital. Profit is just a byproduct of good survival skills"
+             ]
+             import random
+             selected_quote = random.choice(quotes)
+             
+             # Load Background Image
+             bg_style = ""
+             try:
+                 import base64
+                 with open("great_sorcerer.png", "rb") as img_file:
+                     b64_img = base64.b64encode(img_file.read()).decode()
+                 bg_style = f"background-image: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.6)), url('data:image/png;base64,{b64_img}'); background-size: cover; background-position: center;"
+             except Exception as e:
+                 pass
+             
+             # Shuffle Button
+             if st.button("🔮 Shuffle Wisdom", key="shuffle_wis"):
+                 st.rerun()
+
+             st.markdown(f"""
+                 <div style="padding: 20px; border-radius: 10px; color: #f0f0f0; text-align: center; min-height: 250px; display: flex; align-items: flex-end; justify-content: center; {bg_style} box-shadow: 0 4px 15px rgba(0,0,0,0.5); border: 1px solid #4a4a60; margin-top: 10px;">
+                     <div style="background: rgba(0,0,0,0.7); padding: 15px; border-radius: 6px; width: 100%; backdrop-filter: blur(2px);">
+                         <div style="font-size: 1.1rem; font-style: italic; font-family: 'Georgia', serif;">“{selected_quote}”</div>
+                     </div>
+                 </div>
+             """, unsafe_allow_html=True)
 
         elif st.session_state.active_tab == 'SCRIPTURE':
             st.markdown("""
@@ -3305,351 +3844,87 @@ with col_center:
 
 # --- RIGHT COLUMN: STATS, ORACLE, WIZARD ---
 with col_right:
-    # 1. Realms (Market Sessions)
+    # 1. Fractal Alignment (Replacing Realms)
     with st.container(border=True):
-        st.markdown('<div class="runic-header">REALMS</div>', unsafe_allow_html=True)
+        st.markdown('<div class="runic-header">FRACTAL ALIGNMENT</div>', unsafe_allow_html=True)
         
-        # Current Time EST
-        now_est = pd.Timestamp.now(tz='America/New_York')
-        curr_hour = now_est.hour
-        curr_min = now_est.minute
-        
-        # Sessions (Start Hour, End Hour, Name). Using 0-24 scale.
-        # Sydney: 5pm - 2am (17 - 2)
-        # Tokyo: 7pm - 4am (19 - 4)
-        # London: 3am - 12pm (3 - 12)
-        # New York: 8am - 5pm (8 - 17)
-        
-        sessions = [
-            {"name": "Sydney", "start": 17, "end": 26}, # 26 = 2am next day
-            {"name": "Tokyo", "start": 19, "end": 28}, # 28 = 4am next day
-            {"name": "London", "start": 3, "end": 12},
-            {"name": "New York", "start": 8, "end": 17}
-        ]
-        
-        # HTML Gen
-        session_html = ""
-        current_time_pct = ((curr_hour + curr_min/60) / 24) * 100
-        
-        for sess in sessions:
-            # Normalize for timeline 0-24
-            # Handle wrapping: if start > end (e.g. 17 - 2), we treat it as 17 to 26 for calc, but display might need split?
-            # Easiest: Canvas is 0-24. 
-            # Sydney (17-26) -> 17-24 (Part 1) AND 0-2 (Part 2)
-            
-            s_real = sess['start']
-            e_real = sess['end']
-            
-            # Check Active
-            # Convert current hour to 'extended' if needed? 
-            # Simpler: Check interval
-            is_active = False
-            
-            # Adjusted current for check
-            # if 17 <= curr < 24 OR 0 <= curr < 2
-            
-            # Logic for wrapping check
-            s_mod = s_real % 24
-            e_mod = e_real % 24
-            if s_mod > e_mod: # Wraps midnight
-                if curr_hour >= s_mod or curr_hour < e_mod: is_active = True
-            else:
-                if s_mod <= curr_hour < e_mod: is_active = True
-            
-            # Text Logic
-            status_text = ""
-            if is_active:
-                # Calc time left
-                # Target is End
-                # handle wrap
-                target_h = e_mod
-                if target_h < curr_hour: target_h += 24
-                
-                diff_h = target_h - curr_hour
-                diff_m = 0 - curr_min
-                total_min = diff_h * 60 + diff_m
-                h_left = total_min // 60
-                m_left = total_min % 60
-                status_text = f"Ends in {h_left}hr {m_left}min"
-                bar_color = "#00ff88" # Green
-                text_color = "#fff"
-            else:
-                # Calc time to start
-                target_h = s_mod
-                if target_h < curr_hour: target_h += 24 # Begins tomorrow
-                
-                diff_h = target_h - curr_hour
-                diff_m = 0 - curr_min
-                total_min = diff_h * 60 + diff_m
-                h_left = total_min // 60
-                m_left = total_min % 60
-                
-                status_text = f"Begins in {h_left}hr {m_left}min"
-                bar_color = "#4a4a60" # Grey
-                text_color = "#aaa"
-                
-            # Render Bars (Handles wrapping by drawing two if needed)
-            bars_svg = ""
-            
-            # Helper to draw rect
-            def draw_rect(s, e, col):
-                width = (e - s) / 24 * 100
-                left = (s / 24) * 100
-                return f'<div style="position: absolute; left: {left}%; top: 5px; height: 20px; width: {width}%; background-color: {col}; border-radius: 4px; display: flex; align-items: center; padding-left: 5px; white-space: nowrap; overflow: hidden;"></div>'
-            
-            if s_real >= 24: # Should not happen with initial definition
-                pass
-            elif e_real > 24:
-                # Split: Start->24 using green/grey
-                bars_svg += draw_rect(s_real, 24, bar_color)
-                # Split: 0->End-24
-                bars_svg += draw_rect(0, e_real-24, bar_color)
-            else:
-                bars_svg += draw_rect(s_real, e_real, bar_color)
-                
-            # Text Overlay (Centered relative to container or explicit?)
-            # Just use a row layout similar to Forex Factory
-            # [Name  Time]  [Bar area]
-            
-                
-            session_html += f"""
-<div class="realm-row" title="{status_text}" style="margin-bottom: 8px; position: relative; height: 30px; display: flex; align-items: center;">
-    <div style="width: 70px; font-size: 0.75rem; font-weight: bold; color: {text_color if not is_active else '#fff'}; text-align: right; margin-right: 10px;">{sess['name']}</div>
-    <div style="flex-grow: 1; position: relative; height: 100%; background: #1a1a2e; border-radius: 4px; overflow: hidden;">
-        {bars_svg}
-        <div style="position: absolute; top:0; left:5px; font-size: 0.7rem; color: {text_color if is_active else '#888'}; line-height: 30px; font-weight: bold; z-index: 2; text-shadow: 0 1px 3px rgba(0,0,0,0.9);">{status_text if is_active else ''}</div>
-    </div>
-</div>
-            """
-
-        st.markdown(f"""
-<div style="padding: 10px 0;">
-<!-- Timeline Header 0 - 24 -->
-<div style="display: flex; margin-left: 80px; font-size: 0.6rem; color: #666; margin-bottom: 5px; justify-content: space-between;">
-<span>12AM</span><span>4AM</span><span>8AM</span><span>12PM</span><span>4PM</span><span>8PM</span><span>12AM</span>
-</div>
-{session_html}
-<div style="text-align: center; font-size: 0.7rem; color: #666; margin-top: 5px;">
-Current Time: {now_est.strftime('%H:%M')} EST
-</div>
-<div class="realm-overlay"></div>
-</div>
-<style>
-.realm-overlay {{
-position: absolute;
-left: calc(80px + (100% - 80px) * ({current_time_pct:.2f}/100));
-top: 40px; 
-bottom: 25px;
-width: 2px;
-background-color: #ffd700;
-box-shadow: 0 0 5px #ffd700;
-z-index: 10;
-pointer-events: none;
-}}
-</style>
-        """, unsafe_allow_html=True)
-
-    
-    # 2. Oracle (Countdown to next Economic Event)
-    with st.container(border=True):
-        st.markdown('<div class="runic-header">ORACLE</div>', unsafe_allow_html=True)
-        
-        # Economic Calendar (Hardcoded for 2025/2026)
-        # Note: Dates are best estimates based on standard schedules (CPI ~13th, NFP ~1st Friday, FOMC ~Wed)
-        economic_events = [
-            # late 2025
-            {"event": "PCE Price Index", "datetime": "2025-12-23 08:30:00"},
-            
-            # Jan 2026
-            {"event": "Non-Farm Payrolls", "datetime": "2026-01-09 08:30:00"},
-            {"event": "CPI Inflation Data", "datetime": "2026-01-13 08:30:00"},
-            {"event": "PPI Inflation Data", "datetime": "2026-01-14 08:30:00"},
-            {"event": "FOMC Rate Decision", "datetime": "2026-01-28 14:00:00"},
-            {"event": "PCE Price Index", "datetime": "2026-01-30 08:30:00"},
-            
-            # Feb 2026
-            {"event": "Non-Farm Payrolls", "datetime": "2026-02-06 08:30:00"},
-            {"event": "CPI Inflation Data", "datetime": "2026-02-11 08:30:00"}, # Estimated
-            {"event": "PCE Price Index", "datetime": "2026-02-27 08:30:00"},
-
-            # Mar 2026
-            {"event": "Non-Farm Payrolls", "datetime": "2026-03-06 08:30:00"},
-            {"event": "CPI Inflation Data", "datetime": "2026-03-12 08:30:00"},
-            {"event": "FOMC Rate Decision", "datetime": "2026-03-18 14:00:00"},
-            {"event": "PCE Price Index", "datetime": "2026-03-27 08:30:00"},
-
-            # Apr 2026
-            {"event": "Non-Farm Payrolls", "datetime": "2026-04-03 08:30:00"},
-            {"event": "CPI Inflation Data", "datetime": "2026-04-14 08:30:00"},
-            {"event": "FOMC Rate Decision", "datetime": "2026-04-29 14:00:00"},
-            {"event": "PCE Price Index", "datetime": "2026-04-24 08:30:00"},
-
-            # May 2026
-            {"event": "Non-Farm Payrolls", "datetime": "2026-05-08 08:30:00"},
-            {"event": "CPI Inflation Data", "datetime": "2026-05-13 08:30:00"},
-            {"event": "PCE Price Index", "datetime": "2026-05-29 08:30:00"},
-
-            # Jun 2026
-            {"event": "Non-Farm Payrolls", "datetime": "2026-06-05 08:30:00"},
-            {"event": "CPI Inflation Data", "datetime": "2026-06-12 08:30:00"},
-            {"event": "FOMC Rate Decision", "datetime": "2026-06-17 14:00:00"},
-            {"event": "PCE Price Index", "datetime": "2026-06-26 08:30:00"},
-            
-            # Jul 2026
-            {"event": "Non-Farm Payrolls", "datetime": "2026-07-03 08:30:00"},
-            {"event": "CPI Inflation Data", "datetime": "2026-07-14 08:30:00"},
-            {"event": "FOMC Rate Decision", "datetime": "2026-07-29 14:00:00"},
-            {"event": "PCE Price Index", "datetime": "2026-07-31 08:30:00"},
-
-            # Aug 2026
-            {"event": "Non-Farm Payrolls", "datetime": "2026-08-07 08:30:00"},
-            {"event": "CPI Inflation Data", "datetime": "2026-08-13 08:30:00"},
-            {"event": "PCE Price Index", "datetime": "2026-08-28 08:30:00"},
-
-            # Sep 2026
-            {"event": "Non-Farm Payrolls", "datetime": "2026-09-04 08:30:00"},
-            {"event": "CPI Inflation Data", "datetime": "2026-09-15 08:30:00"},
-            {"event": "FOMC Rate Decision", "datetime": "2026-09-16 14:00:00"},
-            {"event": "PCE Price Index", "datetime": "2026-09-25 08:30:00"},
-
-            # Oct 2026
-            {"event": "Non-Farm Payrolls", "datetime": "2026-10-02 08:30:00"},
-            {"event": "CPI Inflation Data", "datetime": "2026-10-13 08:30:00"},
-            {"event": "FOMC Rate Decision", "datetime": "2026-10-28 14:00:00"},
-            {"event": "PCE Price Index", "datetime": "2026-10-30 08:30:00"},
-            
-            # Nov 2026
-            {"event": "Non-Farm Payrolls", "datetime": "2026-11-06 08:30:00"},
-            {"event": "CPI Inflation Data", "datetime": "2026-11-13 08:30:00"},
-            {"event": "PCE Price Index", "datetime": "2026-11-25 08:30:00"},
-            
-            # Dec 2026
-            {"event": "Non-Farm Payrolls", "datetime": "2026-12-04 08:30:00"},
-            {"event": "CPI Inflation Data", "datetime": "2026-12-11 08:30:00"},
-            {"event": "FOMC Rate Decision", "datetime": "2026-12-09 14:00:00"},
-            {"event": "PCE Price Index", "datetime": "2026-12-23 08:30:00"},
-        ]
-        
-        # Find Next Event
-        now_est = pd.Timestamp.now(tz='America/New_York')
-        next_event = None
-        
-        for e in economic_events:
-            dt = pd.Timestamp(e['datetime']).tz_localize('America/New_York')
-            if dt > now_est:
-                next_event = e
-                target_dt = dt
-                break
-        
-        if next_event:
-            # Calculate Countdown
-            diff = target_dt - now_est
-            days = diff.days
-            hours = diff.seconds // 3600
-            minutes = (diff.seconds % 3600) // 60
-            
-            # Format Date
-            date_str = target_dt.strftime("%b %d, %H:%M EST")
-            event_name = next_event['event'].upper()
-            
-            # Color Logic (Red for very close)
-            time_color = "white"
-            if days < 1: time_color = "#ff3344"
-            
-            # Load Background Image for Oracle
-            oracle_bg = ""
-            try:
-                import base64
-                with open("Crystall Ball.png", "rb") as img_file:
-                    b64_ball = base64.b64encode(img_file.read()).decode()
-                oracle_bg = f"background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.6)), url('data:image/png;base64,{b64_ball}'); background-size: cover; background-position: center;"
-            except Exception as e:
-                pass
-
-            st.markdown(f"""
-                <div style="
-                    text-align: center; 
-                    min-height: 200px; 
-                    display: flex; 
-                    flex-direction: column; 
-                    justify-content: flex-start;
-                    padding-top: 20px;
-                    margin-bottom: 15px;
-                    border-radius: 8px;
-                    {oracle_bg}
-                ">
-                    <div style="background: rgba(11, 12, 21, 0.85); padding: 15px; border-radius: 6px; border: 1px solid #4a4a60; margin: 0 15px; box-shadow: 0 0 15px rgba(0,0,0,0.8);">
-                        <div style="font-size: 0.8rem; color: #a0c5e8; margin-bottom: 5px;">NEXT EVENT: <span style="color: #ffd700;">{event_name}</span></div>
-                        <div style="font-size: 0.9rem; color: #ccc; margin-bottom: 5px;">{date_str}</div>
-                        <div style="font-size: 2.2rem; font-weight: bold; color: {time_color}; text-shadow: 0 0 10px {time_color};">
-                            {days}d {hours}h {minutes}m
-                        </div>
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
-        else:
-            st.markdown(f"""
-                <div style="text-align: center; min-height: 180px; display: flex; flex-direction: column; justify-content: center;">
-                    <div style="font-size: 0.8rem; color: #a0c5e8;">NO UPCOMING EVENTS</div>
-                    <div style="font-size: 2.5rem; font-weight: bold; color: white; text-shadow: 0 0 10px #a0c5e8;">--:--:--</div>
-                </div>
-            """, unsafe_allow_html=True)
-    
-    # 3. Great Sorcerer
-    with st.container(border=True):
-        st.markdown('<div class="runic-header">GREAT SORCERER</div>', unsafe_allow_html=True)
-        
-        quotes = [
-            "The market is a mirror of the mind.",
-            "Clarity comes not from the chart, but from the discipline within.",
-            "Do not chase the dragon; let it come to you.",
-            "Patience is the wizard's greatest spell.",
-            "Risk is the mana you pay for the reward you seek.",
-            "A calm mind sees the trend; a chaotic mind sees only noise.",
-            "I am a risk manager. My edge is my patience. I don’t gamble; I execute a system.",
-            "I accept the outcome of any single trade because I am focused on the long-term survival of my capital.",
-            "Passion = Emotion | Commitment = Discipline",
-            "Reminder: You don’t have to trade everyday!",
-            "You are a robot executing code. You don’t “feel” or “hope” the market will move a certain way.",
-            "You are a sniper with 2 bullets. You are not a machine gunner spraying. You reject good trades to wait for great trades.",
-            "You are a risk manager, not a profit generator. Your job is to protect your capital. Profit is just a byproduct of good survival skills"
-        ]
-        import random
-        selected_quote = random.choice(quotes)
-        
-        # Load Background Image
-        bg_style = ""
-        try:
-            import base64
-            with open("great_sorcerer.png", "rb") as img_file:
-                b64_str = base64.b64encode(img_file.read()).decode()
-            bg_style = f"background-image: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.8)), url('data:image/png;base64,{b64_str}'); background-size: cover; background-position: center;"
-        except Exception as e:
-            pass # Fallback to default dark theme
-            
-        st.markdown(f"""
-            <div style="
-                font-family: 'Cinzel', serif; 
-                color: #f0e6d2; 
-                text-align: center; 
-                font-style: italic; 
-                line-height: 1.6; 
-                min-height: 210px;
-                display: flex; 
-                align-items: center; 
-                justify-content: center;
-                padding: 15px;
-                margin-top: 15px;
-                margin-bottom: 5px;
-                border-radius: 8px;
-                text-shadow: 0 2px 4px rgba(0,0,0,0.9);
-                {bg_style}
-            ">
-                <div style="background: rgba(11, 12, 21, 0.7); padding: 20px; border: 1px solid #c5a059; border-radius: 2px; box-shadow: 0 0 20px rgba(0,0,0,0.8); font-size: 0.95rem;">
-                    "{selected_quote}"
+        # Guide Header for Timeframes
+        st.markdown("""
+            <div style="display: flex; justify-content: space-between; padding: 0 10px; margin-bottom: 5px; border-bottom: 1px solid #c5a05930; padding-bottom: 2px;">
+                <span style="font-size: 0.65rem; color: #888; font-weight: bold;">ASSET</span>
+                <div style="display: flex; gap: 12px;">
+                    <span style="font-size: 0.65rem; color: #888; width: 30px; text-align: center; font-weight: bold;">1D</span>
+                    <span style="font-size: 0.65rem; color: #888; width: 30px; text-align: center; font-weight: bold;">4H</span>
+                    <span style="font-size: 0.65rem; color: #888; width: 30px; text-align: center; font-weight: bold;">1H</span>
                 </div>
             </div>
         """, unsafe_allow_html=True)
+
+        if os.path.exists(os.path.join("data", "mango_dynamic_data.json")):
+            try:
+                with open(os.path.join("data", "mango_dynamic_data.json"), "r") as f:
+                    mango_data = json.load(f)
+                
+                if mango_data:
+                    # Sort alphabetical
+                    sorted_assets = sorted(mango_data.items())
+                    
+                    for asset, tfs in sorted_assets:
+                        # Explicitly filter out Forex pairs if they linger in data
+                        if asset in ["EURUSD", "GBPUSD", "AUDUSD"]:
+                            continue
+
+                        lights = ""
+                        lights = ""
+                        
+                        # Bid Zone Check (Focus on 4H as requested)
+                        bid_value = tfs.get("4h", {}).get("Bid Zone", "No") # Default to No if missing
+                        
+                        # Style based on Yes/No?
+                        # User image shows roughly same white text. Let's keep it clean.
+                        # We separate Asset and Bid Zone with some space.
+                        bid_display = f'<span style="font-size: 0.75rem; color: #ccc; margin-left: 15px;">Bid Zone: {bid_value}</span>'
+
+                        # Reordered: 1d -> 4h -> 1h
+                        for tf in ["1d", "4h", "1h"]:
+                            d = tfs.get(tf, {})
+                            trend = d.get("Trend", "Unknown")
+                            
+                            # Accessibility Optimization: Color + Unique Symbol
+                            color = "#444" 
+                            symbol = "●" # Default
+                            
+                            if "Bullish" in trend: 
+                                color = "#00ff88"
+                                symbol = "▲"
+                            elif "Bearish" in trend: 
+                                color = "#ff3344"
+                                symbol = "▼"
+                            elif "Neutral" in trend: 
+                                color = "#ffd700"
+                                symbol = "◆"
+                            
+                            lights += f'<div title="{tf.upper()}: {trend}" style="color: {color}; text-shadow: 0 0 8px {color}60; width: 30px; text-align: center; font-size: 1.1rem; font-weight: bold;">{symbol}</div>'
+                        
+                        st.markdown(f'<div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: rgba(255,255,255,0.02); border-radius: 4px; margin-bottom: 3px; border-left: 3px solid #c5a05940;"><div style="display: flex; align-items: center;"><span style="font-size: 0.85rem; font-weight: bold; color: #eee; width: 60px;">{asset}</span>{bid_display}</div><div style="display: flex; gap: 12px;">{lights}</div></div>', unsafe_allow_html=True)
+
+                    # Legend for Color Blindness & Clarity
+                    st.markdown("""
+                        <div style="display: flex; justify-content: center; gap: 20px; margin-top: 12px; padding: 6px; background: rgba(0,0,0,0.3); border-radius: 4px; border: 1px solid #c5a05920;">
+                            <span style="font-size: 0.7rem; color: #00ff88; font-weight: bold;">▲ BULL</span>
+                            <span style="font-size: 0.7rem; color: #ff3344; font-weight: bold;">▼ BEAR</span>
+                            <span style="font-size: 0.7rem; color: #ffd700; font-weight: bold;">◆ NEUT</span>
+                        </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.info("No alignment data found.")
+            except Exception as e:
+                st.error(f"Error loading alignment: {e}")
+        else:
+            st.info("Scraper not yet run. Use 'Invoke Scraper' in sidebar.")
+
+
+    
 
 # --- LEFT COLUMN: MANA, SPELLS, ALERTS ---
 with col_left:

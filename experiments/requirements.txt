@@ -1,0 +1,16 @@
+setuptools
+wheel
+streamlit
+pandas
+numpy
+numba
+pyperclip
+tqdm
+joblib
+ccxt
+yfinance>=0.2.66
+scikit-learn==1.7.2
+st-copy-to-clipboard
+pandas_ta
+matplotlib
+playwright==1.49.0
