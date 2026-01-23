@@ -3852,13 +3852,7 @@ with col_right:
                             
                             lights += f'<div title="{tf.upper()}: {trend}" style="color: {color}; text-shadow: 0 0 8px {color}60; width: 30px; text-align: center; font-size: 1.1rem; font-weight: bold;">{symbol}</div>'
                         
-                        st.markdown(f"""<div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: rgba(255,255,255,0.02); border-radius: 4px; margin-bottom: 3px; border-left: 3px solid #c5a05940;">
-    <div style="display: flex; align-items: center;">
-        <span style="font-size: 0.85rem; font-weight: bold; color: #eee;">{asset}</span>
-        {bid_marker}
-    </div>
-    <div style="display: flex; gap: 12px;">{lights}</div>
-</div>""", unsafe_allow_html=True)
+                        st.markdown(f'<div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: rgba(255,255,255,0.02); border-radius: 4px; margin-bottom: 3px; border-left: 3px solid #c5a05940;"><div style="display: flex; align-items: center;"><span style="font-size: 0.85rem; font-weight: bold; color: #eee;">{asset}</span>{bid_marker}</div><div style="display: flex; gap: 12px;">{lights}</div></div>', unsafe_allow_html=True)
 
                     # Legend for Color Blindness & Clarity
                     st.markdown("""
