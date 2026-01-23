@@ -1,0 +1,15 @@
+setuptools
+wheel
+streamlit
+pandas
+numpy
+numba
+pyperclip
+tqdm
+joblib
+ccxt
+yfinance
+scikit-learn
+st-copy-to-clipboard
+pandas_ta
+matplotlib
