@@ -123,9 +123,13 @@ async def scrape_asset_data(browser_context, asset):
                         const d1 = results.PlotValues.MangoD1;
                         const d2 = results.PlotValues.MangoD2 || d1;
                         
-                        if (price > Math.max(d1, d2)) results.Trend = "Bullish";
-                        else if (price < Math.min(d1, d2)) results.Trend = "Bearish";
-                        else results.Trend = "Neutral";
+                        const upper = Math.max(d1, d2);
+                        const lower = Math.min(d1, d2);
+                        
+                        // Strict Cloud Logic
+                        if (price > upper) results.Trend = "Bullish";
+                        else if (price < lower) results.Trend = "Bearish";
+                        else results.Trend = "Neutral"; // Inside the cloud/channel
                     }
                     
                     // Fallback search for Bullish/Bearish keywords if logic fails
