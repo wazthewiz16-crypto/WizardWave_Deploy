@@ -51,30 +51,18 @@ async def scrape_asset_data(browser_context, asset):
         await asyncio.sleep(10) # Initial heavy load
         
         # Explicitly Open Data Window (Critical Fix)
+        # Explicitly Open Data Window using Hotkey (Shift + D) - Most Reliable Method
         try:
-            # Wait for the right toolbar to be visible
-            await page.wait_for_selector('[class*="right-toolbar"]', timeout=5000)
+            print("    [>] Toggling Data Window via Hotkey (Shift+D)...")
+            # Focus on chart area first
+            await page.mouse.click(500, 300) 
+            await asyncio.sleep(1)
             
-            # Click the Data Window button (usually the 4th item, index 3, or distinct icon)
-            # data-name="data-window" is the reliable attribute
-            await page.evaluate("""() => {
-                const btn = document.querySelector('[data-name="data-window"]');
-                if (btn) {
-                    btn.click(); // Initial click attempt
-                    
-                    // Simple logic: Wait a sec, if no window, click again
-                     setTimeout(() => {
-                        const dw = document.querySelector('[data-name="data-window"]'); // checking if active class is there
-                        const isNowActive = btn.classList.contains('active') || btn.getAttribute('aria-selected') === 'true';
-                        if (!isNowActive) {
-                            btn.click();
-                        }
-                    }, 1000);
-                }
-            }""")
-            print("    [>] Clicked Data Window button")
+            # Press hotkey
+            await page.keyboard.press("Shift+D")
+            await asyncio.sleep(2)
         except Exception as e:
-            print(f"    [!] Failed to click Data Window: {e}")
+            print(f"    [!] Hotkey failed: {e}")
 
         await asyncio.sleep(2)
         await asyncio.sleep(2)
@@ -219,7 +207,8 @@ async def main():
                 context = await browser.new_context(
                     storage_state=STATE_FILE,
                     user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                    viewport={'width': 1280, 'height': 720} # Smaller viewport saves VRAM
+                    viewport={'width': 1440, 'height': 900}, # Expanded to ensure toolbars don't collapse
+                    ignore_https_errors=True
                 )
                 
                 # Load existing results to update incrementally
