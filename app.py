@@ -238,28 +238,35 @@ def bootstrap_system():
     
     print("[*] Bootstrapping System...")
     
-    # 1. Ensure Playwright is installed
+    # 1. Ensure Chromium is installed for Playwright
+    # Playwright library should be installed via requirements.txt
     try:
         import playwright
+        # Check if browser binaries likely exist
+        cache_dir = os.path.expanduser("~/.cache/ms-playwright")
+        if not os.path.exists(cache_dir):
+            print("[!] Installing browser binaries for Playwright...")
+            subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"], check=True)
     except ImportError:
-        print("[!] Installing Playwright package...")
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "playwright==1.49.0"])
-        
-    # 2. Ensure Chromium is installed
-    try:
-        subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"], check=True)
+        print("[!] Playwright library missing. Add 'playwright' to requirements.txt")
     except Exception as e:
         print(f"[!] Browser install warning: {e}")
 
-    # 3. Auto-start Scraper if not already running (approx check)
-    # Using a simple file-based lock for cloud persistence
+    # 2. Auto-start Scraper if not already running
     lock_file = "/tmp/scraper.lock"
     if not os.path.exists(lock_file):
         try:
             with open(lock_file, "w") as f:
                 f.write(str(os.getpid()))
-            print("[*] Starting Background Scraper...")
-            subprocess.Popen([sys.executable, "scrape_tv_indicators.py"])
+            
+            scraper_script = "scrape_tv_indicators.py"
+            if os.path.exists(scraper_script):
+                print(f"[*] Starting Background Scraper ({scraper_script})...")
+                # Cross-platform background launch
+                creation_flags = 0x08000000 if os.name == 'nt' else 0
+                subprocess.Popen([sys.executable, scraper_script], creationflags=creation_flags)
+            else:
+                print(f"[!] Scraper script not found: {scraper_script}")
         except Exception as e:
             print(f"[!] Scraper start failed: {e}")
             if os.path.exists(lock_file): os.remove(lock_file)

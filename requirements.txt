@@ -13,3 +13,4 @@ scikit-learn
 st-copy-to-clipboard
 pandas_ta
 matplotlib
+playwright==1.49.0
