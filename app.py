@@ -6,7 +6,12 @@ import time
 import concurrent.futures
 import threading
 import warnings
+import json
+import urllib.request
+import os
+from datetime import datetime, date
 from st_copy_to_clipboard import st_copy_to_clipboard
+
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.simplefilter(action='ignore', category=ResourceWarning)
 pd.set_option('future.no_silent_downcasting', True)
@@ -239,10 +244,6 @@ def load_extra_models():
 
 ICHI_MODEL, ICHI_FEATS, CLS_MODEL, CLS_FEATS = load_extra_models()
 import streamlit.components.v1 as components
-import json
-import urllib.request
-import os
-from datetime import datetime, date
 
 
 # --- Persistence Logic ---
@@ -748,12 +749,32 @@ def analyze_timeframe(timeframe_label, silent=False):
             prob = 0.0
             if model:
                 # Standard Features List
-                # Robustness: Use model's expected features if available to prevent crashes (rvol mismatch)
+                # Robustness: Use model's expected features if available
                 if hasattr(model, 'feature_names_in_'):
                     features_list = list(model.feature_names_in_)
                 else:
-                    # Fallback for older sklearn versions or models without metadata
-                    features_list = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi']
+                    # Fallback mapping based on common feature counts used during training
+                    n_exp = getattr(model, "n_features_in_", 0)
+                    if n_exp == 18:
+                        features_list = [
+                            'volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 
+                            'bb_width', 'candle_ratio', 'atr_pct', 'mfi', 
+                            'month_sin', 'cycle_regime', 'close_frac',
+                            'dxy_ret', 'dxy_corr', 'dxy_dist', 'btc_corr', 'btc_mom'
+                        ]
+                    elif n_exp == 12:
+                        features_list = [
+                            'volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 
+                            'bb_width', 'candle_ratio', 'atr_pct', 'mfi', 'month_sin', 'cycle_regime'
+                        ]
+                    elif n_exp == 13:
+                        features_list = [
+                            'volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 
+                            'bb_width', 'candle_ratio', 'atr_pct', 'mfi', 'month_sin', 'cycle_regime', 'close_frac'
+                        ]
+                    else:
+                        # Standard 10-feature fallback
+                        features_list = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi']
                 
                 # Check for feature columns presence
                 missing_feats = [f for f in features_list if f not in df_strat.columns]
