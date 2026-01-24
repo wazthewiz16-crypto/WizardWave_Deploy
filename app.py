@@ -147,9 +147,14 @@ def run_runic_analysis():
         if h_cls: all_history.extend(h_cls)
         if h_ichi: all_history.extend(h_ichi)
         
-        history_df = pd.DataFrame()
+        # --- BLOAT PREVENTION: Limiting History Size ---
+        # Sort and take only the most recent 100 signals across all sources
         if all_history:
-             history_df = pd.DataFrame(all_history)
+            all_history.sort(key=lambda x: x.get('_sort_key', 0), reverse=True)
+            all_history = all_history[:100]
+            history_df = pd.DataFrame(all_history)
+        else:
+            history_df = pd.DataFrame()
         
         # Aggregate Active
         active_dfs = [df for df in [a15m, a1h, a4h, a12h, a1d, a4d, a_cls, a_ichi] if df is not None and not df.empty]
@@ -1291,7 +1296,8 @@ def analyze_timeframe(timeframe_label, silent=False):
                     })
 
 
-               return trades
+                # --- BLOAT PREVENTION ---
+                return trades[-10:]
 
             # Run simulation on FULL fetched history (not just tail)
             asset_history = simulate_history_stateful(df_strat, asset['type'], threshold_val=threshold)
@@ -1481,6 +1487,10 @@ def analyze_ichimoku_strategy(silent=False):
                     # ONLY add to active if it's the LATEST signal AND it's still OPEN
                     if entry_time == latest_entry_time and outcome_status == "OPEN":
                         asset_res_trades.append(trade_obj)
+                
+                # --- BLOAT PREVENTION: Limit per asset/tf history ---
+                # Take only the last 5 signals for this asset/tf history
+                asset_hist = asset_hist[-5:]
             
             return asset_res_trades, asset_hist
 

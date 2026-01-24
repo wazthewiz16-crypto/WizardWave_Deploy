@@ -81,75 +81,82 @@ async def scrape_asset_data(browser_context, asset):
                     PlotValues: {}
                 };
 
-                // Find the Data Window content or legend
-                const bodyText = document.body.innerText;
-                const bodyLines = bodyText.split('\\n').map(l => l.trim()).filter(l => l.length > 0);
-                
-                // Generic Search for Mango/Dynamic
-                const hasMango = /Mango|Dynamic|Cloud/i.test(bodyText);
+                // --- Advanced Extraction Logic ---
+                // Helper: Get text from specific label if on same line or next line
+                const getVal = (label) => {
+                    // Search all divs/spans for the label
+                    const elements = Array.from(document.querySelectorAll('div, span, transition-group'));
+                    const labelEl = elements.find(el => {
+                        const t = el.innerText || "";
+                        return t.trim().toUpperCase() === label.toUpperCase() || t.trim().toUpperCase() === (label.toUpperCase() + ":");
+                    });
 
-                if (hasMango) {
-                    // Helper to search for label-value pairs
-                    const findValForLabel = (label) => {
-                        const idx = bodyLines.findIndex(l => l.toUpperCase().includes(label.toUpperCase()));
-                        if (idx !== -1) {
-                            const line = bodyLines[idx];
-                            if (line.includes(':')) return line.split(':')[1].trim();
-                            // Check next line (TV Data Window layout)
-                            if (bodyLines[idx+1]) return bodyLines[idx+1];
-                        }
-                        return null;
-                    };
-
-                    results.Trend = findValForLabel('Trend') || "Unknown";
-                    results.Tempo = findValForLabel('Tempo') || "Unknown";
-                    
-                    // Bid Zone Logic
-                    let bz = findValForLabel('Bid Zone');
-                    if (!bz) {
-                         // Proximal search
-                         const bzIdx = bodyLines.findIndex(l => l.includes('Bid Zone'));
-                         if (bzIdx !== -1) {
-                             const searchArea = bodyLines.slice(bzIdx, bzIdx + 3).join(' ');
-                             if (/Yes/i.test(searchArea)) bz = "Yes";
-                             else if (/No/i.test(searchArea)) bz = "No";
-                         }
-                    }
-                    results["Bid Zone"] = bz || "Unknown";
-
-                    // 2. Numerical Fallback (The Cloud Math)
-                    const findNum = (key) => {
-                        const idx = bodyLines.findIndex(l => l.includes(key));
-                        if (idx !== -1 && bodyLines[idx+1]) {
-                            const val = parseFloat(bodyLines[idx+1].replace(/[^0-9.]/g, ''));
-                            return isNaN(val) ? null : val;
-                        }
-                        return null;
-                    };
-
-                    results.PlotValues.Close = findNum('Close');
-                    results.PlotValues.MangoD1 = findNum('MangoD1') || findNum('Mango D1') || findNum('D1');
-                    results.PlotValues.MangoD2 = findNum('MangoD2') || findNum('Mango D2') || findNum('D2');
-                    
-                    // Calculation Fallback
-                    if (results.Trend === "Unknown" && results.PlotValues.Close && results.PlotValues.MangoD1) {
-                        const price = results.PlotValues.Close;
-                        const d1 = results.PlotValues.MangoD1;
-                        const d2 = results.PlotValues.MangoD2 || d1;
-                        const upper = Math.max(d1, d2);
-                        const lower = Math.min(d1, d2);
+                    if (labelEl) {
+                        // In Data Window, the value is often the next sibling or in the next line of parent
+                        const parentText = labelEl.parentElement.innerText;
+                        const lines = parentText.split('\\n').map(l => l.trim());
+                        const idx = lines.findIndex(l => l.toUpperCase().includes(label.toUpperCase()));
+                        if (idx !== -1 && lines[idx+1]) return lines[idx+1];
                         
-                        if (price > upper) results.Trend = "Bullish";
-                        else if (price < lower) results.Trend = "Bearish";
-                        else results.Trend = "Neutral";
+                        // Fallback: If it's "Label: Value" format
+                        if (labelEl.innerText.includes(':')) return labelEl.innerText.split(':')[1].trim();
                     }
                     
-                    // Visual Fallback (Text Match)
-                    if (results.Trend === "Unknown") {
-                        if (/Strong Bull|Bullish/i.test(bodyText)) results.Trend = "Bullish";
-                        else if (/Strong Bear|Bearish/i.test(bodyText)) results.Trend = "Bearish";
+                    // Fallback: regex search through body lines
+                    const bodyLines = document.body.innerText.split('\\n').map(l => l.trim());
+                    const lineIdx = bodyLines.findIndex(l => l.toUpperCase().includes(label.toUpperCase()));
+                    if (lineIdx !== -1) {
+                        const line = bodyLines[lineIdx];
+                        if (line.includes(':')) return line.split(':')[1].trim();
+                        if (bodyLines[lineIdx + 1]) return bodyLines[lineIdx + 1];
                     }
+                    return null;
+                };
+
+                results.Trend = getVal('Trend') || "Unknown";
+                results.Tempo = getVal('Tempo') || "Unknown";
+                
+                // Bid Zone specific
+                let bz = getVal('Bid Zone');
+                if (!bz) {
+                    // Proximal search in body text
+                    const bzMatch = document.body.innerText.match(/Bid Zone[:\s]+(Yes|No)/i);
+                    if (bzMatch) bz = bzMatch[1];
                 }
+                results["Bid Zone"] = bz || "Unknown";
+
+                // Numerical Fallback
+                const findNum = (label) => {
+                    const v = getVal(label);
+                    if (v) {
+                        const n = parseFloat(v.replace(/[^0-9.-]/g, ''));
+                        return isNaN(n) ? null : n;
+                    }
+                    return null;
+                };
+
+                results.PlotValues.Close = findNum('Close');
+                results.PlotValues.MangoD1 = findNum('MangoD1') || findNum('Mango D1') || findNum('D1');
+                results.PlotValues.MangoD2 = findNum('MangoD2') || findNum('Mango D2') || findNum('D2');
+                
+                if (results.Trend === "Unknown" && results.PlotValues.Close && results.PlotValues.MangoD1) {
+                    const price = results.PlotValues.Close;
+                    const d1 = results.PlotValues.MangoD1;
+                    const d2 = results.PlotValues.MangoD2 || d1;
+                    const upper = Math.max(d1, d2);
+                    const lower = Math.min(d1, d2);
+                    if (price > upper) results.Trend = "Bullish";
+                    else if (price < lower) results.Trend = "Bearish";
+                    else results.Trend = "Neutral";
+                }
+                
+                // Text keyword search
+                if (results.Trend === "Unknown") {
+                    const bt = document.body.innerText;
+                    if (/Strong Bull|Bullish/i.test(bt)) results.Trend = "Bullish";
+                    else if (/Strong Bear|Bearish/i.test(bt)) results.Trend = "Bearish";
+                }
+
                 return results;
             }""")
             
