@@ -1393,9 +1393,13 @@ def analyze_ichimoku_strategy(silent=False):
                     df['ml_conf'] = 0.40 # Below default filter threshold
                 
                 signals = df[df['signal_type'].notna()].copy()
-                
                 if signals.empty: continue
                 
+                # We only care about the absolute most recent signal for Active Trades
+                # But we keep all for history
+                latest_entry_time = signals.index.max()
+                
+                # Iterate through all signals for history, but track latest for active
                 for entry_time, row in signals.iterrows():
                     signal_type = row['signal_type']
                     entry_price = row['close']
@@ -1415,6 +1419,7 @@ def analyze_ichimoku_strategy(silent=False):
                         trade_exit_time = future_df.index.max()
                         
                         for t, f_row in future_df.iterrows():
+                            # Exit if price crosses Kijun
                             if signal_type == "LONG" and f_row['close'] < f_row['kijun']:
                                 outcome_status = "HIT SL 🔴"
                                 exit_price = f_row['close']
@@ -1472,7 +1477,9 @@ def analyze_ichimoku_strategy(silent=False):
                     }
                     
                     asset_hist.append(trade_obj)
-                    if outcome_status == "OPEN":
+                    
+                    # ONLY add to active if it's the LATEST signal AND it's still OPEN
+                    if entry_time == latest_entry_time and outcome_status == "OPEN":
                         asset_res_trades.append(trade_obj)
             
             return asset_res_trades, asset_hist
