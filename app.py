@@ -202,23 +202,37 @@ from src.strategies.strategy_ichimoku import IchimokuStrategy
 from src.utils.paths import get_model_path, get_config_path
 
 # Load ML Models for New Strats
-try:
-    ICHI_MODEL = joblib.load(get_model_path("model_ichimoku.pkl"))
-    with open(get_config_path("features_ichimoku.json"), "r") as f:
-        ICHI_FEATS = json.load(f)
-except Exception as e:
-    print(f"Error loading Ichimoku Model: {e}")
-    ICHI_MODEL = None
-    ICHI_FEATS = []
+def load_extra_models():
+    ichi_model, ichi_feats = None, []
+    cls_model, cls_feats = None, []
     
-try:
-    CLS_MODEL = joblib.load(get_model_path("model_cls.pkl"))
-    with open(get_config_path("features_cls.json"), "r") as f:
-        CLS_FEATS = json.load(f)
-except Exception as e:
-    print(f"Error loading CLS Model: {e}")
-    CLS_MODEL = None
-    CLS_FEATS = []
+    try:
+        path = get_model_path("model_ichimoku.pkl")
+        if os.path.exists(path):
+            ichi_model = joblib.load(path)
+            with open(get_config_path("features_ichimoku.json"), "r") as f:
+                ichi_feats = json.load(f)
+            print(f"[*] Ichimoku ML Model Loaded from {path}")
+        else:
+            print(f"[!] Ichimoku ML Model NOT FOUND at {path}")
+    except Exception as e:
+        print(f"[!] Error loading Ichimoku Model: {e}")
+        
+    try:
+        path = get_model_path("model_cls.pkl")
+        if os.path.exists(path):
+            cls_model = joblib.load(path)
+            with open(get_config_path("features_cls.json"), "r") as f:
+                cls_feats = json.load(f)
+            print(f"[*] CLS Range ML Model Loaded from {path}")
+        else:
+            print(f"[!] CLS Range ML Model NOT FOUND at {path}")
+    except Exception as e:
+        print(f"[!] Error loading CLS Model: {e}")
+        
+    return ichi_model, ichi_feats, cls_model, cls_feats
+
+ICHI_MODEL, ICHI_FEATS, CLS_MODEL, CLS_FEATS = load_extra_models()
 import streamlit.components.v1 as components
 import json
 import urllib.request
@@ -2237,10 +2251,14 @@ def show_runic_alerts():
                 plan_conf = st.session_state.get('plan_min_conf', 55)
                 # Parse conf if string
                 def _parse_conf_plan(x):
-                    try: return float(str(x).replace('%',''))
+                    try: 
+                        # Handle strings like "85%", "N/A", or floats/ints
+                        s = str(x).replace('%','').strip()
+                        if s.upper() == 'N/A' or s == '': return 0.0
+                        return float(s)
                     except: return 0.0
                 if 'Confidence' in df_display.columns:
-                    df_display = df_display[df_display['Confidence'].apply(_parse_conf_plan) >= plan_conf]
+                    df_display = df_display[df_display['Confidence'].apply(_parse_conf_plan) >= float(plan_conf)]
                 
                 # 2. Timeframes
                 plan_tfs = st.session_state.get('plan_allowed_tfs', [])
@@ -2888,8 +2906,15 @@ st.components.v1.html("""
 # --- Debug Sidebar (Safe Location) --- 
 with st.sidebar.expander("Debug Info", expanded=False):
     st.write(f"CWD: {os.getcwd()}")
-    st.write("Model Files:")
-    st.write([f for f in os.listdir('.') if f.endswith('.pkl')])
+    st.write("Model Directory (data/models/):")
+    model_dir = os.path.join("data", "models")
+    if os.path.exists(model_dir):
+        st.write([f for f in os.listdir(model_dir) if f.endswith('.pkl')])
+    else:
+        st.write("Directory 'data/models/' NOT FOUND")
+    
+    st.write("Loaded Models Keys:")
+    st.write(list(models.keys()))
     st.write("Loaded Models:")
     if 'models' in globals():
         st.write(list(models.keys()))

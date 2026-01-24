@@ -82,38 +82,41 @@ async def scrape_asset_data(browser_context, asset):
                 };
 
                 // Find the Data Window content or legend
-                // TV obfuscates classes, so we look for structure or text content
-                // Check for 'Mango' or 'Dynamic' (case insensitive)
                 const bodyText = document.body.innerText;
-                const hasMango = /Mango/i.test(bodyText);
+                const hasMango = /Mango/i.test(bodyText) || /Dynamic/i.test(bodyText);
 
                 if (hasMango) {
                     // Get all text lines
                     const textLines = bodyText.split('\\n');
                     
-                    // 1. Try to find explicit status first
-                    const trendLine = textLines.find(l => l.includes('Trend:'));
-                    if (trendLine) {
-                         results.Trend = trendLine.split(':')[1].trim();
-                    }
+                    // Helper to find value by dynamic partial key match
+                    const getValByLabel = (label) => {
+                         const line = textLines.find(l => l.toUpperCase().includes(label.toUpperCase()));
+                         if (line && line.includes(':')) {
+                             return line.split(':')[1].trim();
+                         }
+                         return null;
+                    };
+
+                    results.Trend = getValByLabel('Trend') || "Unknown";
+                    results.Tempo = getValByLabel('Tempo') || "Unknown";
                     
-                    const tempoLine = textLines.find(l => l.includes('Tempo:'));
-                    if (tempoLine) {
-                         results.Tempo = tempoLine.split(':')[1].trim();
-                    }
-                    
-                    const bidLine = textLines.find(l => l.includes('Bid Zone') || l.includes('Bid Zone:'));
-                    if (bidLine) {
-                         const parts = bidLine.split(':');
-                         if (parts.length > 1) {
-                             results["Bid Zone"] = parts[1].trim();
-                         } else {
-                             if (bidLine.includes('Yes')) results["Bid Zone"] = "Yes";
-                             else if (bidLine.includes('No')) results["Bid Zone"] = "No";
+                    // Bid Zone specific (more complex)
+                    const bidVal = getValByLabel('Bid Zone');
+                    if (bidVal) {
+                         results["Bid Zone"] = bidVal;
+                    } else {
+                         // Search line by line for just the text
+                         const bidIdx = textLines.findIndex(l => l.includes('Bid Zone'));
+                         if (bidIdx !== -1) {
+                             const nextLine = textLines[bidIdx + 1];
+                             if (nextLine === 'Yes' || nextLine === 'No') results["Bid Zone"] = nextLine;
+                             else if (textLines[bidIdx].includes('Yes')) results["Bid Zone"] = "Yes";
+                             else if (textLines[bidIdx].includes('No')) results["Bid Zone"] = "No";
                          }
                     }
                     
-                    // Fallback for Bid Zone
+                    // Fallback for Bid Zone Search in entire body
                     if (results["Bid Zone"] === "Unknown") {
                          if (bodyText.includes('Bid Zone: Yes') || bodyText.includes('Bid Zone Yes')) results["Bid Zone"] = "Yes";
                          else if (bodyText.includes('Bid Zone: No') || bodyText.includes('Bid Zone No')) results["Bid Zone"] = "No";
@@ -123,7 +126,7 @@ async def scrape_asset_data(browser_context, asset):
                     const findValue = (key) => {
                         const idx = textLines.findIndex(l => l.trim().includes(key));
                         if (idx !== -1 && textLines[idx+1]) {
-                            const val = parseFloat(textLines[idx+1].replace(/,/g, ''));
+                            const val = parseFloat(textLines[idx+1].replace(/[^0-9.]/g, ''));
                             return isNaN(val) ? null : val;
                         }
                         return null;
@@ -147,10 +150,10 @@ async def scrape_asset_data(browser_context, asset):
                         else results.Trend = "Neutral";
                     }
                     
-                    // Final Fallback
+                    // Final Visual Fallback: Look for Green/Red keywords if Trend is STILL unknown
                     if (results.Trend === "Unknown") {
-                        if (bodyText.includes("Bullish")) results.Trend = "Bullish";
-                        else if (bodyText.includes("Bearish")) results.Trend = "Bearish";
+                        if (/Bullish|Strong Bull/i.test(bodyText)) results.Trend = "Bullish";
+                        else if (/Bearish|Strong Bear/i.test(bodyText)) results.Trend = "Bearish";
                     }
                 }
                 return results;

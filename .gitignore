@@ -10,12 +10,20 @@ env.bak/
 venv.bak/
 .streamlit/
 
-# Models
+# Models - ALLOW IMPORTANT MODELS
 data/models/*.pkl
 !data/models/model_htf.pkl
 !data/models/model_ltf.pkl
 !data/models/wizard_wave_ml_model.pkl
 !data/models/wizard_scalp_ml_model.pkl
+!data/models/model_ichimoku.pkl
+!data/models/model_cls.pkl
+!data/models/model_4d.pkl
+!data/models/model_1d.pkl
+!data/models/model_12h.pkl
+!data/models/model_4h.pkl
+!data/models/model_1h.pkl
+!data/models/model_15m.pkl
 
 # Data / State
 data/processed_signals.json
