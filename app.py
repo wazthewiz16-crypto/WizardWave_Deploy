@@ -9,6 +9,7 @@ import warnings
 import json
 import urllib.request
 import os
+import re
 from datetime import datetime, date
 from st_copy_to_clipboard import st_copy_to_clipboard
 
@@ -213,6 +214,8 @@ from src.utils.paths import get_model_path, get_config_path
 
 # Load ML Models for New Strats
 def load_extra_models():
+    import json
+    import joblib
     ichi_model, ichi_feats = None, []
     cls_model, cls_feats = None, []
     
@@ -220,8 +223,12 @@ def load_extra_models():
         path = get_model_path("model_ichimoku.pkl")
         if os.path.exists(path):
             ichi_model = joblib.load(path)
-            with open(get_config_path("features_ichimoku.json"), "r") as f:
-                ichi_feats = json.load(f)
+            feat_path = get_config_path("features_ichimoku.json")
+            if os.path.exists(feat_path):
+                with open(feat_path, "r") as f:
+                    ichi_feats = json.load(f)
+            else:
+                ichi_feats = ["tk_gap", "price_to_kijun", "cloud_width", "dist_to_cloud_top", "chikou_mom", "adx", "rsi", "volatility"]
             print(f"[*] Ichimoku ML Model Loaded from {path}")
         else:
             print(f"[!] Ichimoku ML Model NOT FOUND at {path}")
@@ -232,8 +239,12 @@ def load_extra_models():
         path = get_model_path("model_cls.pkl")
         if os.path.exists(path):
             cls_model = joblib.load(path)
-            with open(get_config_path("features_cls.json"), "r") as f:
-                cls_feats = json.load(f)
+            feat_path = get_config_path("features_cls.json")
+            if os.path.exists(feat_path):
+                with open(feat_path, "r") as f:
+                    cls_feats = json.load(f)
+            else:
+                cls_feats = ["dist_to_tp", "dist_to_sl", "rr_ratio", "rsi", "adx", "atr_pct", "dist_sma50"]
             print(f"[*] CLS Range ML Model Loaded from {path}")
         else:
             print(f"[!] CLS Range ML Model NOT FOUND at {path}")
@@ -558,8 +569,43 @@ def load_ml_models_v2():
                 # Handle wrapped models
                 if isinstance(loaded_obj, dict) and 'model' in loaded_obj:
                     models[key] = loaded_obj['model']
+                    # Keep track of features and threshold if present
+                    if 'features' in loaded_obj:
+                        models[f"{key}_features"] = loaded_obj['features']
+                    if 'threshold' in loaded_obj:
+                        models[f"{key}_threshold"] = loaded_obj['threshold']
                 else:
                     models[key] = loaded_obj
+                
+                # Robust extraction of feature count from the model object itself
+                m_obj = models[key]
+                if m_obj and not models.get(f"{key}_features"):
+                    n_f = getattr(m_obj, "n_features_in_", getattr(m_obj, "n_features_", 0))
+                    if n_f == 0 and hasattr(m_obj, "estimators_"):
+                         try: n_f = m_obj.estimators_[0].n_features_
+                         except: pass
+                    
+                    if n_f > 0:
+                        print(f"[*] Model {key} expects {n_f} features.")
+                        # map back to standard sets if we don't have the list
+                        if n_f == 18:
+                             models[f"{key}_features"] = [
+                                'volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 
+                                'bb_width', 'candle_ratio', 'atr_pct', 'mfi', 
+                                'month_sin', 'cycle_regime', 'close_frac',
+                                'dxy_ret', 'dxy_corr', 'dxy_dist', 'btc_corr', 'btc_mom'
+                             ]
+                        elif n_f == 12:
+                             models[f"{key}_features"] = [
+                                'volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 
+                                'bb_width', 'candle_ratio', 'atr_pct', 'mfi', 'month_sin', 'cycle_regime'
+                             ]
+                        elif n_f == 13:
+                             models[f"{key}_features"] = [
+                                'volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 
+                                'bb_width', 'candle_ratio', 'atr_pct', 'mfi', 'month_sin', 'cycle_regime', 'close_frac'
+                             ]
+
                 print(f"Successfully loaded model for {key} from {full_path}")
             else:
                 print(f"Model file {full_path} not found.")
@@ -746,54 +792,67 @@ def analyze_timeframe(timeframe_label, silent=False):
                 df_strat['sigma'] = df_strat['close'].pct_change().ewm(span=36, adjust=False).std()
                 df_strat['sigma'] = df_strat['sigma'].bfill().fillna(0.01)
             
-            prob = 0.0
-            if model:
-                # Standard Features List
-                # Robustness: Use model's expected features if available
-                if hasattr(model, 'feature_names_in_'):
-                    features_list = list(model.feature_names_in_)
-                else:
-                    # Fallback mapping based on common feature counts used during training
-                    n_exp = getattr(model, "n_features_in_", 0)
-                    if n_exp == 18:
-                        features_list = [
-                            'volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 
-                            'bb_width', 'candle_ratio', 'atr_pct', 'mfi', 
-                            'month_sin', 'cycle_regime', 'close_frac',
-                            'dxy_ret', 'dxy_corr', 'dxy_dist', 'btc_corr', 'btc_mom'
-                        ]
-                    elif n_exp == 12:
-                        features_list = [
-                            'volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 
-                            'bb_width', 'candle_ratio', 'atr_pct', 'mfi', 'month_sin', 'cycle_regime'
-                        ]
-                    elif n_exp == 13:
-                        features_list = [
-                            'volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 
-                            'bb_width', 'candle_ratio', 'atr_pct', 'mfi', 'month_sin', 'cycle_regime', 'close_frac'
-                        ]
-                    else:
-                        # Standard 10-feature fallback
-                        features_list = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi']
-                
-                # Check for feature columns presence
-                missing_feats = [f for f in features_list if f not in df_strat.columns]
-                if missing_feats:
-                    log_debug(f"Missing features {asset['symbol']}: {missing_feats}")
-                    for f in missing_feats: df_strat[f] = 0
+                # Ultimate Scikit-Learn Resiliency: Feature Count Parsing & Auto-Retry
+                def safe_predict(model_obj, df_features, list_to_use):
+                    try:
+                        return model_obj.predict_proba(df_features[list_to_use])
+                    except ValueError as ve:
+                        v_str = str(ve)
+                        if "expecting" in v_str and "features" in v_str:
+                            import re
+                            match = re.search(r"expecting (\d+) features", v_str)
+                            if match:
+                                n_needed = int(match.group(1))
+                                # log_debug(f"ML RE-ROUTE: Model for {tf_code} wanted {n_needed} features. Adapting...")
+                                
+                                # Adapting to known feature sets
+                                if n_needed == 18:
+                                    new_list = [
+                                        'volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 
+                                        'bb_width', 'candle_ratio', 'atr_pct', 'mfi', 
+                                        'month_sin', 'cycle_regime', 'close_frac',
+                                        'dxy_ret', 'dxy_corr', 'dxy_dist', 'btc_corr', 'btc_mom'
+                                    ]
+                                elif n_needed == 12:
+                                    new_list = [
+                                        'volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 
+                                        'bb_width', 'candle_ratio', 'atr_pct', 'mfi', 'month_sin', 'cycle_regime'
+                                    ]
+                                elif n_needed == 13:
+                                    new_list = [
+                                        'volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 
+                                        'bb_width', 'candle_ratio', 'atr_pct', 'mfi', 'month_sin', 'cycle_regime', 'close_frac'
+                                    ]
+                                elif n_needed == 10:
+                                    new_list = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi']
+                                else:
+                                    # Unknown list size, but we must provide SOMETHING. 
+                                    # We take the first N columns if available, or fill with zeros
+                                    all_avail = list(df_features.columns)
+                                    new_list = all_avail[:n_needed]
+                                    while len(new_list) < n_needed: new_list.append('dummy_zero')
+                                    for c in new_list: 
+                                        if c not in df_features.columns: df_features[c] = 0
+                                
+                                return model_obj.predict_proba(df_features[new_list])
+                        raise ve # Reraise if not a feature count error
 
                 # Predict for CURRENT candle
-                last_features = df_strat.iloc[[-1]][features_list]
-                prob = model.predict_proba(last_features)[0][1] # Prob of Class 1 (Good)
-                
+                try:
+                    res_proba = safe_predict(model, df_strat.iloc[[-1]], features_list)
+                    prob = res_proba[0][1]
+                except Exception as e:
+                    log_debug(f"ML Fail {asset['symbol']}: {e}")
+                    prob = 0.0
+
                 # Predict for ALL rows (for history)
-                # Initialize column with 0.0 first to handle dropped NaNs
                 df_strat['model_prob'] = 0.0
-                
-                df_clean = df_strat.dropna()
+                df_clean = df_strat.dropna().copy() # Copy to avoid SettingWithCopy
                 if not df_clean.empty:
-                    all_probs = model.predict_proba(df_clean[features_list])[:, 1]
-                    df_strat.loc[df_clean.index, 'model_prob'] = all_probs
+                    try:
+                        all_probs = safe_predict(model, df_clean, features_list)[:, 1]
+                        df_strat.loc[df_clean.index, 'model_prob'] = all_probs
+                    except: pass
             
                 # Explicitly set probability for the last row
                 if not df_strat.empty:
