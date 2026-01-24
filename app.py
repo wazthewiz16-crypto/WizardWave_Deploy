@@ -2922,9 +2922,17 @@ with st.sidebar.expander("Debug Info", expanded=False):
     
     st.write("Loaded Models Keys:")
     st.write(list(models.keys()))
-    st.write("Loaded Models:")
-    if 'models' in globals():
-        st.write(list(models.keys()))
+    st.write("Signal Summary (Live):")
+    if 'combined_active_df' in st.session_state:
+        df_act = st.session_state.combined_active_df
+        if not df_act.empty:
+             st.write(df_act['Strategy'].value_counts() if 'Strategy' in df_act.columns else len(df_act))
+        else:
+             st.write("Active: 0")
+    
+    if 'runic_history_df' in st.session_state:
+        df_hist = st.session_state.runic_history_df
+        st.write(f"History Size: {len(df_hist)}")
     st.write(f"Assets: {len(ASSETS)}")
     if st.button("Run Pipeline Manually"):
         import pipeline

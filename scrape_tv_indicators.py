@@ -83,70 +83,59 @@ async def scrape_asset_data(browser_context, asset):
 
                 // Find the Data Window content or legend
                 const bodyText = document.body.innerText;
+                const bodyLines = bodyText.split('\\n').map(l => l.trim()).filter(l => l.length > 0);
+                
+                // Generic Search for Mango/Dynamic
                 const hasMango = /Mango|Dynamic|Cloud/i.test(bodyText);
 
                 if (hasMango) {
-                    // Get all text lines
-                    const textLines = bodyText.split('\\n').map(l => l.trim()).filter(l => l.length > 0);
-                    
-                    // Helper to find value by dynamic partial key match
-                    const getValByLabel = (label) => {
-                         const line = textLines.find(l => l.toUpperCase().includes(label.toUpperCase()));
-                         if (line && line.includes(':')) {
-                             return line.split(':')[1].trim();
-                         }
-                         return null;
+                    // Helper to search for label-value pairs
+                    const findValForLabel = (label) => {
+                        const idx = bodyLines.findIndex(l => l.toUpperCase().includes(label.toUpperCase()));
+                        if (idx !== -1) {
+                            const line = bodyLines[idx];
+                            if (line.includes(':')) return line.split(':')[1].trim();
+                            // Check next line (TV Data Window layout)
+                            if (bodyLines[idx+1]) return bodyLines[idx+1];
+                        }
+                        return null;
                     };
 
-                    results.Trend = getValByLabel('Trend') || "Unknown";
-                    results.Tempo = getValByLabel('Tempo') || "Unknown";
+                    results.Trend = findValForLabel('Trend') || "Unknown";
+                    results.Tempo = findValForLabel('Tempo') || "Unknown";
                     
-                    // 1. Bid Zone specific (more complex)
-                    const bidVal = getValByLabel('Bid Zone');
-                    if (bidVal) {
-                         results["Bid Zone"] = bidVal;
-                    } else {
-                         // Search line by line for just the text
-                         const bidIdx = textLines.findIndex(l => l.includes('Bid Zone'));
-                         if (bidIdx !== -1) {
-                             const lineText = textLines[bidIdx];
-                             if (lineText.includes('Yes')) results["Bid Zone"] = "Yes";
-                             else if (lineText.includes('No')) results["Bid Zone"] = "No";
-                             else if (textLines[bidIdx + 1] === 'Yes' || textLines[bidIdx + 1] === 'No') {
-                                 results["Bid Zone"] = textLines[bidIdx + 1];
-                             }
+                    // Bid Zone Logic
+                    let bz = findValForLabel('Bid Zone');
+                    if (!bz) {
+                         // Proximal search
+                         const bzIdx = bodyLines.findIndex(l => l.includes('Bid Zone'));
+                         if (bzIdx !== -1) {
+                             const searchArea = bodyLines.slice(bzIdx, bzIdx + 3).join(' ');
+                             if (/Yes/i.test(searchArea)) bz = "Yes";
+                             else if (/No/i.test(searchArea)) bz = "No";
                          }
                     }
-                    
-                    // Fallback for Bid Zone Search in entire body
-                    if (results["Bid Zone"] === "Unknown") {
-                         // Match exactly "Bid Zone Yes" or "Bid Zone: Yes"
-                         const bidYes = /Bid Zone[:\s]+Yes/i.test(bodyText);
-                         const bidNo = /Bid Zone[:\s]+No/i.test(bodyText);
-                         if (bidYes) results["Bid Zone"] = "Yes";
-                         else if (bidNo) results["Bid Zone"] = "No";
-                    }
+                    results["Bid Zone"] = bz || "Unknown";
 
-                    // 2. Extract Numerical Plot Values as fallback
-                    const findValue = (key) => {
-                        const idx = textLines.findIndex(l => l.includes(key));
-                        if (idx !== -1 && textLines[idx+1]) {
-                            const val = parseFloat(textLines[idx+1].replace(/[^0-9.]/g, ''));
+                    // 2. Numerical Fallback (The Cloud Math)
+                    const findNum = (key) => {
+                        const idx = bodyLines.findIndex(l => l.includes(key));
+                        if (idx !== -1 && bodyLines[idx+1]) {
+                            const val = parseFloat(bodyLines[idx+1].replace(/[^0-9.]/g, ''));
                             return isNaN(val) ? null : val;
                         }
                         return null;
                     };
 
-                    results.PlotValues.Close = findValue('Close');
-                    results.PlotValues.MangoD1 = findValue('MangoD1') || findValue('Mango D1') || findValue('Mango D1:');
-                    results.PlotValues.MangoD2 = findValue('MangoD2') || findValue('Mango D2') || findValue('Mango D2:');
+                    results.PlotValues.Close = findNum('Close');
+                    results.PlotValues.MangoD1 = findNum('MangoD1') || findNum('Mango D1') || findNum('D1');
+                    results.PlotValues.MangoD2 = findNum('MangoD2') || findNum('Mango D2') || findNum('D2');
                     
-                    // If Trend is still unknown but we have plots, calculate it
+                    // Calculation Fallback
                     if (results.Trend === "Unknown" && results.PlotValues.Close && results.PlotValues.MangoD1) {
                         const price = results.PlotValues.Close;
                         const d1 = results.PlotValues.MangoD1;
                         const d2 = results.PlotValues.MangoD2 || d1;
-                        
                         const upper = Math.max(d1, d2);
                         const lower = Math.min(d1, d2);
                         
@@ -155,7 +144,7 @@ async def scrape_asset_data(browser_context, asset):
                         else results.Trend = "Neutral";
                     }
                     
-                    // Final Visual Fallback: Look for Green/Red keywords
+                    // Visual Fallback (Text Match)
                     if (results.Trend === "Unknown") {
                         if (/Strong Bull|Bullish/i.test(bodyText)) results.Trend = "Bullish";
                         else if (/Strong Bear|Bearish/i.test(bodyText)) results.Trend = "Bearish";
