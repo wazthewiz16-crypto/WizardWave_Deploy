@@ -1296,8 +1296,8 @@ def analyze_timeframe(timeframe_label, silent=False):
                     })
 
 
-                # --- BLOAT PREVENTION ---
-                return trades[-10:]
+               # --- BLOAT PREVENTION ---
+               return trades[-10:]
 
             # Run simulation on FULL fetched history (not just tail)
             asset_history = simulate_history_stateful(df_strat, asset['type'], threshold_val=threshold)
