@@ -299,14 +299,24 @@ try:
         config = json.load(f)
 except Exception as e:
     print(f"Error loading {config_file}: {e}")
+    # Robust Fallback for Streamlit Cloud
     config = {
+        "assets": [
+            {"symbol": "BTC/USDT", "type": "crypto", "name": "Bitcoin"},
+            {"symbol": "ETH/USDT", "type": "crypto", "name": "Ethereum"},
+            {"symbol": "SOL/USDT", "type": "crypto", "name": "Solana"},
+            {"symbol": "^NDX", "type": "trad", "name": "Nasdaq 100"},
+            {"symbol": "GC=F", "type": "trad", "name": "Gold"}
+        ],
         "models": {
-            "1d": {"triple_barrier": {"time_limit_bars": 21, "crypto_pt": 0.09, "crypto_sl": 0.033, "trad_pt": 0.04, "trad_sl": 0.02, "forex_pt": 0.03, "forex_sl": 0.015}},
-            "4h": {"triple_barrier": {"time_limit_bars": 12, "crypto_pt": 0.04, "crypto_sl": 0.02, "trad_pt": 0.02, "trad_sl": 0.01, "forex_pt": 0.01, "forex_sl": 0.005}},
-            "1h": {"triple_barrier": {"time_limit_bars": 24, "crypto_pt": 0.015, "crypto_sl": 0.01, "trad_pt": 0.01, "trad_sl": 0.005, "forex_pt": 0.005, "forex_sl": 0.0025}},
-            "15m": {"triple_barrier": {"time_limit_bars": 12, "crypto_pt": 0.015, "crypto_sl": 0.0075, "trad_pt": 0.005, "trad_sl": 0.0025, "forex_pt": 0.0025, "forex_sl": 0.0015}},
+            "4d": {"strategy": "WizardWave", "model_file": "data/models/model_4d.pkl", "confidence_threshold": 0.40, "triple_barrier": {"time_limit_bars": 15, "crypto_pt": 0.14, "crypto_sl": 0.04}},
+            "1d": {"strategy": "WizardWave", "model_file": "data/models/wizard_wave_ml_model.pkl", "confidence_threshold": 0.45, "triple_barrier": {"time_limit_bars": 21, "crypto_pt": 0.09, "crypto_sl": 0.033}},
+            "12h": {"strategy": "WizardWave", "model_file": "data/models/model_12h.pkl", "confidence_threshold": 0.50, "triple_barrier": {"time_limit_bars": 24, "crypto_pt": 0.06, "crypto_sl": 0.03}},
+            "4h": {"strategy": "WizardWave", "model_file": "data/models/model_4h.pkl", "confidence_threshold": 0.50, "triple_barrier": {"time_limit_bars": 12, "crypto_pt": 0.04, "crypto_sl": 0.02}},
+            "1h": {"strategy": "WizardScalp", "model_file": "data/models/wizard_scalp_ml_model.pkl", "confidence_threshold": 0.60, "triple_barrier": {"time_limit_bars": 24, "crypto_pt": 0.015, "crypto_sl": 0.01}},
+            "15m": {"strategy": "WizardScalp", "model_file": "data/models/model_15m.pkl", "confidence_threshold": 0.60, "triple_barrier": {"time_limit_bars": 12, "crypto_pt": 0.015, "crypto_sl": 0.0075}},
         }
-    } # Fallback
+    }
 
 def load_grimoire():
     today = date.today()
@@ -1357,16 +1367,16 @@ def analyze_ichimoku_strategy(silent=False):
                 if ICHI_MODEL and ICHI_FEATS:
                     try:
                         # Ensure cols exist
-                        # Fill missing just in case
                         for c in ICHI_FEATS:
                             if c not in df.columns: df[c] = 0
                             
                         probs = ICHI_MODEL.predict_proba(df[ICHI_FEATS])[:, 1]
                         df['ml_conf'] = probs
                     except:
-                        df['ml_conf'] = 0.99
+                        df['ml_conf'] = 0.0 # Safety default (No Trade)
                 else:
-                    df['ml_conf'] = 1.0 # Default if no model
+                    # Model missing - use strict strategy only but lower confidence visibility
+                    df['ml_conf'] = 0.40 # Below default filter threshold
                 
                 signals = df[df['signal_type'].notna()].copy()
                 

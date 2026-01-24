@@ -81,60 +81,57 @@ async def scrape_asset_data(browser_context, asset):
                     PlotValues: {}
                 };
 
-                // Find the Data Window content wrapper
+                // Find the Data Window content or legend
                 // TV obfuscates classes, so we look for structure or text content
-                const wrappers = Array.from(document.querySelectorAll('div')).filter(el => 
-                    el.innerText && el.innerText.includes('Mango Dynamic')
-                );
+                // Check for 'Mango' or 'Dynamic' (case insensitive)
+                const bodyText = document.body.innerText;
+                const hasMango = /Mango/i.test(bodyText);
 
-                if (wrappers.length > 0) {
-                    // Get all text lines in the Data Window
-                    const textLines = document.body.innerText.split('\\n');
+                if (hasMango) {
+                    // Get all text lines
+                    const textLines = bodyText.split('\\n');
                     
                     // 1. Try to find explicit status first
-                    const trendIdx = textLines.findIndex(l => l.includes('Trend:'));
-                    if (trendIdx !== -1) {
-                         results.Trend = textLines[trendIdx].split(':')[1].trim();
+                    const trendLine = textLines.find(l => l.includes('Trend:'));
+                    if (trendLine) {
+                         results.Trend = trendLine.split(':')[1].trim();
                     }
                     
-                    const tempoIdx = textLines.findIndex(l => l.includes('Tempo:'));
-                    if (tempoIdx !== -1) {
-                         results.Tempo = textLines[tempoIdx].split(':')[1].trim();
+                    const tempoLine = textLines.find(l => l.includes('Tempo:'));
+                    if (tempoLine) {
+                         results.Tempo = tempoLine.split(':')[1].trim();
                     }
                     
                     const bidLine = textLines.find(l => l.includes('Bid Zone') || l.includes('Bid Zone:'));
                     if (bidLine) {
-                         // Attempt split by colon
                          const parts = bidLine.split(':');
                          if (parts.length > 1) {
                              results["Bid Zone"] = parts[1].trim();
                          } else {
-                             // Sometimes it's "Bid Zone Yes" without colon in Legend
                              if (bidLine.includes('Yes')) results["Bid Zone"] = "Yes";
                              else if (bidLine.includes('No')) results["Bid Zone"] = "No";
                          }
                     }
                     
-                    // Fallback: Check Legend specifically
+                    // Fallback for Bid Zone
                     if (results["Bid Zone"] === "Unknown") {
-                         const legendText = document.body.innerText;
-                         if (legendText.includes('Bid Zone: Yes') || legendText.includes('Bid Zone Yes')) results["Bid Zone"] = "Yes";
-                         else if (legendText.includes('Bid Zone: No') || legendText.includes('Bid Zone No')) results["Bid Zone"] = "No";
+                         if (bodyText.includes('Bid Zone: Yes') || bodyText.includes('Bid Zone Yes')) results["Bid Zone"] = "Yes";
+                         else if (bodyText.includes('Bid Zone: No') || bodyText.includes('Bid Zone No')) results["Bid Zone"] = "No";
                     }
 
-                    // 2. Extract Numerical Plot Values as fallback/confirmation
-                    // We look for the main price (Close) and the Mango levels
+                    // 2. Extract Numerical Plot Values as fallback
                     const findValue = (key) => {
-                        const idx = textLines.findIndex(l => l.trim() === key);
+                        const idx = textLines.findIndex(l => l.trim().includes(key));
                         if (idx !== -1 && textLines[idx+1]) {
-                            return parseFloat(textLines[idx+1].replace(/,/g, ''));
+                            const val = parseFloat(textLines[idx+1].replace(/,/g, ''));
+                            return isNaN(val) ? null : val;
                         }
                         return null;
                     };
 
                     results.PlotValues.Close = findValue('Close');
-                    results.PlotValues.MangoD1 = findValue('MangoD1');
-                    results.PlotValues.MangoD2 = findValue('MangoD2');
+                    results.PlotValues.MangoD1 = findValue('MangoD1') || findValue('Mango D1');
+                    results.PlotValues.MangoD2 = findValue('MangoD2') || findValue('Mango D2');
                     
                     // If Trend is still unknown but we have plots, calculate it
                     if (results.Trend === "Unknown" && results.PlotValues.Close && results.PlotValues.MangoD1) {
@@ -145,16 +142,15 @@ async def scrape_asset_data(browser_context, asset):
                         const upper = Math.max(d1, d2);
                         const lower = Math.min(d1, d2);
                         
-                        // Strict Cloud Logic
                         if (price > upper) results.Trend = "Bullish";
                         else if (price < lower) results.Trend = "Bearish";
-                        else results.Trend = "Neutral"; // Inside the cloud/channel
+                        else results.Trend = "Neutral";
                     }
                     
-                    // Fallback search for Bullish/Bearish keywords if logic fails
+                    // Final Fallback
                     if (results.Trend === "Unknown") {
-                        if (document.body.innerText.includes("Bullish")) results.Trend = "Bullish";
-                        else if (document.body.innerText.includes("Bearish")) results.Trend = "Bearish";
+                        if (bodyText.includes("Bullish")) results.Trend = "Bullish";
+                        else if (bodyText.includes("Bearish")) results.Trend = "Bearish";
                     }
                 }
                 return results;
