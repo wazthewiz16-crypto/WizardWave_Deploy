@@ -142,56 +142,44 @@ async def scrape_asset_data(browser_context, asset):
                         PlotValues: {},
                         DebugRaw: []
                     };
-                    
-                    // Allow time for DOM to update? No, evaluate is instant.
-                    // Get all text lines.
-                    const rawText = document.body.innerText;
-                    const textLines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-                    
-                    // 1. Text Parsing
-                    const trendIdx = textLines.findIndex(l => l.includes('Trend:'));
-                    if (trendIdx !== -1) results.Trend = textLines[trendIdx].split(':')[1].trim();
-                    
-                    const tempoIdx = textLines.findIndex(l => l.includes('Tempo:'));
-                    if (tempoIdx !== -1) results.Tempo = textLines[tempoIdx].split(':')[1].trim();
 
-                    // Bid Zone Text
-                    const bidIdx = textLines.findIndex(l => l.includes('Bid Zone'));
-                    if (bidIdx !== -1) {
-                         const current = textLines[bidIdx];
-                         if (current.includes('Yes')) results["Bid Zone"] = "Yes";
-                         else if (current.includes('No')) results["Bid Zone"] = "No";
-                         else {
-                             const next = textLines[bidIdx + 1] || "";
-                             if (next.includes('Yes')) results["Bid Zone"] = "Yes";
-                             else if (next.includes('No')) results["Bid Zone"] = "No";
-                         }
+                    // Use full body text for Regex parsing (most robust)
+                    const rawText = document.body.innerText;
+                    
+                    // 1. Regex Extraction (Handles "Trend: Bullish", "Trend \n Bullish", etc.)
+                    const trendMatch = rawText.match(/Trend[:\s\n]+(Bullish|Bearish|Neutral)/i);
+                    if (trendMatch) {
+                        let t = trendMatch[1].toLowerCase();
+                        results.Trend = t.charAt(0).toUpperCase() + t.slice(1);
+                    }
+                    
+                    const bidMatch = rawText.match(/Bid Zone[:\s\n]+(Yes|No)/i);
+                    if (bidMatch) {
+                         let b = bidMatch[1].toLowerCase();
+                         results["Bid Zone"] = b.charAt(0).toUpperCase() + b.slice(1);
                     }
 
-                    // 2. Numerical Plots
-                    const findValue = (key) => {
-                        const idx = textLines.findIndex(l => l.includes(key));
-                        if (idx !== -1) {
-                            if (textLines[idx].includes(':')) {
-                                const val = parseFloat(textLines[idx].split(':')[1].replace(/,/g, '').trim());
-                                if (!isNaN(val)) return val;
-                            }
-                            if (textLines[idx+1]) {
-                                const val = parseFloat(textLines[idx+1].replace(/,/g, '').trim());
-                                if (!isNaN(val)) return val;
-                            }
+                    // 2. Numerical Extraction
+                    const findVal = (key) => {
+                        // Regex: Key + optional colon + whitespace/newline + digits
+                        // Escape spaces in key for regex
+                        const safeKey = key.replace(/ /g, '[\\s\\n]+'); 
+                        const re = new RegExp(safeKey + "[:\\s\\n]+([0-9,.]+)", "i");
+                        const m = rawText.match(re);
+                        if (m) {
+                             const v = parseFloat(m[1].replace(/,/g, ''));
+                             if (!isNaN(v)) return v;
                         }
                         return null;
                     };
                     
-                    results.PlotValues.Close = findValue('Close');
-                    results.PlotValues.MangoD1 = findValue('MangoD1');
-                    results.PlotValues.MangoD2 = findValue('MangoD2');
-                    results.PlotValues.EntryUpper = findValue('Entry Zone Upper');
-                    results.PlotValues.EntryLower = findValue('Entry Zone Lower');
-                    
+                    results.PlotValues.Close = findVal('Close');
+                    results.PlotValues.MangoD1 = findVal('MangoD1');
+                    results.PlotValues.MangoD2 = findVal('MangoD2');
+                    results.PlotValues.EntryUpper = findVal('Entry Zone Upper');
+                    results.PlotValues.EntryLower = findVal('Entry Zone Lower');
+
                     // 3. Fallback Calculations
-                    // Trend
                     if (results.Trend === "Unknown" && results.PlotValues.Close && results.PlotValues.MangoD1) {
                         const p = results.PlotValues.Close;
                         const d1 = results.PlotValues.MangoD1;
@@ -202,19 +190,22 @@ async def scrape_asset_data(browser_context, asset):
                         else if (p < lower) results.Trend = "Bearish";
                         else results.Trend = "Neutral";
                     }
-                    
-                    // Bid Zone
+
                     if (results["Bid Zone"] === "Unknown" && results.PlotValues.EntryUpper && results.PlotValues.EntryLower && results.PlotValues.Close) {
                          const p = results.PlotValues.Close;
                          const u = results.PlotValues.EntryUpper;
                          const l = results.PlotValues.EntryLower;
-                         if (p <= u && p >= l) results["Bid Zone"] = "Yes (Calc)";
-                         else results["Bid Zone"] = "No (Calc)";
+                         
+                         // Sanity check: Zone must have valid width to be real
+                         if (Math.abs(u - l) > 0.0001) {
+                             if (p <= u && p >= l) results["Bid Zone"] = "Yes";
+                             else results["Bid Zone"] = "No";
+                         }
                     }
                     
                     // Debug Dump
                     if (results.Trend === "Unknown" || results["Bid Zone"] === "Unknown") {
-                        results.DebugRaw = textLines.slice(0, 50);
+                         results.DebugRaw = rawText.split('\n').filter(l=>l.trim().length>0).slice(0, 40);
                     }
 
                     return results;
