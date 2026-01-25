@@ -67,18 +67,18 @@ async def scrape_asset_data(browser_context, asset):
         
         # Smart Data Window Toggle
         try:
-            # Check if Data Window is already open (text check for Panel Title)
-            # "Mango Dynamic" is in the legend (always visible), so we check for "Data Window" header
-            is_dw_open = await page.evaluate("() => document.body.innerText.includes('Data Window')")
+            # Check if Data Window is truly open by looking for specific indicator keys
+            # "Data Window" text is present even in tooltips, so we look for "Entry Zone Upper"
+            is_dw_open = await page.evaluate("() => document.body.innerText.includes('Entry Zone Upper')")
             
             if not is_dw_open:
-                logging.info(f"    [>] {asset['name']}: Data Window closed. Toggling Alt+D...")
+                logging.info(f"    [>] {asset['name']}: Indicator data missing. Toggling Alt+D...")
                 await page.mouse.click(640, 400) # Center
                 await asyncio.sleep(0.5)
                 await page.keyboard.press("Alt+D")
                 await asyncio.sleep(2)
             else:
-                 logging.info(f"    [>] {asset['name']}: Data Window already valid.")
+                 logging.info(f"    [>] {asset['name']}: Data Window active and indicator found.")
                  
         except Exception as e:
             logging.error(f"    [!] {asset['name']}: DW Toggle failed: {e}")
