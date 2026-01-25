@@ -89,124 +89,106 @@ async def scrape_asset_data(browser_context, asset):
             # print(f"    [-] Switching to {tf.upper()}...")
             await page.keyboard.type(tf)
             await page.keyboard.press("Enter")
-            await asyncio.sleep(4) # Reduced from 10s
+            await asyncio.sleep(3) # Wait for chart to load
 
-            # Advanced Extraction Logic: Parse the Data Window
-            data = await page.evaluate(r"""(() => {
-                const results = {
-                    Trend: "Unknown",
-                    Tempo: "Unknown",
-                    "Bid Zone": "Unknown",
-                    PlotValues: {}
-                };
+            # CRITICAL: Hover over the latest candle (Right side of chart)
+            # Data Window shows values for the cursor position.
+            # If we don't hover right, we might read old data or nothing.
+            await page.mouse.move(1150, 400) 
+            await asyncio.sleep(1)
 
-                // Find the Data Window content wrapper
-                const wrappers = Array.from(document.querySelectorAll('div')).filter(el => 
-                    el.innerText && el.innerText.includes('Mango Dynamic')
-                );
+            # Retry mechanism for extraction
+            max_retries = 3
+            data = None
+            
+            for attempt in range(max_retries):
+                # Wiggle mouse slightly on retries to force update
+                if attempt > 0:
+                    await page.mouse.move(1150 + (attempt * 10), 400 + (attempt * 10))
+                    await asyncio.sleep(1)
 
-                if (wrappers.length > 0 || document.body.innerText.includes('Mango Dynamic')) {
-                    // Get all text lines in the Data Window (or whole body if specific wrapper not found)
+                data = await page.evaluate(r"""(() => {
+                    const results = {
+                        Trend: "Unknown",
+                        Tempo: "Unknown",
+                        "Bid Zone": "Unknown",
+                        PlotValues: {}
+                    };
+                    
+                    // Allow time for DOM to update? No, evaluate is instant.
+                    // Get all text lines.
                     const textLines = document.body.innerText.split('\n');
                     
-                    // 1. Try to find explicit status first
+                    // 1. Text Parsing
                     const trendIdx = textLines.findIndex(l => l.includes('Trend:'));
-                    if (trendIdx !== -1) {
-                         results.Trend = textLines[trendIdx].split(':')[1].trim();
-                    }
+                    if (trendIdx !== -1) results.Trend = textLines[trendIdx].split(':')[1].trim();
                     
                     const tempoIdx = textLines.findIndex(l => l.includes('Tempo:'));
-                    if (tempoIdx !== -1) {
-                         results.Tempo = textLines[tempoIdx].split(':')[1].trim();
-                    }
-                    
-                    // Improved Bid Zone Extraction (Handles same-line and next-line values)
+                    if (tempoIdx !== -1) results.Tempo = textLines[tempoIdx].split(':')[1].trim();
+
+                    // Bid Zone Text
                     const bidIdx = textLines.findIndex(l => l.includes('Bid Zone'));
                     if (bidIdx !== -1) {
-                        const currentLine = textLines[bidIdx];
-                        const nextLine = textLines[bidIdx + 1] || "";
-                        
-                        // 1. Check current line (e.g. "Bid Zone: Yes")
-                        if (currentLine.includes("Yes")) results["Bid Zone"] = "Yes";
-                        else if (currentLine.includes("No")) results["Bid Zone"] = "No";
-                        
-                        // 2. Check next line (Standard Data Window format: Key \n Value)
-                        else if (results["Bid Zone"] === "Unknown") {
-                             if (nextLine.trim() === "Yes" || nextLine.includes("Yes")) results["Bid Zone"] = "Yes";
-                             else if (nextLine.trim() === "No" || nextLine.includes("No")) results["Bid Zone"] = "No";
-                        }
-                    }
-                    
-                    // Fallback: Check Legend specifically
-                    if (results["Bid Zone"] === "Unknown") {
-                         const legendText = document.body.innerText; // Global search fallback
-                         if (legendText.includes('Bid Zone: Yes')) results["Bid Zone"] = "Yes";
-                         else if (legendText.includes('Bid Zone: No')) results["Bid Zone"] = "No";
+                         const current = textLines[bidIdx];
+                         if (current.includes('Yes')) results["Bid Zone"] = "Yes";
+                         elif (current.includes('No')) results["Bid Zone"] = "No";
+                         else {
+                             const next = textLines[bidIdx + 1] || "";
+                             if (next.includes('Yes')) results["Bid Zone"] = "Yes";
+                             else if (next.includes('No')) results["Bid Zone"] = "No";
+                         }
                     }
 
-                    // 2. Extract Numerical Plot Values as fallback/confirmation
+                    // 2. Numerical Plots
                     const findValue = (key) => {
-                        // Find index of line containing key
                         const idx = textLines.findIndex(l => l.includes(key));
                         if (idx !== -1) {
-                            // Try same line first "Key: Value"
                             if (textLines[idx].includes(':')) {
-                                const val = parseFloat(textLines[idx].split(':')[1].replace(/,/g, ''));
+                                const val = parseFloat(textLines[idx].split(':')[1].replace(/,/g, '').trim());
                                 if (!isNaN(val)) return val;
                             }
-                            // Try next line "Key \n Value"
                             if (textLines[idx+1]) {
-                                const val = parseFloat(textLines[idx+1].replace(/,/g, ''));
+                                const val = parseFloat(textLines[idx+1].replace(/,/g, '').trim());
                                 if (!isNaN(val)) return val;
                             }
                         }
                         return null;
                     };
-
+                    
                     results.PlotValues.Close = findValue('Close');
                     results.PlotValues.MangoD1 = findValue('MangoD1');
                     results.PlotValues.MangoD2 = findValue('MangoD2');
                     results.PlotValues.EntryUpper = findValue('Entry Zone Upper');
                     results.PlotValues.EntryLower = findValue('Entry Zone Lower');
                     
-                    // Manual Calculation: Trend (Fallback)
+                    // 3. Fallback Calculations
+                    // Trend
                     if (results.Trend === "Unknown" && results.PlotValues.Close && results.PlotValues.MangoD1) {
-                        const price = results.PlotValues.Close;
+                        const p = results.PlotValues.Close;
                         const d1 = results.PlotValues.MangoD1;
                         const d2 = results.PlotValues.MangoD2 || d1;
-                        
                         const upper = Math.max(d1, d2);
                         const lower = Math.min(d1, d2);
-                        
-                        if (price > upper) results.Trend = "Bullish";
-                        else if (price < lower) results.Trend = "Bearish";
-                        else results.Trend = "Neutral"; 
-                    }
-
-                    // Manual Calculation: Bid Zone (Fallback)
-                    if (results["Bid Zone"] === "Unknown" && results.PlotValues.EntryUpper && results.PlotValues.EntryLower && results.PlotValues.Close) {
-                         const p = results.PlotValues.Close;
-                         const upper = results.PlotValues.EntryUpper;
-                         const lower = results.PlotValues.EntryLower;
-                         
-                         // Check if price is within the zone (Green Zone)
-                         // Usually Bid Zone means Price is inside the buy zone?
-                         // Assuming Upper > Lower
-                         if (p <= upper && p >= lower) {
-                              results["Bid Zone"] = "Yes";
-                         } else {
-                              results["Bid Zone"] = "No";
-                         }
+                        if (p > upper) results.Trend = "Bullish";
+                        else if (p < lower) results.Trend = "Bearish";
+                        else results.Trend = "Neutral";
                     }
                     
-                    // Fallback search keywords
-                    if (results.Trend === "Unknown") {
-                        if (document.body.innerText.includes("Bullish")) results.Trend = "Bullish";
-                        else if (document.body.innerText.includes("Bearish")) results.Trend = "Bearish";
+                    // Bid Zone
+                    if (results["Bid Zone"] === "Unknown" && results.PlotValues.EntryUpper && results.PlotValues.EntryLower && results.PlotValues.Close) {
+                         const p = results.PlotValues.Close;
+                         const u = results.PlotValues.EntryUpper;
+                         const l = results.PlotValues.EntryLower;
+                         if (p <= u && p >= l) results["Bid Zone"] = "Yes (Calc)";
+                         else results["Bid Zone"] = "No (Calc)";
                     }
-                }
-                return results;
-            })()""")
+
+                    return results;
+                })()""")
+
+                # Check if we got valid data
+                if data['Trend'] != "Unknown":
+                    break # Success
             
             data["Timestamp"] = datetime.now().isoformat()
             results[tf] = data
