@@ -211,46 +211,98 @@ async def main():
     OUTPUT_FILE = "mango_dynamic_data.json"
     LOG_FILE = "scraper_debug.log"
 
-    # Setup Logging
+    # Setup Logging with Traceback
     import logging
+    import traceback
+    
+    # Redirect stderr to log file for full crash capture
+    sys.stderr = open(LOG_FILE, 'a')
+
     logging.basicConfig(filename=LOG_FILE, level=logging.INFO, format='%(asctime)s - %(message)s')
     logging.info("Scraper Script Started")
 
-    if not os.path.exists(STATE_FILE):
-        logging.error(f"{STATE_FILE} not found. Run setup_tv_session.py.")
-        print(f"[ERROR] {STATE_FILE} not found. Run setup_tv_session.py.")
-        return
-
-    # Create Initial Output if missing
-    if not os.path.exists(OUTPUT_FILE):
-        with open(OUTPUT_FILE, "w") as f:
-            json.dump({}, f)
-
-    print("--- Starting Automated Mango Scraper (30m Interval) ---")
-    logging.info("Starting Automated Mango Scraper (30m Interval)")
-
-    # Ensure browsers are installed (Critical for Streamlit Cloud)
-    import subprocess
-    import sys
     try:
-        print("[*] Checking/Installing Playwright Browsers...")
-        # Only install chromium to save time/space
-        subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"], check=True)
+        if not os.path.exists(STATE_FILE):
+            logging.error(f"{STATE_FILE} not found. Run setup_tv_session.py.")
+            return
+
+        # Create Initial Output if missing
+        if not os.path.exists(OUTPUT_FILE):
+             with open(OUTPUT_FILE, "w") as f:
+                 json.dump({}, f)
+
+        print("--- Starting Automated Mango Scraper (30m Interval) ---")
+        logging.info("Starting Automated Mango Scraper (30m Interval)")
+
+        # Ensure browsers are installed (Critical for Streamlit Cloud)
+        try:
+            print("[*] Checking/Installing Playwright Browsers...")
+            # Only install chromium to save time/space
+            subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"], check=True)
+        except Exception as e:
+            logging.warning(f"Failed to run playwright install: {e}")
+
+        while True:
+            start_time = datetime.now()
+            logging.info(f"Cycle Started: {start_time}")
+            
+            async with async_playwright() as p:
+                try:
+                    # Launching headless with robust cloud settings
+                    browser = await p.chromium.launch(
+                        headless=True,
+                        args=[
+                            '--disable-dev-shm-usage', # Crucial for Docker/Cloud
+                            '--no-sandbox',
+                            '--disable-setuid-sandbox',
+                            '--disable-gpu',
+                            '--disable-software-rasterizer',
+                            '--window-size=1280,800'
+                        ]
+                    )
+                    context = await browser.new_context(
+                        storage_state=STATE_FILE,
+                        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                        viewport={'width': 1280, 'height': 800},
+                        ignore_https_errors=True
+                    )
+                    
+                    # Process Assets
+                    all_results = {}
+                    if os.path.exists(OUTPUT_FILE):
+                         try:
+                             with open(OUTPUT_FILE, "r") as f:
+                                 all_results = json.load(f)
+                         except: pass
+
+                    for asset in ASSETS:
+                        logging.info(f"Fetching {asset['name']} ({asset['symbol']})...")
+                        asset_data = await scrape_asset_data(context, asset)
+                        if asset_data:
+                            all_results[asset['name']] = asset_data
+                            # Incremental Save
+                            with open(OUTPUT_FILE, "w") as f:
+                                json.dump(all_results, f, indent=4)
+                        
+                    await browser.close()
+                    logging.info("Cycle Completed Successfully")
+
+                except Exception as cycle_e:
+                    logging.error(f"Cycle Failed: {cycle_e}")
+                    logging.error(traceback.format_exc())
+
+            # Sleep Logic
+            elapsed = (datetime.now() - start_time).total_seconds()
+            sleep_sec = max(300, 1800 - elapsed)
+            logging.info(f"Sleeping for {sleep_sec/60:.1f} minutes...")
+            await asyncio.sleep(sleep_sec)
+
     except Exception as e:
-        print(f"[!] Warning: Failed to run playwright install: {e}")
-    
-    while True:
-        start_time = datetime.now()
-        print(f"\n[!] Cycle Started: {start_time}")
-        
-        async with async_playwright() as p:
-            try:
-                # Launching headless with robust cloud settings
-                browser = await p.chromium.launch(
-                    headless=True,
-                    args=[
-                        '--disable-dev-shm-usage', # Crucial for Docker/Cloud
-                        '--no-sandbox', 
+        logging.critical(f"FATAL ERROR: {e}")
+        logging.critical(traceback.format_exc())
+        # Re-raise to crash process so it can be restarted if needed, 
+        # but we wanted to log it first.
+        sys.exit(1) 
                         '--disable-setuid-sandbox',
                         '--disable-gpu',
                         '--disable-software-rasterizer',
