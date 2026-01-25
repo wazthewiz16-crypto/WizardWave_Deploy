@@ -64,6 +64,32 @@ async def scrape_asset_data(browser_context, asset):
         logging.info(f"  [>] {asset['name']}: Navigating...")
         await page.goto(url, wait_until="load", timeout=60000)
         await asyncio.sleep(5) # Reduced from 10s
+
+        # Ensure 'Arcane Portal' Layout (User Request)
+        try:
+            # Check if we have the right indicators. If not, switch layout.
+            has_mango = await page.evaluate("() => document.body.innerText.includes('Mango')")
+            
+            if not has_mango:
+                logging.info(f"    [>] {asset['name']}: 'Mango' indicators missing. Attempting layout switch to 'Arcane Portal'...")
+                # Click chart to focus first
+                await page.mouse.click(640, 400)
+                await asyncio.sleep(0.5)
+                
+                # Open Layout Load Dialog
+                await page.keyboard.type(".") 
+                await asyncio.sleep(2)
+                
+                # Type Layout Name
+                await page.keyboard.type("Arcane Portal")
+                await asyncio.sleep(2)
+                
+                # Select and Load
+                await page.keyboard.press("Enter")
+                logging.info(f"    [>] {asset['name']}: Selected 'Arcane Portal'. Waiting for reload...")
+                await asyncio.sleep(8) 
+        except Exception as e:
+            logging.warning(f"    [!] {asset['name']}: Layout switch failed: {e}")
         
         # Smart Data Window Toggle
         try:
