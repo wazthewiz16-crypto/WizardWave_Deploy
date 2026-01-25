@@ -67,8 +67,9 @@ async def scrape_asset_data(browser_context, asset):
         
         # Smart Data Window Toggle
         try:
-            # Check if Data Window is already open (text check)
-            is_dw_open = await page.evaluate("() => document.body.innerText.includes('Mango Dynamic')")
+            # Check if Data Window is already open (text check for Panel Title)
+            # "Mango Dynamic" is in the legend (always visible), so we check for "Data Window" header
+            is_dw_open = await page.evaluate("() => document.body.innerText.includes('Data Window')")
             
             if not is_dw_open:
                 logging.info(f"    [>] {asset['name']}: Data Window closed. Toggling Alt+D...")
