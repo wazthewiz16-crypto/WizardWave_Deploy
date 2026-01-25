@@ -59,35 +59,29 @@ async def scrape_asset_data(browser_context, asset):
     results = {}
     
     try:
-        print(f"  [>] Navigating to {asset['symbol']}...")
-        await page.goto(url, wait_until="load", timeout=90000)
-        await asyncio.sleep(10) # Initial heavy load
+        logging.info(f"  [>] {asset['name']}: Navigating...")
+        await page.goto(url, wait_until="load", timeout=60000)
+        await asyncio.sleep(5) # Reduced from 10s
         
         # Explicitly Open Data Window (User Request: Alt+D)
         try:
-            print("    [>] Toggling Data Window via Hotkey (Alt+D)...")
             # Focus on chart area first (center of screen approx)
             await page.mouse.click(500, 300) 
             await asyncio.sleep(1)
             
-            # Press hotkey to toggle ON (if off)
-            # We do it twice just in case? No, toggle might close it if open.
-            # Best verify if it's open? Hard to check computed style loosely.
-            # We assume it starts closed or state persists.
-            # User specifically asked for this.
+            # Press hotkey
             await page.keyboard.press("Alt+D")
             await asyncio.sleep(2)
         except Exception as e:
-            print(f"    [!] Hotkey failed: {e}")
+            logging.error(f"    [!] {asset['name']}: Hotkey failed: {e}")
 
-        await asyncio.sleep(2)
-        await asyncio.sleep(2)
+        await asyncio.sleep(1)
 
         for tf in TIMEFRAMES:
-            print(f"    [-] Switching to {tf.upper()}...")
+            # print(f"    [-] Switching to {tf.upper()}...")
             await page.keyboard.type(tf)
             await page.keyboard.press("Enter")
-            await asyncio.sleep(10) # Give more time for the indicator and Data Window to sync
+            await asyncio.sleep(4) # Reduced from 10s
 
             # Advanced Extraction Logic: Parse the Data Window
             data = await page.evaluate("""() => {
@@ -179,30 +173,18 @@ async def scrape_asset_data(browser_context, asset):
             
             data["Timestamp"] = datetime.now().isoformat()
             results[tf] = data
-            print(f"    [=] Result: {data['Trend']} (Close: {data.get('PlotValues', {}).get('Close')})")
+            # print(f"    [=] Result: {data['Trend']} (Close: {data.get('PlotValues', {}).get('Close')})")
 
     except Exception as e:
-        print(f"  [!] Error scraping {asset['name']}: {e}")
+        logging.error(f"  [!] {asset['name']} Error: {e}")
         try:
             await page.screenshot(path=f"debug_error_{asset['name']}.png")
         except:
             pass
     finally:
-        # Check if we got valid data, if not, screenshot state
         try:
-            has_data = False
-            for tf in TIMEFRAMES:
-                if results.get(tf, {}).get("Trend") != "Unknown":
-                    has_data = True
-                    break
-            
-            if not has_data:
-                print(f"  [?] No data found for {asset['name']}, saving debug screenshot...")
-                await page.screenshot(path=f"debug_empty_{asset['name']}.png")
-        except:
-            pass
-            
-        await page.close()
+            await page.close()
+        except: pass
     
     return results
 
@@ -267,7 +249,7 @@ async def main():
                         ignore_https_errors=True
                     )
                     
-                    # Process Assets
+                    # Process Assets Concurrently (Max 3 workers)
                     all_results = {}
                     if os.path.exists(OUTPUT_FILE):
                          try:
@@ -275,14 +257,25 @@ async def main():
                                  all_results = json.load(f)
                          except: pass
 
-                    for asset in ASSETS:
-                        logging.info(f"Fetching {asset['name']} ({asset['symbol']})...")
-                        asset_data = await scrape_asset_data(context, asset)
-                        if asset_data:
-                            all_results[asset['name']] = asset_data
-                            # Incremental Save
-                            with open(OUTPUT_FILE, "w") as f:
-                                json.dump(all_results, f, indent=4)
+                    semaphore = asyncio.Semaphore(3)
+                    
+                    async def worker(asset):
+                        async with semaphore:
+                            logging.info(f"Worker start: {asset['name']}")
+                            try:
+                                asset_data = await scrape_asset_data(context, asset)
+                                if asset_data:
+                                    # Update results dict (Thread-safe in simple asyncio loop)
+                                    all_results[asset['name']] = asset_data
+                                    # Incremental Save (Blocking IO but safe enough here)
+                                    with open(OUTPUT_FILE, "w") as f:
+                                        json.dump(all_results, f, indent=4)
+                                    logging.info(f"Worker done: {asset['name']}")
+                            except Exception as e:
+                                logging.error(f"Worker failed {asset['name']}: {e}")
+
+                    tasks = [worker(asset) for asset in ASSETS]
+                    await asyncio.gather(*tasks)
                         
                     await browser.close()
                     logging.info("Cycle Completed Successfully")
