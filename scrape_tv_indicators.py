@@ -230,18 +230,20 @@ async def scrape_asset_data(browser_context, asset):
             # Log results and RAW DEBUG if missing
             if data['Trend'] == 'Unknown' or data['Bid Zone'] == 'Unknown':
                  logging.warning(f"    [?] {asset['name']} {tf}: Trend={data['Trend']}, BidZone={data['Bid Zone']}")
+                 
+                 # Screenshot on failure (User Request: "what its look at")
+                 try:
+                     safe_tf = tf.replace("/","_")
+                     await page.screenshot(path=f"debug_view_{asset['name']}_{safe_tf}.png")
+                     logging.info(f"       [+] Saved debug screenshot: debug_view_{asset['name']}_{safe_tf}.png")
+                 except: pass
+
                  if data.get('DebugRaw'):
                      logging.warning(f"       [RAW DEBUG] {data['DebugRaw'][:5]} ... (check log for full dump)")
             else:
                  logging.info(f"    [=] {asset['name']} {tf}: Trend={data['Trend']}, BidZone={data['Bid Zone']}")
             
-            data["Timestamp"] = datetime.now().isoformat()
-            results[tf] = data
-            # Log the extracted data for debugging
-            if data['Trend'] == 'Unknown' or data['Bid Zone'] == 'Unknown':
-                 logging.warning(f"    [?] {asset['name']} {tf}: Trend={data['Trend']}, BidZone={data['Bid Zone']}")
-            else:
-                 logging.info(f"    [=] {asset['name']} {tf}: Trend={data['Trend']}, BidZone={data['Bid Zone']}")
+
 
     except Exception as e:
         logging.error(f"  [!] {asset['name']} Error: {e}")
