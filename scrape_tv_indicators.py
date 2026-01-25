@@ -303,48 +303,9 @@ async def main():
         # Re-raise to crash process so it can be restarted if needed, 
         # but we wanted to log it first.
         sys.exit(1) 
-                        '--disable-setuid-sandbox',
-                        '--disable-gpu',
-                        '--disable-software-rasterizer',
-                        # '--single-process' # Removed as it causes instability
-                    ]
-                )
-                context = await browser.new_context(
-                    storage_state=STATE_FILE,
-                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                    viewport={'width': 1440, 'height': 900}, # Expanded to ensure toolbars don't collapse
-                    ignore_https_errors=True
-                )
-                
-                # Load existing results to update incrementally
-                all_results = {}
-                if os.path.exists(OUTPUT_FILE):
-                    try:
-                        with open(OUTPUT_FILE, "r") as f:
-                            all_results = json.load(f)
-                    except:
-                        pass
-                
-                # We process assets one by one
-                for asset in ASSETS:
-                    print(f"> Fetching {asset['name']} ({asset['symbol']})...")
-                    asset_data = await scrape_asset_data(context, asset)
-                    if asset_data:
-                        all_results[asset['name']] = asset_data
-                        # Save each asset to ensure we don't lose data on crash
-                        with open(OUTPUT_FILE, "w") as f:
-                            json.dump(all_results, f, indent=4)
-                
-                print(f"\n[SUCCESS] Cycle Completed at {datetime.now()}")
-                await browser.close()
-            except Exception as e:
-                print(f"[CRITICAL ERROR] Automation Cycle Failed: {e}")
-        
-        # Calculate sleep to hit exactly 30 mins from start
-        elapsed = (datetime.now() - start_time).total_seconds()
-        sleep_sec = max(300, 1800 - elapsed) # Wait at least 5 mins before next run regardless
-        print(f"[*] Sleeping for {sleep_sec/60:.1f} minutes...")
-        await asyncio.sleep(sleep_sec)
+
+
+
 
 if __name__ == "__main__":
     asyncio.run(main())
