@@ -4,6 +4,8 @@ import json
 import re
 import subprocess
 import sys
+import logging
+import traceback
 from datetime import datetime
 
 # Self-healing: Install playwright if missing (Streamlit Cloud sometimes misses requirements on fast updates)
