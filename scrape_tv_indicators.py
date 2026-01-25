@@ -309,13 +309,13 @@ async def main():
                             '--disable-setuid-sandbox',
                             '--disable-gpu',
                             '--disable-software-rasterizer',
-                            '--window-size=1280,800'
+                            '--window-size=1920,1080'
                         ]
                     )
                     context = await browser.new_context(
                         storage_state=STATE_FILE,
                         user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                        viewport={'width': 1280, 'height': 800},
+                        viewport={'width': 1920, 'height': 1080},
                         ignore_https_errors=True
                     )
                     
