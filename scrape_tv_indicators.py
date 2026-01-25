@@ -86,7 +86,7 @@ async def scrape_asset_data(browser_context, asset):
             await asyncio.sleep(4) # Reduced from 10s
 
             # Advanced Extraction Logic: Parse the Data Window
-            data = await page.evaluate("""() => {
+            data = await page.evaluate(r"""(() => {
                 const results = {
                     Trend: "Unknown",
                     Tempo: "Unknown",
@@ -95,14 +95,13 @@ async def scrape_asset_data(browser_context, asset):
                 };
 
                 // Find the Data Window content wrapper
-                // TV obfuscates classes, so we look for structure or text content
                 const wrappers = Array.from(document.querySelectorAll('div')).filter(el => 
                     el.innerText && el.innerText.includes('Mango Dynamic')
                 );
 
-                if (wrappers.length > 0) {
-                    // Get all text lines in the Data Window
-                    const textLines = document.body.innerText.split('\\n');
+                if (wrappers.length > 0 || document.body.innerText.includes('Mango Dynamic')) {
+                    // Get all text lines in the Data Window (or whole body if specific wrapper not found)
+                    const textLines = document.body.innerText.split('\n');
                     
                     // 1. Try to find explicit status first
                     const trendIdx = textLines.findIndex(l => l.includes('Trend:'));
@@ -140,10 +139,10 @@ async def scrape_asset_data(browser_context, asset):
                     }
 
                     // 2. Extract Numerical Plot Values as fallback/confirmation
-                    // We look for the main price (Close) and the Mango levels
                     const findValue = (key) => {
                         const idx = textLines.findIndex(l => l.trim() === key);
                         if (idx !== -1 && textLines[idx+1]) {
+                            // Remove commas and parse
                             return parseFloat(textLines[idx+1].replace(/,/g, ''));
                         }
                         return null;
@@ -162,20 +161,19 @@ async def scrape_asset_data(browser_context, asset):
                         const upper = Math.max(d1, d2);
                         const lower = Math.min(d1, d2);
                         
-                        // Strict Cloud Logic
                         if (price > upper) results.Trend = "Bullish";
                         else if (price < lower) results.Trend = "Bearish";
-                        else results.Trend = "Neutral"; // Inside the cloud/channel
+                        else results.Trend = "Neutral"; 
                     }
                     
-                    // Fallback search for Bullish/Bearish keywords if logic fails
+                    // Fallback search keywords
                     if (results.Trend === "Unknown") {
                         if (document.body.innerText.includes("Bullish")) results.Trend = "Bullish";
                         else if (document.body.innerText.includes("Bearish")) results.Trend = "Bearish";
                     }
                 }
                 return results;
-            }""")
+            })()""")
             
             data["Timestamp"] = datetime.now().isoformat()
             results[tf] = data
