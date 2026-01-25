@@ -13,15 +13,32 @@ root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 if root_path not in sys.path:
     sys.path.append(root_path)
 
-from src.strategies.strategy import WizardWaveStrategy
+from src.strategies.wizard_wave import WizardWaveStrategy
 from src.core.feature_engine import calculate_ml_features
 from src.utils.paths import get_model_path
 
 def fetch_data(ticker, period='5y', interval='1d'):
-    print(f"Fetching {ticker}...")
-    df = yf.Ticker(ticker).history(period=period, interval=interval)
+    print(f"Fetching {ticker} ({interval})...")
+    
+    y_interval = interval
+    resample = None
+    if interval == '12h':
+        y_interval = '1h'
+        resample = '12H'
+    elif interval == '4d':
+        y_interval = '1d'
+        resample = '4D'
+    elif interval == '1w':
+        y_interval = '1wk'
+    
+    df = yf.Ticker(ticker).history(period=period, interval=y_interval)
     if df.empty: return pd.DataFrame()
     df.columns = [c.lower() for c in df.columns]
+    
+    if resample:
+        logic = {'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last', 'volume': 'sum'}
+        df = df.resample(resample).apply(logic).dropna()
+
     if df.index.tz is not None: df.index = df.index.tz_localize(None)
     return df[['open', 'high', 'low', 'close', 'volume']]
 

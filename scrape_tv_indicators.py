@@ -33,7 +33,7 @@ ASSETS = [
     {"symbol": "BINANCE:AVAXUSDT", "name": "AVAX"},
     {"symbol": "BINANCE:ADAUSDT", "name": "ADA"}
 ]
-TIMEFRAMES = ["4h", "12h", "1d", "4d", "1w"]
+TIMEFRAMES = ["1h", "4h", "12h", "1d", "4d", "1w"]
 
 async def scrape_asset_data(browser_context, asset):
     page = await browser_context.new_page()

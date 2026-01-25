@@ -206,10 +206,15 @@ def run_runic_analysis():
 import joblib
 from src.core.data_fetcher import fetch_data
 from src.core.feature_engine import calculate_ml_features, calculate_ichi_features, calculate_cls_features
-from src.strategies.strategy import WizardWaveStrategy
-from src.strategies.strategy_scalp import WizardScalpStrategy
-from src.strategies.strategy_cls import CLSRangeStrategy
-from src.strategies.strategy_ichimoku import IchimokuStrategy
+# Add experiments to sys.path for legacy strats
+root_path = os.path.dirname(os.path.abspath(__file__))
+if os.path.join(root_path, "experiments") not in sys.path:
+    sys.path.append(os.path.join(root_path, "experiments"))
+
+from src.strategies.wizard_wave import WizardWaveStrategy
+from strategy_scalp import WizardScalpStrategy
+from strategy_cls import CLSRangeStrategy
+from strategy_ichimoku import IchimokuStrategy
 from src.utils.paths import get_model_path, get_config_path
 
 # Load ML Models for New Strats
@@ -4045,10 +4050,9 @@ with col_right:
             <div style="display: flex; justify-content: space-between; padding: 0 10px; margin-bottom: 5px; border-bottom: 1px solid #c5a05930; padding-bottom: 2px;">
                 <span style="font-size: 0.65rem; color: #888; font-weight: bold;">ASSET</span>
                 <div style="display: flex; gap: 12px;">
-                    <span style="font-size: 0.65rem; color: #888; width: 30px; text-align: center; font-weight: bold;">1W</span>
                     <span style="font-size: 0.65rem; color: #888; width: 30px; text-align: center; font-weight: bold;">1D</span>
-                    <span style="font-size: 0.65rem; color: #888; width: 30px; text-align: center; font-weight: bold;">12H</span>
                     <span style="font-size: 0.65rem; color: #888; width: 30px; text-align: center; font-weight: bold;">4H</span>
+                    <span style="font-size: 0.65rem; color: #888; width: 30px; text-align: center; font-weight: bold;">1H</span>
                 </div>
             </div>
         """, unsafe_allow_html=True)
@@ -4078,8 +4082,8 @@ with col_right:
                         # We separate Asset and Bid Zone with some space.
                         bid_display = f'<span style="font-size: 0.75rem; color: #ccc; margin-left: 15px;">Bid Zone: {bid_value}</span>'
 
-                        # Reordered: 1w -> 1d -> 12h -> 4h
-                        for tf in ["1w", "1d", "12h", "4h"]:
+                        # Reordered: 1d -> 4h -> 1h
+                        for tf in ["1d", "4h", "1h"]:
                             d = tfs.get(tf, {})
                             trend = d.get("Trend", "Unknown")
                             strat_state = d.get("StrategyState", "Neutral")
@@ -4091,26 +4095,23 @@ with col_right:
                             if "Bullish" in trend: 
                                 color = "#00ff88"
                                 symbol = "▲"
-                                if "PULLBACK" in strat_state: color = "#00c4cc" # Cyan for Pullback
                             elif "Bearish" in trend: 
                                 color = "#ff3344"
                                 symbol = "▼"
-                                if "RECOVERY" in strat_state: color = "#ff9900" # Orange for recovery
                             elif "Neutral" in trend: 
                                 color = "#ffd700"
                                 symbol = "◆"
                             
-                            lights += f'<div title="{tf.upper()}: {trend}\nState: {strat_state}" style="color: {color}; text-shadow: 0 0 8px {color}60; width: 30px; text-align: center; font-size: 1.1rem; font-weight: bold;">{symbol}</div>'
+                            lights += f'<div title="{tf.upper()}: {trend}" style="color: {color}; text-shadow: 0 0 8px {color}60; width: 30px; text-align: center; font-size: 1.1rem; font-weight: bold;">{symbol}</div>'
                         
                         st.markdown(f'<div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: rgba(255,255,255,0.02); border-radius: 4px; margin-bottom: 3px; border-left: 3px solid #c5a05940;"><div style="display: flex; align-items: center;"><span style="font-size: 0.85rem; font-weight: bold; color: #eee; width: 60px;">{asset}</span>{bid_display}</div><div style="display: flex; gap: 12px;">{lights}</div></div>', unsafe_allow_html=True)
 
                     # Legend for Color Blindness & Clarity
                     st.markdown("""
-                        <div style="display: flex; justify-content: center; gap: 15px; margin-top: 12px; padding: 6px; background: rgba(0,0,0,0.3); border-radius: 4px; border: 1px solid #c5a05920;">
-                            <span style="font-size: 0.65rem; color: #00ff88; font-weight: bold;">▲ BULL</span>
-                            <span style="font-size: 0.65rem; color: #00c4cc; font-weight: bold;">▲ PULLBACK</span>
-                            <span style="font-size: 0.65rem; color: #ff3344; font-weight: bold;">▼ BEAR</span>
-                            <span style="font-size: 0.65rem; color: #ff9900; font-weight: bold;">▼ RECOVERY</span>
+                        <div style="display: flex; justify-content: center; gap: 20px; margin-top: 12px; padding: 6px; background: rgba(0,0,0,0.3); border-radius: 4px; border: 1px solid #c5a05920;">
+                            <span style="font-size: 0.7rem; color: #00ff88; font-weight: bold;">▲ BULL</span>
+                            <span style="font-size: 0.7rem; color: #ff3344; font-weight: bold;">▼ BEAR</span>
+                            <span style="font-size: 0.7rem; color: #ffd700; font-weight: bold;">◆ NEUT</span>
                         </div>
                     """, unsafe_allow_html=True)
                 else:
