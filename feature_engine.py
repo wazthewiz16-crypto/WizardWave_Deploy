@@ -39,8 +39,13 @@ def calculate_ml_features(df, macro_df=None, crypto_macro_df=None):
     df = df.copy()
     
     # --- 0. Pre-Feature: Macro Integration ---
+    # --- 0. Pre-Feature: Macro Integration ---
     if macro_df is not None and not macro_df.empty:
         # Align macro data to the main df index
+        # Fix: Drop duplicates in macro index to allow reindexing
+        if not macro_df.index.is_unique:
+            macro_df = macro_df.loc[~macro_df.index.duplicated(keep='last')]
+            
         macro_aligned = macro_df['close'].reindex(df.index, method='ffill')
         if not macro_aligned.isna().all():
             df['dxy_close'] = macro_aligned
@@ -58,6 +63,9 @@ def calculate_ml_features(df, macro_df=None, crypto_macro_df=None):
 
     if crypto_macro_df is not None and not crypto_macro_df.empty:
         # Correlation with BTC (Crypto Beta)
+        if not crypto_macro_df.index.is_unique:
+            crypto_macro_df = crypto_macro_df.loc[~crypto_macro_df.index.duplicated(keep='last')]
+            
         btc_aligned = crypto_macro_df['close'].reindex(df.index, method='ffill')
         if not btc_aligned.isna().all():
             df['btc_corr'] = df['close'].pct_change().rolling(20).corr(btc_aligned.pct_change())
