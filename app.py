@@ -225,29 +225,53 @@ def bootstrap_system():
         print("[!] Installing Playwright package...")
         subprocess.check_call([sys.executable, "-m", "pip", "install", "playwright==1.49.0"])
         
+        # Reload to ensure subsequent subprocess calls work if sharing env
+        import importlib
+        import site
+        importlib.invalidate_caches()
+        if hasattr(site, 'getusersitepackages'):
+            user_site = site.getusersitepackages()
+            if user_site not in sys.path:
+                sys.path.append(user_site)
+        
     # 2. Ensure Chromium is installed
     try:
         subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"], check=True)
     except Exception as e:
         print(f"[!] Browser install warning: {e}")
 
-    # 3. Auto-start Scraper if not already running (approx check)
-    # Using a simple file-based lock for cloud persistence
-    lock_file = "/tmp/scraper.lock"
-    if not os.path.exists(lock_file):
-        try:
-            with open(lock_file, "w") as f:
-                f.write(str(os.getpid()))
-            print("[*] Starting Background Scraper...")
-            subprocess.Popen([sys.executable, "scrape_tv_indicators.py"])
-        except Exception as e:
-            print(f"[!] Scraper start failed: {e}")
-            if os.path.exists(lock_file): os.remove(lock_file)
-            
     return True
 
-# Run bootstrap
+# Run bootstrap (Installs only)
 bootstrap_system()
+
+# --- Auto-Start Scraper (Robust Check) ---
+def ensure_scraper_running():
+    pid_file = "scraper.pid"
+    
+    if os.path.exists(pid_file):
+        try:
+            with open(pid_file, "r") as f:
+                pid = int(f.read().strip())
+            os.kill(pid, 0)
+            return # Running
+        except:
+            pass # Dead
+            
+    print("[*] Starting Background Scraper...")
+    try:
+        # Windows/Linux compatible flags for background process
+        creation_flags = 0x08000000 if os.name == 'nt' else 0
+        proc = subprocess.Popen([sys.executable, "scrape_tv_indicators.py"], creationflags=creation_flags)
+        
+        with open(pid_file, "w") as f:
+            f.write(str(proc.pid))
+    except Exception as e:
+        print(f"[!] Scraper start failed: {e}")
+
+ensure_scraper_running()
+
+
 
 # Load Strategy Config
 config_file = 'strategy_config.json'

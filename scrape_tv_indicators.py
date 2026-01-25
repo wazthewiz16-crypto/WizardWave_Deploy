@@ -11,7 +11,20 @@ try:
     from playwright.async_api import async_playwright
 except ImportError:
     print("[!] Playwright module missing. Installing at runtime...")
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "playwright==1.49.0"])
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "playwright==1.49.0", "greenlet==3.1.1", "pyee==12.0.0", "typing-extensions==4.15.0"])
+    
+    # Fix: Reload import system to see new packages
+    import importlib
+    import site
+    importlib.invalidate_caches()
+    
+    # Ensure user site packages are in path (common issue in Streamlit Cloud)
+    if hasattr(site, 'getusersitepackages'):
+        user_site = site.getusersitepackages()
+        if user_site not in sys.path:
+            sys.path.append(user_site)
+            print(f"[+] Added {user_site} to sys.path")
+            
     from playwright.async_api import async_playwright
 
 # Full Assets List
