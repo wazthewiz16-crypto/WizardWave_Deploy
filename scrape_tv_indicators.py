@@ -206,12 +206,25 @@ async def scrape_asset_data(browser_context, asset):
 async def main():
     STATE_FILE = "tv_state.json"
     OUTPUT_FILE = "mango_dynamic_data.json"
+    LOG_FILE = "scraper_debug.log"
+
+    # Setup Logging
+    import logging
+    logging.basicConfig(filename=LOG_FILE, level=logging.INFO, format='%(asctime)s - %(message)s')
+    logging.info("Scraper Script Started")
 
     if not os.path.exists(STATE_FILE):
+        logging.error(f"{STATE_FILE} not found. Run setup_tv_session.py.")
         print(f"[ERROR] {STATE_FILE} not found. Run setup_tv_session.py.")
         return
 
+    # Create Initial Output if missing
+    if not os.path.exists(OUTPUT_FILE):
+        with open(OUTPUT_FILE, "w") as f:
+            json.dump({}, f)
+
     print("--- Starting Automated Mango Scraper (30m Interval) ---")
+    logging.info("Starting Automated Mango Scraper (30m Interval)")
 
     # Ensure browsers are installed (Critical for Streamlit Cloud)
     import subprocess

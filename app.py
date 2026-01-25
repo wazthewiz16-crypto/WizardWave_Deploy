@@ -2834,14 +2834,29 @@ with st.sidebar.expander("Debug Info", expanded=False):
         
     st.divider()
     st.write("Playwright Scraper (Mango)")
+    scraper_pid_file = "scraper.pid"
+    if os.path.exists(scraper_pid_file):
+        st.caption(f"Status: PID Found")
+    else:
+        st.caption("Status: Stopped")
+        
     if st.button("Invoke Scraper"):
         with st.spinner("Invoking Playwright Scraper..."):
             try:
                 import subprocess
-                subprocess.Popen(["python", "scrape_tv_indicators.py"])
+                # Use sys.executable for consistency
+                subprocess.Popen([sys.executable, "scrape_tv_indicators.py"])
                 st.info("Scraper started in background. Refresh in 1-2 mins.")
             except Exception as e:
                 st.error(f"Failed to start scraper: {e}")
+                
+    st.write("Scraper Logs:")
+    if os.path.exists("scraper_debug.log"):
+        with open("scraper_debug.log", "r") as f:
+            lines = f.readlines()
+            st.code("".join(lines[-20:]), language="text")
+    else:
+        st.caption("No log file found.")
 
 # Layout Columns
 col_left, col_center, col_right = st.columns([0.25, 0.5, 0.25], gap="small")
