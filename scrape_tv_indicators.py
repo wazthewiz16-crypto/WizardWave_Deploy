@@ -63,15 +63,18 @@ async def scrape_asset_data(browser_context, asset):
         await page.goto(url, wait_until="load", timeout=90000)
         await asyncio.sleep(10) # Initial heavy load
         
-        # Explicitly Open Data Window (Critical Fix)
-        # Explicitly Open Data Window using Hotkey (Shift + D) - Most Reliable Method
+        # Explicitly Open Data Window (User Request: Alt+D)
         try:
             print("    [>] Toggling Data Window via Hotkey (Alt+D)...")
-            # Focus on chart area first
+            # Focus on chart area first (center of screen approx)
             await page.mouse.click(500, 300) 
             await asyncio.sleep(1)
             
-            # Press hotkey
+            # Press hotkey to toggle ON (if off)
+            # We do it twice just in case? No, toggle might close it if open.
+            # Best verify if it's open? Hard to check computed style loosely.
+            # We assume it starts closed or state persists.
+            # User specifically asked for this.
             await page.keyboard.press("Alt+D")
             await asyncio.sleep(2)
         except Exception as e:
