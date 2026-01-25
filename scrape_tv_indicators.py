@@ -65,17 +65,22 @@ async def scrape_asset_data(browser_context, asset):
         await page.goto(url, wait_until="load", timeout=60000)
         await asyncio.sleep(5) # Reduced from 10s
         
-        # Explicitly Open Data Window (User Request: Alt+D)
+        # Smart Data Window Toggle
         try:
-            # Focus on chart area first (center of screen approx)
-            await page.mouse.click(500, 300) 
-            await asyncio.sleep(1)
+            # Check if Data Window is already open (text check)
+            is_dw_open = await page.evaluate("() => document.body.innerText.includes('Mango Dynamic')")
             
-            # Press hotkey
-            await page.keyboard.press("Alt+D")
-            await asyncio.sleep(2)
+            if not is_dw_open:
+                logging.info(f"    [>] {asset['name']}: Data Window closed. Toggling Alt+D...")
+                await page.mouse.click(640, 400) # Center
+                await asyncio.sleep(0.5)
+                await page.keyboard.press("Alt+D")
+                await asyncio.sleep(2)
+            else:
+                 logging.info(f"    [>] {asset['name']}: Data Window already valid.")
+                 
         except Exception as e:
-            logging.error(f"    [!] {asset['name']}: Hotkey failed: {e}")
+            logging.error(f"    [!] {asset['name']}: DW Toggle failed: {e}")
 
         await asyncio.sleep(1)
 
@@ -177,7 +182,11 @@ async def scrape_asset_data(browser_context, asset):
             
             data["Timestamp"] = datetime.now().isoformat()
             results[tf] = data
-            # print(f"    [=] Result: {data['Trend']} (Close: {data.get('PlotValues', {}).get('Close')})")
+            # Log the extracted data for debugging
+            if data['Trend'] == 'Unknown' or data['Bid Zone'] == 'Unknown':
+                 logging.warning(f"    [?] {asset['name']} {tf}: Trend={data['Trend']}, BidZone={data['Bid Zone']}")
+            else:
+                 logging.info(f"    [=] {asset['name']} {tf}: Trend={data['Trend']}, BidZone={data['Bid Zone']}")
 
     except Exception as e:
         logging.error(f"  [!] {asset['name']} Error: {e}")
