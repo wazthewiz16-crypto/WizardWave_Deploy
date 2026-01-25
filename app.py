@@ -463,26 +463,26 @@ zone_pad = 1.5
 
 # Assets List
 ASSETS = [
-    {"symbol": "BTC/USDT", "type": "crypto", "name": "Bitcoin"},
-    {"symbol": "ETH/USDT", "type": "crypto", "name": "Ethereum"},
-    {"symbol": "SOL/USDT", "type": "crypto", "name": "Solana"},
-    {"symbol": "DOGE/USDT", "type": "crypto", "name": "Dogecoin"},
+    {"symbol": "BTC/USDT", "type": "crypto", "name": "BTC"},
+    {"symbol": "ETH/USDT", "type": "crypto", "name": "ETH"},
+    {"symbol": "SOL/USDT", "type": "crypto", "name": "SOL"},
+    {"symbol": "DOGE/USDT", "type": "crypto", "name": "DOGE"},
     {"symbol": "XRP/USDT", "type": "crypto", "name": "XRP"},
     {"symbol": "BNB/USDT", "type": "crypto", "name": "BNB"},
-    {"symbol": "LINK/USDT", "type": "crypto", "name": "Chainlink"},
-    {"symbol": "^NDX", "type": "trad", "name": "Nasdaq 100"},
-    {"symbol": "^GSPC", "type": "trad", "name": "S&P 500"},
-    {"symbol": "^AXJO", "type": "trad", "name": "AUS 200"},
-    {"symbol": "DX-Y.NYB", "type": "trad", "name": "DXY Index"},
-    {"symbol": "GC=F", "type": "trad", "name": "Gold Futures"},
-    {"symbol": "CL=F", "type": "trad", "name": "US Oil"},
-    {"symbol": "EURUSD=X", "type": "forex", "name": "EUR/USD"},
-    {"symbol": "GBPUSD=X", "type": "forex", "name": "GBP/USD"},
-    {"symbol": "AUDUSD=X", "type": "forex", "name": "AUD/USD"},
-    {"symbol": "SI=F", "type": "trad", "name": "Silver Futures"},
-    {"symbol": "ARB/USDT", "type": "crypto", "name": "Arbitrum"},
-    {"symbol": "AVAX/USDT", "type": "crypto", "name": "Avalanche"},
-    {"symbol": "ADA/USDT", "type": "crypto", "name": "Cardano"},
+    {"symbol": "LINK/USDT", "type": "crypto", "name": "LINK"},
+    {"symbol": "^NDX", "type": "trad", "name": "NDX"},
+    {"symbol": "^GSPC", "type": "trad", "name": "SPX"},
+    {"symbol": "^AXJO", "type": "trad", "name": "AUS200"},
+    {"symbol": "DX-Y.NYB", "type": "trad", "name": "DXY"},
+    {"symbol": "GC=F", "type": "trad", "name": "GOLD"},
+    {"symbol": "CL=F", "type": "trad", "name": "OIL"},
+    {"symbol": "EURUSD=X", "type": "forex", "name": "EURUSD"},
+    {"symbol": "GBPUSD=X", "type": "forex", "name": "GBPUSD"},
+    {"symbol": "AUDUSD=X", "type": "forex", "name": "AUDUSD"},
+    {"symbol": "SI=F", "type": "trad", "name": "SILVER"},
+    {"symbol": "ARB/USDT", "type": "crypto", "name": "ARB"},
+    {"symbol": "AVAX/USDT", "type": "crypto", "name": "AVAX"},
+    {"symbol": "ADA/USDT", "type": "crypto", "name": "ADA"},
 ]
 
 # Initialize Session State
@@ -615,6 +615,17 @@ def load_ml_models_v2():
             models[key] = None
         
     return models
+
+@st.cache_data(ttl=300)
+def load_scraper_data():
+    path = os.path.join("data", "mango_dynamic_data.json")
+    if os.path.exists(path):
+        try:
+            with open(path, "r") as f:
+                return json.load(f)
+        except:
+            return {}
+    return {}
 
 # --- Utility: TradingView Symbol Mapping ---
 def get_tv_symbol(asset_entry):
@@ -841,6 +852,22 @@ def analyze_timeframe(timeframe_label, silent=False):
                 try:
                     res_proba = safe_predict(model, df_strat.iloc[[-1]], features_list)
                     prob = res_proba[0][1]
+                    
+                    # --- SCRAPER GROUND TRUTH BOOST ---
+                    # If the real indicator says PULLBACK or CONTINUATION, boost confidence
+                    try:
+                        scraper_data = load_scraper_data()
+                        asset_scraper = scraper_data.get(asset['name'], {}).get(tf_code.lower(), {})
+                        scr_state = asset_scraper.get("StrategyState", "Neutral")
+                        
+                        if "PULLBACK" in scr_state or "CONTINUATION" in scr_state:
+                             # Align direction (Only boost if ML and Scraper agree)
+                             last_sig = df_strat.iloc[-1].get('signal_type', 'NONE')
+                             if ("LONG" in scr_state and "LONG" in last_sig) or ("SHORT" in scr_state and "SHORT" in last_sig):
+                                 prob = min(0.99, prob + 0.15) # Significant confidence boost for official indicator alignment
+                                 # log_debug(f"Indicator Alignment: Boosting {asset['name']} to {prob:.2f}")
+                    except: pass
+
                 except Exception as e:
                     log_debug(f"ML Fail {asset['symbol']}: {e}")
                     prob = 0.0
@@ -3035,7 +3062,8 @@ with st.sidebar.expander("Debug Info", expanded=False):
         with st.spinner("Invoking Playwright Scraper..."):
             try:
                 import subprocess
-                subprocess.Popen(["python", "scrape_tv_indicators.py"])
+                import sys
+                subprocess.Popen([sys.executable, "scrape_tv_indicators.py"])
                 st.info("Scraper started in background. Refresh in 1-2 mins.")
             except Exception as e:
                 st.error(f"Failed to start scraper: {e}")
@@ -4017,9 +4045,10 @@ with col_right:
             <div style="display: flex; justify-content: space-between; padding: 0 10px; margin-bottom: 5px; border-bottom: 1px solid #c5a05930; padding-bottom: 2px;">
                 <span style="font-size: 0.65rem; color: #888; font-weight: bold;">ASSET</span>
                 <div style="display: flex; gap: 12px;">
+                    <span style="font-size: 0.65rem; color: #888; width: 30px; text-align: center; font-weight: bold;">1W</span>
                     <span style="font-size: 0.65rem; color: #888; width: 30px; text-align: center; font-weight: bold;">1D</span>
+                    <span style="font-size: 0.65rem; color: #888; width: 30px; text-align: center; font-weight: bold;">12H</span>
                     <span style="font-size: 0.65rem; color: #888; width: 30px; text-align: center; font-weight: bold;">4H</span>
-                    <span style="font-size: 0.65rem; color: #888; width: 30px; text-align: center; font-weight: bold;">1H</span>
                 </div>
             </div>
         """, unsafe_allow_html=True)
@@ -4049,10 +4078,11 @@ with col_right:
                         # We separate Asset and Bid Zone with some space.
                         bid_display = f'<span style="font-size: 0.75rem; color: #ccc; margin-left: 15px;">Bid Zone: {bid_value}</span>'
 
-                        # Reordered: 1d -> 4h -> 1h
-                        for tf in ["1d", "4h", "1h"]:
+                        # Reordered: 1w -> 1d -> 12h -> 4h
+                        for tf in ["1w", "1d", "12h", "4h"]:
                             d = tfs.get(tf, {})
                             trend = d.get("Trend", "Unknown")
+                            strat_state = d.get("StrategyState", "Neutral")
                             
                             # Accessibility Optimization: Color + Unique Symbol
                             color = "#444" 
@@ -4061,23 +4091,26 @@ with col_right:
                             if "Bullish" in trend: 
                                 color = "#00ff88"
                                 symbol = "▲"
+                                if "PULLBACK" in strat_state: color = "#00c4cc" # Cyan for Pullback
                             elif "Bearish" in trend: 
                                 color = "#ff3344"
                                 symbol = "▼"
+                                if "RECOVERY" in strat_state: color = "#ff9900" # Orange for recovery
                             elif "Neutral" in trend: 
                                 color = "#ffd700"
                                 symbol = "◆"
                             
-                            lights += f'<div title="{tf.upper()}: {trend}" style="color: {color}; text-shadow: 0 0 8px {color}60; width: 30px; text-align: center; font-size: 1.1rem; font-weight: bold;">{symbol}</div>'
+                            lights += f'<div title="{tf.upper()}: {trend}\nState: {strat_state}" style="color: {color}; text-shadow: 0 0 8px {color}60; width: 30px; text-align: center; font-size: 1.1rem; font-weight: bold;">{symbol}</div>'
                         
                         st.markdown(f'<div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: rgba(255,255,255,0.02); border-radius: 4px; margin-bottom: 3px; border-left: 3px solid #c5a05940;"><div style="display: flex; align-items: center;"><span style="font-size: 0.85rem; font-weight: bold; color: #eee; width: 60px;">{asset}</span>{bid_display}</div><div style="display: flex; gap: 12px;">{lights}</div></div>', unsafe_allow_html=True)
 
                     # Legend for Color Blindness & Clarity
                     st.markdown("""
-                        <div style="display: flex; justify-content: center; gap: 20px; margin-top: 12px; padding: 6px; background: rgba(0,0,0,0.3); border-radius: 4px; border: 1px solid #c5a05920;">
-                            <span style="font-size: 0.7rem; color: #00ff88; font-weight: bold;">▲ BULL</span>
-                            <span style="font-size: 0.7rem; color: #ff3344; font-weight: bold;">▼ BEAR</span>
-                            <span style="font-size: 0.7rem; color: #ffd700; font-weight: bold;">◆ NEUT</span>
+                        <div style="display: flex; justify-content: center; gap: 15px; margin-top: 12px; padding: 6px; background: rgba(0,0,0,0.3); border-radius: 4px; border: 1px solid #c5a05920;">
+                            <span style="font-size: 0.65rem; color: #00ff88; font-weight: bold;">▲ BULL</span>
+                            <span style="font-size: 0.65rem; color: #00c4cc; font-weight: bold;">▲ PULLBACK</span>
+                            <span style="font-size: 0.65rem; color: #ff3344; font-weight: bold;">▼ BEAR</span>
+                            <span style="font-size: 0.65rem; color: #ff9900; font-weight: bold;">▼ RECOVERY</span>
                         </div>
                     """, unsafe_allow_html=True)
                 else:

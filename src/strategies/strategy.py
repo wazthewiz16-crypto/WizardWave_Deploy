@@ -152,7 +152,7 @@ class WizardWaveStrategy:
         df['signal_type'] = np.select(conditions, choices, default="NONE")
 
         # --- 5. SL/TP Generation ---
-        # Fixed 3.3% SL / 9.0% TP for Wave Swing Trades
+        # 3.3% SL / 10.0% TP for Wave Swing Trades (3R Ratio)
         df['stop_loss'] = 0.0
         df['target_price'] = 0.0
         
@@ -160,10 +160,10 @@ class WizardWaveStrategy:
         short_mask = df['signal_type'].str.contains('SHORT', na=False)
         
         df.loc[long_mask, 'stop_loss'] = df['close'] * (1 - 0.033)
-        df.loc[long_mask, 'target_price'] = df['close'] * (1 + 0.09)
+        df.loc[long_mask, 'target_price'] = df['close'] * (1 + 0.10)
         
         df.loc[short_mask, 'stop_loss'] = df['close'] * (1 + 0.033)
-        df.loc[short_mask, 'target_price'] = df['close'] * (1 - 0.09)
+        df.loc[short_mask, 'target_price'] = df['close'] * (1 - 0.10)
 
         return df
 

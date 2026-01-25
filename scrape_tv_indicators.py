@@ -31,11 +31,9 @@ ASSETS = [
     {"symbol": "TVC:SILVER", "name": "SILVER"},
     {"symbol": "BINANCE:ARBUSDT", "name": "ARB"},
     {"symbol": "BINANCE:AVAXUSDT", "name": "AVAX"},
-    {"symbol": "BINANCE:ADAUSDT", "name": "ADA"},
-    {"symbol": "CRYPTOCAP:BTC.D", "name": "BTC.D"},
-    {"symbol": "CRYPTOCAP:USDT.D", "name": "USDT.D"}
+    {"symbol": "BINANCE:ADAUSDT", "name": "ADA"}
 ]
-TIMEFRAMES = ["1h", "4h", "1d"]
+TIMEFRAMES = ["4h", "12h", "1d", "4d", "1w"]
 
 async def scrape_asset_data(browser_context, asset):
     page = await browser_context.new_page()
@@ -47,62 +45,49 @@ async def scrape_asset_data(browser_context, asset):
     try:
         print(f"  [>] Navigating to {asset['symbol']}...")
         await page.goto(url, wait_until="load", timeout=90000)
-        await asyncio.sleep(10) # Initial heavy load
+        await asyncio.sleep(12) # Initial heavy load
         
-        # Explicitly Open Data Window (Critical Fix)
-        # Explicitly Open Data Window using Hotkey (Shift + D) - Most Reliable Method
-        try:
-            print("    [>] Toggling Data Window via Hotkey (Alt+D)...")
-            # Focus on chart area first
-            await page.mouse.click(500, 300) 
-            await asyncio.sleep(1)
-            
-            # Press hotkey
-            await page.keyboard.press("Alt+D")
-            await asyncio.sleep(2)
-        except Exception as e:
-            print(f"    [!] Hotkey failed: {e}")
-
-        await asyncio.sleep(2)
-        await asyncio.sleep(2)
+        # Focus chart
+        await page.mouse.click(600, 400) 
+        await asyncio.sleep(1)
 
         for tf in TIMEFRAMES:
             print(f"    [-] Switching to {tf.upper()}...")
+            await page.keyboard.press("Escape") # Clear any menus
+            await asyncio.sleep(0.5)
             await page.keyboard.type(tf)
             await page.keyboard.press("Enter")
-            await asyncio.sleep(10) # Give more time for the indicator and Data Window to sync
+            await asyncio.sleep(8) # Sync
 
-            # Advanced Extraction Logic: Parse the Data Window
+            # Ensure Data Window is open via Hotkey
+            await page.keyboard.press("Alt+D")
+            await asyncio.sleep(2)
+
             data = await page.evaluate("""() => {
                 const results = {
                     Trend: "Unknown",
                     Tempo: "Unknown",
                     "Bid Zone": "Unknown",
-                    PlotValues: {}
+                    PlotValues: {},
+                    StrategyState: "Neutral"
                 };
 
-                // --- Advanced Extraction Logic ---
-                // Helper: Get text from specific label if on same line or next line
                 const getVal = (label) => {
-                    // Search all divs/spans for the label
                     const elements = Array.from(document.querySelectorAll('div, span, transition-group'));
                     const labelEl = elements.find(el => {
                         const t = el.innerText || "";
-                        return t.trim().toUpperCase() === label.toUpperCase() || t.trim().toUpperCase() === (label.toUpperCase() + ":");
+                        const cleanT = t.trim().toUpperCase();
+                        return cleanT === label.toUpperCase() || cleanT === (label.toUpperCase() + ":");
                     });
 
                     if (labelEl) {
-                        // In Data Window, the value is often the next sibling or in the next line of parent
                         const parentText = labelEl.parentElement.innerText;
                         const lines = parentText.split('\\n').map(l => l.trim());
                         const idx = lines.findIndex(l => l.toUpperCase().includes(label.toUpperCase()));
                         if (idx !== -1 && lines[idx+1]) return lines[idx+1];
-                        
-                        // Fallback: If it's "Label: Value" format
                         if (labelEl.innerText.includes(':')) return labelEl.innerText.split(':')[1].trim();
                     }
                     
-                    // Fallback: regex search through body lines
                     const bodyLines = document.body.innerText.split('\\n').map(l => l.trim());
                     const lineIdx = bodyLines.findIndex(l => l.toUpperCase().includes(label.toUpperCase()));
                     if (lineIdx !== -1) {
@@ -113,19 +98,6 @@ async def scrape_asset_data(browser_context, asset):
                     return null;
                 };
 
-                results.Trend = getVal('Trend') || "Unknown";
-                results.Tempo = getVal('Tempo') || "Unknown";
-                
-                // Bid Zone specific
-                let bz = getVal('Bid Zone');
-                if (!bz) {
-                    // Proximal search in body text
-                    const bzMatch = document.body.innerText.match(/Bid Zone[:\s]+(Yes|No)/i);
-                    if (bzMatch) bz = bzMatch[1];
-                }
-                results["Bid Zone"] = bz || "Unknown";
-
-                // Numerical Fallback
                 const findNum = (label) => {
                     const v = getVal(label);
                     if (v) {
@@ -135,10 +107,19 @@ async def scrape_asset_data(browser_context, asset):
                     return null;
                 };
 
+                // Core Extraction
+                results.Trend = getVal('Trend') || "Unknown";
+                results.Tempo = getVal('Tempo') || "Unknown";
+                results["Bid Zone"] = getVal('Bid Zone') || (document.body.innerText.match(/Bid Zone[:\s]+(Yes|No)/i) || [])[1] || "Unknown";
+
+                // Prices & indicator plots
                 results.PlotValues.Close = findNum('Close');
                 results.PlotValues.MangoD1 = findNum('MangoD1') || findNum('Mango D1') || findNum('D1');
                 results.PlotValues.MangoD2 = findNum('MangoD2') || findNum('Mango D2') || findNum('D2');
-                
+                results.PlotValues.ZoneUpper = findNum('Zone Upper') || findNum('Upper Zone');
+                results.PlotValues.ZoneLower = findNum('Zone Lower') || findNum('Lower Zone');
+
+                // TREND LOGIC (If indicator text fails)
                 if (results.Trend === "Unknown" && results.PlotValues.Close && results.PlotValues.MangoD1) {
                     const price = results.PlotValues.Close;
                     const d1 = results.PlotValues.MangoD1;
@@ -149,12 +130,26 @@ async def scrape_asset_data(browser_context, asset):
                     else if (price < lower) results.Trend = "Bearish";
                     else results.Trend = "Neutral";
                 }
-                
-                // Text keyword search
-                if (results.Trend === "Unknown") {
-                    const bt = document.body.innerText;
-                    if (/Strong Bull|Bullish/i.test(bt)) results.Trend = "Bullish";
-                    else if (/Strong Bear|Bearish/i.test(bt)) results.Trend = "Bearish";
+
+                // WIZARD WAVE LOGIC (Condition 1 & 2 from Arcane Portal)
+                const price = results.PlotValues.Close;
+                if (price && results.PlotValues.MangoD1) {
+                    const d1 = results.PlotValues.MangoD1;
+                    const d2 = results.PlotValues.MangoD2 || d1;
+                    const upperWave = Math.max(d1, d2);
+                    const lowerWave = Math.min(d1, d2);
+                    const inWave = (price <= upperWave && price >= lowerWave);
+                    const isAbove = (price > upperWave);
+                    const inBidZone = (results["Bid Zone"] === "Yes" || results["Bid Zone"] === "Yes:");
+
+                    if (results.Trend === "Bullish") {
+                        if (isAbove && inBidZone) results.StrategyState = "LONG_CONTINUATION";
+                        else if (inWave && inBidZone) results.StrategyState = "LONG_PULLBACK";
+                    } else if (results.Trend === "Bearish") {
+                         const isBelow = (price < lowerWave);
+                         if (isBelow && inBidZone) results.StrategyState = "SHORT_CONTINUATION";
+                         else if (inWave && inBidZone) results.StrategyState = "SHORT_RECOVERY";
+                    }
                 }
 
                 return results;
