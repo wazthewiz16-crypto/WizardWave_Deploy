@@ -139,12 +139,14 @@ async def scrape_asset_data(browser_context, asset):
                         Trend: "Unknown",
                         Tempo: "Unknown",
                         "Bid Zone": "Unknown",
-                        PlotValues: {}
+                        PlotValues: {},
+                        DebugRaw: []
                     };
                     
                     // Allow time for DOM to update? No, evaluate is instant.
                     // Get all text lines.
-                    const textLines = document.body.innerText.split('\n');
+                    const rawText = document.body.innerText;
+                    const textLines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
                     
                     // 1. Text Parsing
                     const trendIdx = textLines.findIndex(l => l.includes('Trend:'));
@@ -158,7 +160,7 @@ async def scrape_asset_data(browser_context, asset):
                     if (bidIdx !== -1) {
                          const current = textLines[bidIdx];
                          if (current.includes('Yes')) results["Bid Zone"] = "Yes";
-                         elif (current.includes('No')) results["Bid Zone"] = "No";
+                         else if (current.includes('No')) results["Bid Zone"] = "No";
                          else {
                              const next = textLines[bidIdx + 1] || "";
                              if (next.includes('Yes')) results["Bid Zone"] = "Yes";
@@ -209,6 +211,11 @@ async def scrape_asset_data(browser_context, asset):
                          if (p <= u && p >= l) results["Bid Zone"] = "Yes (Calc)";
                          else results["Bid Zone"] = "No (Calc)";
                     }
+                    
+                    // Debug Dump
+                    if (results.Trend === "Unknown" || results["Bid Zone"] === "Unknown") {
+                        results.DebugRaw = textLines.slice(0, 50);
+                    }
 
                     return results;
                 })()""")
@@ -216,6 +223,17 @@ async def scrape_asset_data(browser_context, asset):
                 # Check if we got valid data
                 if data['Trend'] != "Unknown":
                     break # Success
+            
+            data["Timestamp"] = datetime.now().isoformat()
+            results[tf] = data
+            
+            # Log results and RAW DEBUG if missing
+            if data['Trend'] == 'Unknown' or data['Bid Zone'] == 'Unknown':
+                 logging.warning(f"    [?] {asset['name']} {tf}: Trend={data['Trend']}, BidZone={data['Bid Zone']}")
+                 if data.get('DebugRaw'):
+                     logging.warning(f"       [RAW DEBUG] {data['DebugRaw'][:5]} ... (check log for full dump)")
+            else:
+                 logging.info(f"    [=] {asset['name']} {tf}: Trend={data['Trend']}, BidZone={data['Bid Zone']}")
             
             data["Timestamp"] = datetime.now().isoformat()
             results[tf] = data
@@ -307,7 +325,8 @@ async def main():
                                  all_results = json.load(f)
                          except: pass
 
-                    semaphore = asyncio.Semaphore(2)
+                    # Switch to sequential (Semaphore 1) to resolve "stuck" logs and timeouts
+                    semaphore = asyncio.Semaphore(1)
                     
                     async def worker(asset):
                         async with semaphore:
@@ -315,9 +334,7 @@ async def main():
                             try:
                                 asset_data = await scrape_asset_data(context, asset)
                                 if asset_data:
-                                    # Update results dict (Thread-safe in simple asyncio loop)
                                     all_results[asset['name']] = asset_data
-                                    # Incremental Save (Blocking IO but safe enough here)
                                     with open(OUTPUT_FILE, "w") as f:
                                         json.dump(all_results, f, indent=4)
                                     logging.info(f"Worker done: {asset['name']}")
