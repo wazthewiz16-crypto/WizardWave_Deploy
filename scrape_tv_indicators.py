@@ -145,10 +145,19 @@ async def scrape_asset_data(browser_context, asset):
 
                     // 2. Extract Numerical Plot Values as fallback/confirmation
                     const findValue = (key) => {
-                        const idx = textLines.findIndex(l => l.trim() === key);
-                        if (idx !== -1 && textLines[idx+1]) {
-                            // Remove commas and parse
-                            return parseFloat(textLines[idx+1].replace(/,/g, ''));
+                        // Find index of line containing key
+                        const idx = textLines.findIndex(l => l.includes(key));
+                        if (idx !== -1) {
+                            // Try same line first "Key: Value"
+                            if (textLines[idx].includes(':')) {
+                                const val = parseFloat(textLines[idx].split(':')[1].replace(/,/g, ''));
+                                if (!isNaN(val)) return val;
+                            }
+                            // Try next line "Key \n Value"
+                            if (textLines[idx+1]) {
+                                const val = parseFloat(textLines[idx+1].replace(/,/g, ''));
+                                if (!isNaN(val)) return val;
+                            }
                         }
                         return null;
                     };
@@ -156,8 +165,10 @@ async def scrape_asset_data(browser_context, asset):
                     results.PlotValues.Close = findValue('Close');
                     results.PlotValues.MangoD1 = findValue('MangoD1');
                     results.PlotValues.MangoD2 = findValue('MangoD2');
+                    results.PlotValues.EntryUpper = findValue('Entry Zone Upper');
+                    results.PlotValues.EntryLower = findValue('Entry Zone Lower');
                     
-                    // If Trend is still unknown but we have plots, calculate it
+                    // Manual Calculation: Trend (Fallback)
                     if (results.Trend === "Unknown" && results.PlotValues.Close && results.PlotValues.MangoD1) {
                         const price = results.PlotValues.Close;
                         const d1 = results.PlotValues.MangoD1;
@@ -169,6 +180,22 @@ async def scrape_asset_data(browser_context, asset):
                         if (price > upper) results.Trend = "Bullish";
                         else if (price < lower) results.Trend = "Bearish";
                         else results.Trend = "Neutral"; 
+                    }
+
+                    // Manual Calculation: Bid Zone (Fallback)
+                    if (results["Bid Zone"] === "Unknown" && results.PlotValues.EntryUpper && results.PlotValues.EntryLower && results.PlotValues.Close) {
+                         const p = results.PlotValues.Close;
+                         const upper = results.PlotValues.EntryUpper;
+                         const lower = results.PlotValues.EntryLower;
+                         
+                         // Check if price is within the zone (Green Zone)
+                         // Usually Bid Zone means Price is inside the buy zone?
+                         // Assuming Upper > Lower
+                         if (p <= upper && p >= lower) {
+                              results["Bid Zone"] = "Yes";
+                         } else {
+                              results["Bid Zone"] = "No";
+                         }
                     }
                     
                     // Fallback search keywords
