@@ -62,7 +62,8 @@ async def scrape_asset_data(browser_context, asset):
     
     try:
         logging.info(f"  [>] {asset['name']}: Navigating...")
-        await page.goto(url, wait_until="load", timeout=60000)
+        # Use 'domcontentloaded' instead of 'load' to prevent timeouts on heavy TV scripts
+        await page.goto(url, wait_until="domcontentloaded", timeout=60000)
         await asyncio.sleep(5) # Reduced from 10s
 
         # Ensure 'Arcane Portal' Layout (User Request)
@@ -306,7 +307,7 @@ async def main():
                                  all_results = json.load(f)
                          except: pass
 
-                    semaphore = asyncio.Semaphore(3)
+                    semaphore = asyncio.Semaphore(2)
                     
                     async def worker(asset):
                         async with semaphore:
