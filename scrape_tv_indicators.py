@@ -115,20 +115,24 @@ async def scrape_asset_data(browser_context, asset):
                          results.Tempo = textLines[tempoIdx].split(':')[1].trim();
                     }
                     
-                    const bidLine = textLines.find(l => l.includes('Bid Zone') || l.includes('Bid Zone:'));
-                    if (bidLine) {
-                         // Attempt split by colon
-                         const parts = bidLine.split(':');
-                         if (parts.length > 1) {
-                             results["Bid Zone"] = parts[1].trim();
-                         } else {
-                             // Sometimes it's "Bid Zone Yes" without colon in Legend
-                             if (bidLine.includes('Yes')) results["Bid Zone"] = "Yes";
-                             else if (bidLine.includes('No')) results["Bid Zone"] = "No";
-                         }
+                    // Improved Bid Zone Extraction (Handles same-line and next-line values)
+                    const bidIdx = textLines.findIndex(l => l.includes('Bid Zone'));
+                    if (bidIdx !== -1) {
+                        const currentLine = textLines[bidIdx];
+                        const nextLine = textLines[bidIdx + 1] || "";
+                        
+                        // 1. Check current line (e.g. "Bid Zone: Yes")
+                        if (currentLine.includes("Yes")) results["Bid Zone"] = "Yes";
+                        else if (currentLine.includes("No")) results["Bid Zone"] = "No";
+                        
+                        // 2. Check next line (Standard Data Window format: Key \n Value)
+                        else if (results["Bid Zone"] === "Unknown") {
+                             if (nextLine.trim() === "Yes" || nextLine.includes("Yes")) results["Bid Zone"] = "Yes";
+                             else if (nextLine.trim() === "No" || nextLine.includes("No")) results["Bid Zone"] = "No";
+                        }
                     }
                     
-                    // Fallback: Check Legend specifically (often has class 'title-wrapper' or similar, but text search is safer)
+                    // Fallback: Check Legend specifically
                     if (results["Bid Zone"] === "Unknown") {
                          const legendText = document.body.innerText; // Global search fallback
                          if (legendText.includes('Bid Zone: Yes')) results["Bid Zone"] = "Yes";
