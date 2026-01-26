@@ -36,13 +36,15 @@ def calculate_ml_features(df, macro_df=None, crypto_macro_df=None):
     macro_df: Optional dataframe containing global indicators like DXY.
     crypto_macro_df: Optional dataframe containing BTC-USD for altcoin correlation.
     """
+    if df.empty: return df
     df = df.copy()
     
-    # --- 0. Pre-Feature: Macro Integration ---
+    # --- CRITICAL: DEDUPLICATE ALL INDICES ---
+    if not df.index.is_unique:
+        df = df.loc[~df.index.duplicated(keep='last')]
+
     # --- 0. Pre-Feature: Macro Integration ---
     if macro_df is not None and not macro_df.empty:
-        # Align macro data to the main df index
-        # Fix: Drop duplicates in macro index to allow reindexing
         if not macro_df.index.is_unique:
             macro_df = macro_df.loc[~macro_df.index.duplicated(keep='last')]
             
