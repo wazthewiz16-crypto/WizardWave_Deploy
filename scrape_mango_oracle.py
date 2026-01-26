@@ -208,16 +208,42 @@ async def main():
                 # Process Logic
                 new_signals = process_oracle_logic(all_scrape_data)
                 
+                # Process Logic
+                new_signals = process_oracle_logic(all_scrape_data)
+                
                 if new_signals:
                     logging.info(f"Generated {len(new_signals)} Oracle Signals")
+                    
+                    # LOAD EXISTING to Merge (Persistence)
+                    existing_signals = []
+                    if os.path.exists(OUTPUT_FILE):
+                        try:
+                            with open(OUTPUT_FILE, "r") as f:
+                                existing_signals = json.load(f)
+                        except: pass
+                    
+                    # Deduplicate: Unique Key = Asset + Timeframe + Timestamp
+                    # Actually, if the timestamp is the same, it's the same signal.
+                    # Create a set of keys
+                    existing_keys = set(f"{s['Asset']}_{s['Timeframe']}_{s['Timestamp']}" for s in existing_signals)
+                    
+                    merged_signals = existing_signals.copy()
+                    for sig in new_signals:
+                        key = f"{sig['Asset']}_{sig['Timeframe']}_{sig['Timestamp']}"
+                        if key not in existing_keys:
+                            merged_signals.append(sig)
+                            existing_keys.add(key) 
+                            
+                    # Keep last 50 signals to avoid infinite growth?
+                    if len(merged_signals) > 50:
+                        merged_signals = merged_signals[-50:]
+
                     # Atomic Write
                     with open(OUTPUT_FILE, "w") as f:
-                        json.dump(new_signals, f, indent=4)
+                        json.dump(merged_signals, f, indent=4)
                 else:
-                    logging.info("No Oracle Signals found this cycle.")
-                    # Optional: Clear if we want "only active"
-                    with open(OUTPUT_FILE, "w") as f:
-                        json.dump([], f)
+                    logging.info("No NEW Oracle Signals found this cycle.")
+                    # DO NOT CLEAR FILE anymore. Persistence is key.
                         
             logging.info("Oracle Cycle Completed. Sleeping 15m...")
             
