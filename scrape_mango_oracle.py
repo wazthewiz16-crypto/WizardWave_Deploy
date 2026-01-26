@@ -140,37 +140,30 @@ def process_oracle_logic(scraped_data):
                 
             # 2. Logic
             sig_type = None
-            
-            # LONG Rules:
-            # HTF Bullish, Current Bullish
-            # Current Price Pullback: Low <= EntryUp (Implies dipping into zone)
-            # Simpler proxy with just Close for now, or if we had Low. 
-            # User said "price pulls back". Close < EntryUp is a deep pullback. Close <= EntryUp is inside/below.
-            # Ideally we check Low, but we only scraped Close/Plots.
-            # Let's use Close relative to Zone.
-            # "Into dynamic or bid zone": Zone is usually between EntryUp and EntryDown.
-            # Bullish Dynamic: Price > D1/D2. Zone is support above dynamic.
+            sl_price = 0.0
             
             p = curr['PlotValues'].get('Close')
             u = curr['PlotValues'].get('EntryUp')
             l = curr['PlotValues'].get('EntryDown')
+            d2 = curr['PlotValues'].get('D2')
             
-            if curr['Trend'] == "Bullish" and htf['Trend'] == "Bullish" and p and u and l:
-                # Pullback: Close is within or below the "Upper" part of the zone?
-                # Usually Bid Zone in Bull trend is support.
-                # If Close <= u: We are in the zone or lower.
-                # But we must maintain Bullish Trend (Close > Dynamic).
-                # So: Dynamic < Close <= EntryUp
-                # We interpret "pullback into bid zone" as Close <= EntryUp.
+            # LONG Rules:
+            # HTF Bullish, Current Bullish
+            # Current Price Pullback: Close <= EntryUp
+            if curr['Trend'] == "Bullish" and htf['Trend'] == "Bullish" and p and u and d2:
                 if p <= u:
                     sig_type = "LONG"
+                    # SL: Below the Dynamic (D2) with buffer
+                    sl_price = d2 * 0.995
             
             # SHORT Rules:
             # HTF Bearish, Current Bearish
-            # Spike: Close >= EntryDown? (Inverse logic)
-            if curr['Trend'] == "Bearish" and htf['Trend'] == "Bearish" and p and u and l:
+            # Spike: Close >= EntryDown
+            if curr['Trend'] == "Bearish" and htf['Trend'] == "Bearish" and p and l and d2:
                 if p >= l:
                     sig_type = "SHORT"
+                    # SL: Above the Dynamic (D2) with buffer
+                    sl_price = d2 * 1.005
             
             if sig_type:
                 signals.append({
@@ -179,6 +172,7 @@ def process_oracle_logic(scraped_data):
                     "Confirm_TF": high_tf.upper(),
                     "Type": sig_type,
                     "Price": p,
+                    "Stop_Loss": round(sl_price, 4),
                     "Timestamp": datetime.now().isoformat()
                 })
                 

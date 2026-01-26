@@ -162,17 +162,22 @@ def run_runic_analysis():
                     # Convert to Runic Format
                     fmt_sigs = []
                     for s in o_sigs:
+                        # Parse Prices
+                        entry_p = float(s.get('Price', 0.0))
+                        sl_p = float(s.get('Stop_Loss', 0.0))
+                        
                         fmt_sigs.append({
                             "Asset": s['Asset'],
                             "Type": s['Type'],
                             "Timeframe": s['Timeframe'],
-                            "Price": s['Price'],
-                            "Current_Price": s['Price'],
-                            "Confidence": "Oracle 🔮", # Special badge
+                            "Price": entry_p,
+                            "Entry_Price": entry_p,   # Explicit Entry Price
+                            "Current_Price": entry_p, # Initial State
+                            "Stop_Loss": sl_p,        # ML-Style SL
+                            "Confidence": "Oracle 🔮", 
                             "Model": "Oracle",
-                            "Return_Pct": 0.0,
+                            "Return_Pct": 0.0,        # Start neutral
                             "Status": "OPEN",
-                            "Strategy": f"Dynamic {s['Type'].title()}", 
                             "Strategy": f"Dynamic {s['Type'].title()}", 
                             "Action": f"✅ TAKE (Confirm: {s['Confirm_TF']})",
                             "_sort_key": pd.to_datetime(s.get('Timestamp', datetime.now().isoformat())),
