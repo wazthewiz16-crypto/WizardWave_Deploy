@@ -110,6 +110,25 @@ def get_thread_manager():
 
 thread_manager = get_thread_manager()
 
+RUNIC_HISTORY_FILE = "runic_history.json"
+
+def load_runic_history():
+    if os.path.exists(RUNIC_HISTORY_FILE):
+        try:
+            with open(RUNIC_HISTORY_FILE, "r") as f:
+                return json.load(f)
+        except: return []
+    return []
+
+def save_runic_history(history_items):
+    # Keep last 200 items to avoid bloat
+    if len(history_items) > 200:
+        history_items = history_items[-200:]
+    try:
+        with open(RUNIC_HISTORY_FILE, "w") as f:
+            json.dump(history_items, f, indent=4)
+    except: pass
+
 def run_runic_analysis():
     """Background worker function"""
     try:
@@ -146,6 +165,20 @@ def run_runic_analysis():
         if h4d: all_history.extend(h4d)
         if h_cls: all_history.extend(h_cls)
         if h_ichi: all_history.extend(h_ichi)
+        
+        # --- PERSISTENT HISTORY MERGE ---
+        # 1. Load Real Logged History
+        real_history = load_runic_history()
+        
+        # 2. Add to Display List (convert dicts to dataframe compatible dicts)
+        # We process them to ensure format matches 'all_history' schema
+        for item in real_history:
+            # Check if it's already in all_history (Backtest vs Real)
+            # Simple check by ID
+            # Adding it blindly might cause dupes, but pandas drop_duplicates later fixes it
+            item['Status'] = "LOGGED" # Mark as from persistent log
+            all_history.append(item)
+
         
         history_df = pd.DataFrame()
         if all_history:
@@ -195,6 +228,35 @@ def run_runic_analysis():
             # Ensure sort key is datetime
             combined_active['_sort_key'] = pd.to_datetime(combined_active['_sort_key'], errors='coerce')
             combined_active = combined_active.sort_values(by='_sort_key', ascending=False)
+            
+            # --- PERSISTENT LOGGING ---
+            try:
+                # 1. Load Existing
+                p_hist = load_runic_history()
+                
+                # 2. keys for dedupe
+                # Use Asset + Entry_Time as unique ID
+                existing_keys = set(f"{x.get('Asset')}_{x.get('Entry_Time')}" for x in p_hist)
+                
+                new_items = []
+                # 3. Iterate Active
+                for idx, row in combined_active.iterrows():
+                    key = f"{row['Asset']}_{row['Entry_Time']}"
+                    if key not in existing_keys:
+                        # Convert Series to Dict (handle Timestamps)
+                        item = row.to_dict()
+                        # Sanitize Timestamp objects for JSON
+                        if isinstance(item.get('_sort_key'), pd.Timestamp):
+                            item['_sort_key'] = item['_sort_key'].isoformat()
+                        
+                        # Add to list
+                        p_hist.append(item)
+                        existing_keys.add(key)
+                        
+                # 4. Save
+                save_runic_history(p_hist)
+            except Exception as e:
+                print(f"History Save Error: {e}")
             
         # Process Discord (Side Effect - OK in thread? Yes, usually I/O)
         # DISABLE IN APP: Monitor Script handles discordant alerts to avoid duplicates
