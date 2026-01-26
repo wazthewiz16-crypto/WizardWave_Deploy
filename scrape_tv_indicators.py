@@ -112,6 +112,17 @@ async def scrape_asset_data(browser_context, asset):
 
         await asyncio.sleep(1)
 
+        # Maximize Chart (Alt+Enter) to isolate text labels
+        # This solves the issue where multiple charts (1D, 4H, 1H) are open side-by-side
+        # and document.body.innerText sees ALL of their differing Trend labels.
+        try:
+             logging.info(f"    [>] {asset['name']}: Maximizing chart to isolate data...")
+             await page.mouse.click(960, 540) # Click center to focus
+             await asyncio.sleep(0.5)
+             await page.keyboard.press("Alt+Enter")
+             await asyncio.sleep(2)
+        except: pass
+
         for tf in TIMEFRAMES:
             # print(f"    [-] Switching to {tf.upper()}...")
             await page.keyboard.type(tf)
