@@ -5,7 +5,7 @@ import re
 import sys
 import logging
 import traceback
-from datetime import datetime
+from datetime import datetime, timedelta
 from playwright.async_api import async_playwright
 
 # --- CONFIGURATION for Oracle Scraper ---
@@ -166,6 +166,8 @@ def process_oracle_logic(scraped_data):
                     sl_price = d2 * 1.005
             
             if sig_type:
+                # Force EST (UTC-5) for User Clarity
+                est_time = datetime.utcnow() - timedelta(hours=5)
                 signals.append({
                     "Asset": asset_name,
                     "Timeframe": low_tf.upper(), # Signal on the lower TF
@@ -173,7 +175,7 @@ def process_oracle_logic(scraped_data):
                     "Type": sig_type,
                     "Price": p,
                     "Stop_Loss": round(sl_price, 4),
-                    "Timestamp": datetime.now().isoformat()
+                    "Timestamp": est_time.strftime('%Y-%m-%d %H:%M:%S')
                 })
                 
     return signals
