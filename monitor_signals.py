@@ -487,7 +487,7 @@ def run_analysis_cycle():
                         "Confidence": "Indicator",
                         "Confidence_Score": 100.0,
                         "Take_Profit": 0.0,
-                        "Stop_Loss": 0.0,
+                        "Stop_Loss": s.get('Stop_Loss', 0.0),
                         "Strategy": "Mango Oracle 🔮"
                      }
                      all_signals.append(sig)
