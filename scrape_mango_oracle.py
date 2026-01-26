@@ -114,17 +114,22 @@ async def scrape_oracle_data(browser_context, asset):
     return asset_results
 
 # --- ORACLE LOGIC ENGINE ---
+# --- ORACLE LOGIC ENGINE ---
 def process_oracle_logic(scraped_data):
     signals = []
     
+    # Load Existing State for Sticky Timestamps
+    existing_state = {} # Key: Asset_TF_Type -> Timestamp
+    if os.path.exists(OUTPUT_FILE):
+        try:
+            with open(OUTPUT_FILE, "r") as f:
+                old_sigs = json.load(f)
+                for s in old_sigs:
+                    k = f"{s['Asset']}_{s['Timeframe']}_{s['Type']}"
+                    existing_state[k] = s['Timestamp']
+        except: pass
+    
     for asset_name, tfs in scraped_data.items():
-        # Iterate TFs to find signals
-        # We need pairs: (Current, HTF)
-        # 15m -> 1H
-        # 1H -> 4H
-        # 4H -> 1D
-        # 1D -> 4D
-        
         pairs = [("15m", "1h"), ("1h", "4h"), ("4h", "1d"), ("1d", "4d")]
         
         for low_tf, high_tf in pairs:
@@ -148,8 +153,6 @@ def process_oracle_logic(scraped_data):
             d2 = curr['PlotValues'].get('D2')
             
             # LONG Rules:
-            # HTF Bullish, Current Bullish
-            # Current Price Pullback: Close <= EntryUp
             if curr['Trend'] == "Bullish" and htf['Trend'] == "Bullish" and p and u and d2:
                 if p <= u:
                     sig_type = "LONG"
@@ -157,8 +160,6 @@ def process_oracle_logic(scraped_data):
                     sl_price = d2 * 0.995
             
             # SHORT Rules:
-            # HTF Bearish, Current Bearish
-            # Spike: Close >= EntryDown
             if curr['Trend'] == "Bearish" and htf['Trend'] == "Bearish" and p and l and d2:
                 if p >= l:
                     sig_type = "SHORT"
@@ -166,8 +167,35 @@ def process_oracle_logic(scraped_data):
                     sl_price = d2 * 1.005
             
             if sig_type:
-                # Force EST (UTC-5) for User Clarity
-                est_time = datetime.utcnow() - timedelta(hours=5)
+                # Force EST (UTC-5)
+                est_now = datetime.utcnow() - timedelta(hours=5)
+                
+                # Check for Sticky Timestamp
+                # Logic: If we found this EXACT signal recently, keep the original timestamp.
+                # This prevents specific ID generation spam.
+                ukey = f"{asset_name}_{low_tf.upper()}_{sig_type}"
+                final_ts = est_now.strftime('%Y-%m-%d %H:%M:%S')
+                
+                if ukey in existing_state:
+                    old_ts_str = existing_state[ukey]
+                    try:
+                        old_dt = datetime.strptime(old_ts_str, '%Y-%m-%d %H:%M:%S')
+                        # If old signal is less than X hours old, keep it.
+                        # 15m -> 2h, 4h -> 12h?
+                        # Let's simplify: If it's in the file (which is capped at 50), keep it.
+                        # Assuming the file is the "Active" list.
+                        # But we must ensure it's not ANCIENT.
+                        diff = (est_now - old_dt).total_seconds() / 3600
+                        
+                        # Timout based on TF?
+                        limit = 4
+                        if "4H" in low_tf.upper(): limit = 12
+                        if "1D" in low_tf.upper(): limit = 24
+                        
+                        if diff < limit:
+                            final_ts = old_ts_str
+                    except: pass
+
                 signals.append({
                     "Asset": asset_name,
                     "Timeframe": low_tf.upper(), # Signal on the lower TF
@@ -175,7 +203,7 @@ def process_oracle_logic(scraped_data):
                     "Type": sig_type,
                     "Price": p,
                     "Stop_Loss": round(sl_price, 4),
-                    "Timestamp": est_time.strftime('%Y-%m-%d %H:%M:%S')
+                    "Timestamp": final_ts
                 })
                 
     return signals
@@ -204,9 +232,6 @@ async def main():
                     all_scrape_data[asset['name']] = data
                     
                 await browser.close()
-                
-                # Process Logic
-                new_signals = process_oracle_logic(all_scrape_data)
                 
                 # Process Logic
                 new_signals = process_oracle_logic(all_scrape_data)
