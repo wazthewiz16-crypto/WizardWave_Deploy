@@ -179,3 +179,858 @@
 2026-01-26 10:36:58,317 -   [+] LINK 4d: Trend=Bearish
 2026-01-26 10:36:58,649 - Generated 2 Oracle Signals
 2026-01-26 10:36:58,768 - Oracle Cycle Completed. Sleeping 15m...
+2026-01-26 10:51:59,155 - --- Oracle Cycle Starting ---
+2026-01-26 10:52:09,828 - [Oracle] BTC: Navigating...
+2026-01-26 10:52:29,020 -   [+] BTC 15m: Trend=Neutral
+2026-01-26 10:52:34,209 -   [+] BTC 1h: Trend=Bullish
+2026-01-26 10:52:39,268 -   [+] BTC 4h: Trend=Bearish
+2026-01-26 10:52:44,325 -   [+] BTC 1d: Trend=Neutral
+2026-01-26 10:52:49,404 -   [+] BTC 4d: Trend=Bearish
+2026-01-26 10:52:49,763 - [Oracle] ETH: Navigating...
+2026-01-26 10:53:05,779 -   [+] ETH 15m: Trend=Neutral
+2026-01-26 10:53:10,830 -   [+] ETH 1h: Trend=Bullish
+2026-01-26 10:53:15,870 -   [+] ETH 4h: Trend=Bearish
+2026-01-26 10:53:20,915 -   [+] ETH 1d: Trend=Neutral
+2026-01-26 10:53:25,973 -   [+] ETH 4d: Trend=Bearish
+2026-01-26 10:53:26,045 - [Oracle] SOL: Navigating...
+2026-01-26 10:53:41,917 -   [+] SOL 15m: Trend=Bearish
+2026-01-26 10:53:46,982 -   [+] SOL 1h: Trend=Bullish
+2026-01-26 10:53:52,026 -   [+] SOL 4h: Trend=Bearish
+2026-01-26 10:53:57,060 -   [+] SOL 1d: Trend=Bearish
+2026-01-26 10:54:02,115 -   [+] SOL 4d: Trend=Bearish
+2026-01-26 10:54:02,184 - [Oracle] DOGE: Navigating...
+2026-01-26 10:54:22,684 -   [+] DOGE 15m: Trend=Bearish
+2026-01-26 10:54:27,752 -   [+] DOGE 1h: Trend=Bullish
+2026-01-26 10:54:32,822 -   [+] DOGE 4h: Trend=Bearish
+2026-01-26 10:54:37,873 -   [+] DOGE 1d: Trend=Bearish
+2026-01-26 10:54:42,932 -   [+] DOGE 4d: Trend=Bearish
+2026-01-26 10:54:43,009 - [Oracle] XRP: Navigating...
+2026-01-26 10:54:58,889 -   [+] XRP 15m: Trend=Bearish
+2026-01-26 10:55:03,968 -   [+] XRP 1h: Trend=Bullish
+2026-01-26 10:55:09,013 -   [+] XRP 4h: Trend=Bearish
+2026-01-26 10:55:14,071 -   [+] XRP 1d: Trend=Bearish
+2026-01-26 10:55:19,143 -   [+] XRP 4d: Trend=Bearish
+2026-01-26 10:55:19,231 - [Oracle] BNB: Navigating...
+2026-01-26 10:55:35,151 -   [+] BNB 15m: Trend=Bullish
+2026-01-26 10:55:40,199 -   [+] BNB 1h: Trend=Bullish
+2026-01-26 10:55:45,252 -   [+] BNB 4h: Trend=Bearish
+2026-01-26 10:55:50,317 -   [+] BNB 1d: Trend=Bullish
+2026-01-26 10:55:55,358 -   [+] BNB 4d: Trend=Bearish
+2026-01-26 10:55:55,430 - [Oracle] LINK: Navigating...
+2026-01-26 10:56:11,270 -   [+] LINK 15m: Trend=Bearish
+2026-01-26 10:56:16,322 -   [+] LINK 1h: Trend=Bullish
+2026-01-26 10:56:21,363 -   [+] LINK 4h: Trend=Bearish
+2026-01-26 10:56:26,415 -   [+] LINK 1d: Trend=Bearish
+2026-01-26 10:56:31,458 -   [+] LINK 4d: Trend=Bearish
+2026-01-26 10:56:31,988 - Generated 2 Oracle Signals
+2026-01-26 10:56:32,064 - Oracle Cycle Completed. Sleeping 15m...
+2026-01-26 11:11:32,074 - --- Oracle Cycle Starting ---
+2026-01-26 11:11:36,622 - [Oracle] BTC: Navigating...
+2026-01-26 11:11:55,828 -   [+] BTC 15m: Trend=Neutral
+2026-01-26 11:12:00,891 -   [+] BTC 1h: Trend=Bearish
+2026-01-26 11:12:05,937 -   [+] BTC 4h: Trend=Bearish
+2026-01-26 11:12:10,987 -   [+] BTC 1d: Trend=Neutral
+2026-01-26 11:12:16,032 -   [+] BTC 4d: Trend=Bearish
+2026-01-26 11:12:16,115 - [Oracle] ETH: Navigating...
+2026-01-26 11:12:32,096 -   [+] ETH 15m: Trend=Neutral
+2026-01-26 11:12:37,143 -   [+] ETH 1h: Trend=Bullish
+2026-01-26 11:12:42,195 -   [+] ETH 4h: Trend=Bearish
+2026-01-26 11:12:47,260 -   [+] ETH 1d: Trend=Neutral
+2026-01-26 11:12:52,308 -   [+] ETH 4d: Trend=Bearish
+2026-01-26 11:12:52,394 - [Oracle] SOL: Navigating...
+2026-01-26 11:13:08,315 -   [+] SOL 15m: Trend=Bearish
+2026-01-26 11:13:13,389 -   [+] SOL 1h: Trend=Bearish
+2026-01-26 11:13:18,464 -   [+] SOL 4h: Trend=Bearish
+2026-01-26 11:13:23,521 -   [+] SOL 1d: Trend=Bearish
+2026-01-26 11:13:28,569 -   [+] SOL 4d: Trend=Bearish
+2026-01-26 11:13:28,648 - [Oracle] DOGE: Navigating...
+2026-01-26 11:13:44,518 -   [+] DOGE 15m: Trend=Bearish
+2026-01-26 11:13:49,574 -   [+] DOGE 1h: Trend=Neutral
+2026-01-26 11:13:54,614 -   [+] DOGE 4h: Trend=Bearish
+2026-01-26 11:13:59,671 -   [+] DOGE 1d: Trend=Bearish
+2026-01-26 11:14:04,717 -   [+] DOGE 4d: Trend=Bearish
+2026-01-26 11:14:04,788 - [Oracle] XRP: Navigating...
+2026-01-26 11:14:20,714 -   [+] XRP 15m: Trend=Bearish
+2026-01-26 11:14:25,761 -   [+] XRP 1h: Trend=Bullish
+2026-01-26 11:14:30,813 -   [+] XRP 4h: Trend=Bearish
+2026-01-26 11:14:35,876 -   [+] XRP 1d: Trend=Bearish
+2026-01-26 11:14:40,942 -   [+] XRP 4d: Trend=Bearish
+2026-01-26 11:14:41,015 - [Oracle] BNB: Navigating...
+2026-01-26 11:14:57,103 -   [+] BNB 15m: Trend=Bullish
+2026-01-26 11:15:02,181 -   [+] BNB 1h: Trend=Bearish
+2026-01-26 11:15:07,241 -   [+] BNB 4h: Trend=Bearish
+2026-01-26 11:15:12,293 -   [+] BNB 1d: Trend=Bullish
+2026-01-26 11:15:17,349 -   [+] BNB 4d: Trend=Bearish
+2026-01-26 11:15:17,418 - [Oracle] LINK: Navigating...
+2026-01-26 11:15:37,826 -   [+] LINK 15m: Trend=Bearish
+2026-01-26 11:15:42,890 -   [+] LINK 1h: Trend=Bullish
+2026-01-26 11:15:47,957 -   [+] LINK 4h: Trend=Bearish
+2026-01-26 11:15:53,003 -   [+] LINK 1d: Trend=Bearish
+2026-01-26 11:15:58,068 -   [+] LINK 4d: Trend=Bearish
+2026-01-26 11:15:58,229 - Generated 5 Oracle Signals
+2026-01-26 11:15:58,266 - Oracle Cycle Completed. Sleeping 15m...
+2026-01-26 11:30:58,278 - --- Oracle Cycle Starting ---
+2026-01-26 11:30:59,318 - [Oracle] BTC: Navigating...
+2026-01-26 11:31:18,384 -   [+] BTC 15m: Trend=Neutral
+2026-01-26 11:31:23,436 -   [+] BTC 1h: Trend=Bearish
+2026-01-26 11:31:28,484 -   [+] BTC 4h: Trend=Bearish
+2026-01-26 11:31:33,544 -   [+] BTC 1d: Trend=Neutral
+2026-01-26 11:31:38,597 -   [+] BTC 4d: Trend=Bearish
+2026-01-26 11:31:38,676 - [Oracle] ETH: Navigating...
+2026-01-26 11:31:54,520 -   [+] ETH 15m: Trend=Neutral
+2026-01-26 11:31:59,573 -   [+] ETH 1h: Trend=Bullish
+2026-01-26 11:32:04,636 -   [+] ETH 4h: Trend=Bearish
+2026-01-26 11:32:09,713 -   [+] ETH 1d: Trend=Neutral
+2026-01-26 11:32:14,760 -   [+] ETH 4d: Trend=Bearish
+2026-01-26 11:32:14,832 - [Oracle] SOL: Navigating...
+2026-01-26 11:32:30,772 -   [+] SOL 15m: Trend=Bearish
+2026-01-26 11:32:35,825 -   [+] SOL 1h: Trend=Bearish
+2026-01-26 11:32:40,865 -   [+] SOL 4h: Trend=Bearish
+2026-01-26 11:32:45,946 -   [+] SOL 1d: Trend=Bearish
+2026-01-26 11:32:51,007 -   [+] SOL 4d: Trend=Bearish
+2026-01-26 11:32:51,087 - [Oracle] DOGE: Navigating...
+2026-01-26 11:33:06,995 -   [+] DOGE 15m: Trend=Bearish
+2026-01-26 11:33:12,054 -   [+] DOGE 1h: Trend=Neutral
+2026-01-26 11:33:17,107 -   [+] DOGE 4h: Trend=Bearish
+2026-01-26 11:33:22,179 -   [+] DOGE 1d: Trend=Bearish
+2026-01-26 11:33:27,243 -   [+] DOGE 4d: Trend=Bearish
+2026-01-26 11:33:27,325 - [Oracle] XRP: Navigating...
+2026-01-26 11:33:43,330 -   [+] XRP 15m: Trend=Bearish
+2026-01-26 11:33:48,391 -   [+] XRP 1h: Trend=Bullish
+2026-01-26 11:33:53,455 -   [+] XRP 4h: Trend=Bearish
+2026-01-26 11:33:58,502 -   [+] XRP 1d: Trend=Bearish
+2026-01-26 11:34:03,554 -   [+] XRP 4d: Trend=Bearish
+2026-01-26 11:34:03,633 - [Oracle] BNB: Navigating...
+2026-01-26 11:34:19,542 -   [+] BNB 15m: Trend=Bullish
+2026-01-26 11:34:24,589 -   [+] BNB 1h: Trend=Bearish
+2026-01-26 11:34:29,645 -   [+] BNB 4h: Trend=Bearish
+2026-01-26 11:34:34,681 -   [+] BNB 1d: Trend=Bullish
+2026-01-26 11:34:39,732 -   [+] BNB 4d: Trend=Bearish
+2026-01-26 11:34:39,803 - [Oracle] LINK: Navigating...
+2026-01-26 11:34:55,699 -   [+] LINK 15m: Trend=Bearish
+2026-01-26 11:35:00,760 -   [+] LINK 1h: Trend=Bullish
+2026-01-26 11:35:05,808 -   [+] LINK 4h: Trend=Bearish
+2026-01-26 11:35:10,870 -   [+] LINK 1d: Trend=Bearish
+2026-01-26 11:35:15,937 -   [+] LINK 4d: Trend=Bearish
+2026-01-26 11:35:16,022 - Generated 5 Oracle Signals
+2026-01-26 11:35:16,049 - Oracle Cycle Completed. Sleeping 15m...
+2026-01-26 11:50:16,059 - --- Oracle Cycle Starting ---
+2026-01-26 11:50:17,614 - [Oracle] BTC: Navigating...
+2026-01-26 11:50:36,831 -   [+] BTC 15m: Trend=Neutral
+2026-01-26 11:50:41,889 -   [+] BTC 1h: Trend=Bearish
+2026-01-26 11:50:46,942 -   [+] BTC 4h: Trend=Bearish
+2026-01-26 11:50:51,994 -   [+] BTC 1d: Trend=Neutral
+2026-01-26 11:50:57,033 -   [+] BTC 4d: Trend=Bearish
+2026-01-26 11:50:57,117 - [Oracle] ETH: Navigating...
+2026-01-26 11:51:13,097 -   [+] ETH 15m: Trend=Neutral
+2026-01-26 11:51:18,150 -   [+] ETH 1h: Trend=Bullish
+2026-01-26 11:51:23,199 -   [+] ETH 4h: Trend=Bearish
+2026-01-26 11:51:28,243 -   [+] ETH 1d: Trend=Neutral
+2026-01-26 11:51:33,297 -   [+] ETH 4d: Trend=Bearish
+2026-01-26 11:51:33,379 - [Oracle] SOL: Navigating...
+2026-01-26 11:51:49,294 -   [+] SOL 15m: Trend=Bearish
+2026-01-26 11:51:54,342 -   [+] SOL 1h: Trend=Bearish
+2026-01-26 11:51:59,391 -   [+] SOL 4h: Trend=Bearish
+2026-01-26 11:52:04,424 -   [+] SOL 1d: Trend=Bearish
+2026-01-26 11:52:09,473 -   [+] SOL 4d: Trend=Bearish
+2026-01-26 11:52:10,220 - [Oracle] DOGE: Navigating...
+2026-01-26 11:52:26,273 -   [+] DOGE 15m: Trend=Bearish
+2026-01-26 11:52:31,338 -   [+] DOGE 1h: Trend=Neutral
+2026-01-26 11:52:36,386 -   [+] DOGE 4h: Trend=Bearish
+2026-01-26 11:52:41,416 -   [+] DOGE 1d: Trend=Bearish
+2026-01-26 11:52:46,457 -   [+] DOGE 4d: Trend=Bearish
+2026-01-26 11:52:46,531 - [Oracle] XRP: Navigating...
+2026-01-26 11:53:02,378 -   [+] XRP 15m: Trend=Bearish
+2026-01-26 11:53:07,439 -   [+] XRP 1h: Trend=Bullish
+2026-01-26 11:53:12,498 -   [+] XRP 4h: Trend=Bearish
+2026-01-26 11:53:17,570 -   [+] XRP 1d: Trend=Bearish
+2026-01-26 11:53:22,616 -   [+] XRP 4d: Trend=Bearish
+2026-01-26 11:53:22,689 - [Oracle] BNB: Navigating...
+2026-01-26 11:53:38,589 -   [+] BNB 15m: Trend=Bullish
+2026-01-26 11:53:43,655 -   [+] BNB 1h: Trend=Bearish
+2026-01-26 11:53:48,709 -   [+] BNB 4h: Trend=Bearish
+2026-01-26 11:53:53,758 -   [+] BNB 1d: Trend=Bullish
+2026-01-26 11:53:58,830 -   [+] BNB 4d: Trend=Bearish
+2026-01-26 11:53:58,905 - [Oracle] LINK: Navigating...
+2026-01-26 11:54:14,915 -   [+] LINK 15m: Trend=Bearish
+2026-01-26 11:54:19,972 -   [+] LINK 1h: Trend=Bullish
+2026-01-26 11:54:25,027 -   [+] LINK 4h: Trend=Bearish
+2026-01-26 11:54:30,068 -   [+] LINK 1d: Trend=Bearish
+2026-01-26 11:54:35,110 -   [+] LINK 4d: Trend=Bearish
+2026-01-26 11:54:35,281 - Generated 5 Oracle Signals
+2026-01-26 11:54:35,387 - Oracle Cycle Completed. Sleeping 15m...
+2026-01-26 12:09:35,393 - --- Oracle Cycle Starting ---
+2026-01-26 12:09:48,370 - [Oracle] BTC: Navigating...
+2026-01-26 12:10:07,561 -   [+] BTC 15m: Trend=Neutral
+2026-01-26 12:10:12,622 -   [+] BTC 1h: Trend=Bullish
+2026-01-26 12:10:17,668 -   [+] BTC 4h: Trend=Bearish
+2026-01-26 12:10:22,721 -   [+] BTC 1d: Trend=Neutral
+2026-01-26 12:10:27,769 -   [+] BTC 4d: Trend=Bearish
+2026-01-26 12:10:27,860 - [Oracle] ETH: Navigating...
+2026-01-26 12:10:43,976 -   [+] ETH 15m: Trend=Neutral
+2026-01-26 12:10:49,029 -   [+] ETH 1h: Trend=Bullish
+2026-01-26 12:10:54,085 -   [+] ETH 4h: Trend=Bearish
+2026-01-26 12:10:59,123 -   [+] ETH 1d: Trend=Neutral
+2026-01-26 12:11:04,190 -   [+] ETH 4d: Trend=Bearish
+2026-01-26 12:11:04,268 - [Oracle] SOL: Navigating...
+2026-01-26 12:11:20,156 -   [+] SOL 15m: Trend=Bearish
+2026-01-26 12:11:25,203 -   [+] SOL 1h: Trend=Bullish
+2026-01-26 12:11:30,251 -   [+] SOL 4h: Trend=Bearish
+2026-01-26 12:11:35,295 -   [+] SOL 1d: Trend=Bearish
+2026-01-26 12:11:40,349 -   [+] SOL 4d: Trend=Bearish
+2026-01-26 12:11:40,421 - [Oracle] DOGE: Navigating...
+2026-01-26 12:11:56,252 -   [+] DOGE 15m: Trend=Bearish
+2026-01-26 12:12:01,302 -   [+] DOGE 1h: Trend=Neutral
+2026-01-26 12:12:06,347 -   [+] DOGE 4h: Trend=Bearish
+2026-01-26 12:12:11,400 -   [+] DOGE 1d: Trend=Bearish
+2026-01-26 12:12:16,459 -   [+] DOGE 4d: Trend=Bearish
+2026-01-26 12:12:16,533 - [Oracle] XRP: Navigating...
+2026-01-26 12:12:32,390 -   [+] XRP 15m: Trend=Bearish
+2026-01-26 12:12:37,440 -   [+] XRP 1h: Trend=Bullish
+2026-01-26 12:12:42,495 -   [+] XRP 4h: Trend=Bearish
+2026-01-26 12:12:47,552 -   [+] XRP 1d: Trend=Bearish
+2026-01-26 12:12:52,618 -   [+] XRP 4d: Trend=Bearish
+2026-01-26 12:12:52,691 - [Oracle] BNB: Navigating...
+2026-01-26 12:13:08,532 -   [+] BNB 15m: Trend=Bullish
+2026-01-26 12:13:13,588 -   [+] BNB 1h: Trend=Bullish
+2026-01-26 12:13:18,634 -   [+] BNB 4h: Trend=Bearish
+2026-01-26 12:13:23,683 -   [+] BNB 1d: Trend=Bullish
+2026-01-26 12:13:28,731 -   [+] BNB 4d: Trend=Bearish
+2026-01-26 12:13:28,810 - [Oracle] LINK: Navigating...
+2026-01-26 12:13:44,666 -   [+] LINK 15m: Trend=Bearish
+2026-01-26 12:13:49,724 -   [+] LINK 1h: Trend=Bullish
+2026-01-26 12:13:54,773 -   [+] LINK 4h: Trend=Bearish
+2026-01-26 12:13:59,810 -   [+] LINK 1d: Trend=Bearish
+2026-01-26 12:14:04,866 -   [+] LINK 4d: Trend=Bearish
+2026-01-26 12:14:04,945 - Generated 2 Oracle Signals
+2026-01-26 12:14:04,969 - Oracle Cycle Completed. Sleeping 15m...
+2026-01-26 12:29:04,972 - --- Oracle Cycle Starting ---
+2026-01-26 12:29:05,926 - [Oracle] BTC: Navigating...
+2026-01-26 12:29:25,141 -   [+] BTC 15m: Trend=Neutral
+2026-01-26 12:29:30,204 -   [+] BTC 1h: Trend=Bullish
+2026-01-26 12:29:35,257 -   [+] BTC 4h: Trend=Bearish
+2026-01-26 12:29:40,322 -   [+] BTC 1d: Trend=Neutral
+2026-01-26 12:29:45,361 -   [+] BTC 4d: Trend=Bearish
+2026-01-26 12:29:45,435 - [Oracle] ETH: Navigating...
+2026-01-26 12:30:01,361 -   [+] ETH 15m: Trend=Neutral
+2026-01-26 12:30:06,429 -   [+] ETH 1h: Trend=Bullish
+2026-01-26 12:30:11,477 -   [+] ETH 4h: Trend=Bearish
+2026-01-26 12:30:16,521 -   [+] ETH 1d: Trend=Neutral
+2026-01-26 12:30:21,589 -   [+] ETH 4d: Trend=Bearish
+2026-01-26 12:30:21,659 - [Oracle] SOL: Navigating...
+2026-01-26 12:30:37,508 -   [+] SOL 15m: Trend=Bearish
+2026-01-26 12:30:42,580 -   [+] SOL 1h: Trend=Bullish
+2026-01-26 12:30:47,637 -   [+] SOL 4h: Trend=Bearish
+2026-01-26 12:30:52,714 -   [+] SOL 1d: Trend=Bearish
+2026-01-26 12:30:57,790 -   [+] SOL 4d: Trend=Bearish
+2026-01-26 12:30:57,869 - [Oracle] DOGE: Navigating...
+2026-01-26 12:31:13,737 -   [+] DOGE 15m: Trend=Bearish
+2026-01-26 12:31:18,790 -   [+] DOGE 1h: Trend=Neutral
+2026-01-26 12:31:23,841 -   [+] DOGE 4h: Trend=Bearish
+2026-01-26 12:31:28,898 -   [+] DOGE 1d: Trend=Bearish
+2026-01-26 12:31:33,958 -   [+] DOGE 4d: Trend=Bearish
+2026-01-26 12:31:34,033 - [Oracle] XRP: Navigating...
+2026-01-26 12:31:49,833 -   [+] XRP 15m: Trend=Bearish
+2026-01-26 12:31:54,892 -   [+] XRP 1h: Trend=Bullish
+2026-01-26 12:31:59,939 -   [+] XRP 4h: Trend=Bearish
+2026-01-26 12:32:04,978 -   [+] XRP 1d: Trend=Bearish
+2026-01-26 12:32:10,023 -   [+] XRP 4d: Trend=Bearish
+2026-01-26 12:32:10,095 - [Oracle] BNB: Navigating...
+2026-01-26 12:32:26,031 -   [+] BNB 15m: Trend=Bullish
+2026-01-26 12:32:31,099 -   [+] BNB 1h: Trend=Bullish
+2026-01-26 12:32:36,153 -   [+] BNB 4h: Trend=Bearish
+2026-01-26 12:32:41,195 -   [+] BNB 1d: Trend=Bullish
+2026-01-26 12:32:46,254 -   [+] BNB 4d: Trend=Bearish
+2026-01-26 12:32:46,335 - [Oracle] LINK: Navigating...
+2026-01-26 12:33:02,216 -   [+] LINK 15m: Trend=Bearish
+2026-01-26 12:33:07,270 -   [+] LINK 1h: Trend=Bullish
+2026-01-26 12:33:12,304 -   [+] LINK 4h: Trend=Bearish
+2026-01-26 12:33:17,367 -   [+] LINK 1d: Trend=Bearish
+2026-01-26 12:33:22,434 -   [+] LINK 4d: Trend=Bearish
+2026-01-26 12:33:22,524 - Generated 2 Oracle Signals
+2026-01-26 12:33:22,553 - Oracle Cycle Completed. Sleeping 15m...
+2026-01-26 12:48:22,566 - --- Oracle Cycle Starting ---
+2026-01-26 12:48:23,504 - [Oracle] BTC: Navigating...
+2026-01-26 12:48:42,529 -   [+] BTC 15m: Trend=Neutral
+2026-01-26 12:48:47,593 -   [+] BTC 1h: Trend=Bullish
+2026-01-26 12:48:52,655 -   [+] BTC 4h: Trend=Bearish
+2026-01-26 12:48:57,702 -   [+] BTC 1d: Trend=Neutral
+2026-01-26 12:49:02,754 -   [+] BTC 4d: Trend=Bearish
+2026-01-26 12:49:02,833 - [Oracle] ETH: Navigating...
+2026-01-26 12:49:18,880 -   [+] ETH 15m: Trend=Neutral
+2026-01-26 12:49:23,932 -   [+] ETH 1h: Trend=Bullish
+2026-01-26 12:49:28,983 -   [+] ETH 4h: Trend=Bearish
+2026-01-26 12:49:34,042 -   [+] ETH 1d: Trend=Neutral
+2026-01-26 12:49:39,092 -   [+] ETH 4d: Trend=Bearish
+2026-01-26 12:49:39,163 - [Oracle] SOL: Navigating...
+2026-01-26 12:49:54,941 -   [+] SOL 15m: Trend=Bearish
+2026-01-26 12:49:59,999 -   [+] SOL 1h: Trend=Bullish
+2026-01-26 12:50:05,057 -   [+] SOL 4h: Trend=Bearish
+2026-01-26 12:50:10,099 -   [+] SOL 1d: Trend=Bearish
+2026-01-26 12:50:15,154 -   [+] SOL 4d: Trend=Bearish
+2026-01-26 12:50:15,223 - [Oracle] DOGE: Navigating...
+2026-01-26 12:50:31,049 -   [+] DOGE 15m: Trend=Bearish
+2026-01-26 12:50:36,096 -   [+] DOGE 1h: Trend=Neutral
+2026-01-26 12:50:41,160 -   [+] DOGE 4h: Trend=Bearish
+2026-01-26 12:50:46,214 -   [+] DOGE 1d: Trend=Bearish
+2026-01-26 12:50:51,257 -   [+] DOGE 4d: Trend=Bearish
+2026-01-26 12:50:51,324 - [Oracle] XRP: Navigating...
+2026-01-26 12:51:07,185 -   [+] XRP 15m: Trend=Bearish
+2026-01-26 12:51:12,256 -   [+] XRP 1h: Trend=Bullish
+2026-01-26 12:51:17,304 -   [+] XRP 4h: Trend=Bearish
+2026-01-26 12:51:22,347 -   [+] XRP 1d: Trend=Bearish
+2026-01-26 12:51:27,396 -   [+] XRP 4d: Trend=Bearish
+2026-01-26 12:51:27,471 - [Oracle] BNB: Navigating...
+2026-01-26 12:51:43,320 -   [+] BNB 15m: Trend=Bullish
+2026-01-26 12:51:48,371 -   [+] BNB 1h: Trend=Bullish
+2026-01-26 12:51:53,414 -   [+] BNB 4h: Trend=Bearish
+2026-01-26 12:51:58,459 -   [+] BNB 1d: Trend=Bullish
+2026-01-26 12:52:03,511 -   [+] BNB 4d: Trend=Bearish
+2026-01-26 12:52:03,585 - [Oracle] LINK: Navigating...
+2026-01-26 12:52:19,523 -   [+] LINK 15m: Trend=Bearish
+2026-01-26 12:52:24,577 -   [+] LINK 1h: Trend=Bullish
+2026-01-26 12:52:29,622 -   [+] LINK 4h: Trend=Bearish
+2026-01-26 12:52:34,674 -   [+] LINK 1d: Trend=Bearish
+2026-01-26 12:52:39,710 -   [+] LINK 4d: Trend=Bearish
+2026-01-26 12:52:39,801 - Generated 2 Oracle Signals
+2026-01-26 12:52:39,839 - Oracle Cycle Completed. Sleeping 15m...
+2026-01-26 13:07:39,845 - --- Oracle Cycle Starting ---
+2026-01-26 13:07:42,815 - [Oracle] BTC: Navigating...
+2026-01-26 13:08:02,755 -   [+] BTC 15m: Trend=Neutral
+2026-01-26 13:08:07,833 -   [+] BTC 1h: Trend=Bullish
+2026-01-26 13:08:12,889 -   [+] BTC 4h: Trend=Bearish
+2026-01-26 13:08:17,948 -   [+] BTC 1d: Trend=Neutral
+2026-01-26 13:08:23,063 -   [+] BTC 4d: Trend=Bearish
+2026-01-26 13:08:23,139 - [Oracle] ETH: Navigating...
+2026-01-26 13:08:38,959 -   [+] ETH 15m: Trend=Neutral
+2026-01-26 13:08:44,002 -   [+] ETH 1h: Trend=Bullish
+2026-01-26 13:08:49,068 -   [+] ETH 4h: Trend=Bearish
+2026-01-26 13:08:54,120 -   [+] ETH 1d: Trend=Neutral
+2026-01-26 13:08:59,168 -   [+] ETH 4d: Trend=Bearish
+2026-01-26 13:08:59,233 - [Oracle] SOL: Navigating...
+2026-01-26 13:09:15,190 -   [+] SOL 15m: Trend=Bearish
+2026-01-26 13:09:20,247 -   [+] SOL 1h: Trend=Bullish
+2026-01-26 13:09:25,298 -   [+] SOL 4h: Trend=Bearish
+2026-01-26 13:09:30,356 -   [+] SOL 1d: Trend=Bearish
+2026-01-26 13:09:35,403 -   [+] SOL 4d: Trend=Bearish
+2026-01-26 13:09:35,478 - [Oracle] DOGE: Navigating...
+2026-01-26 13:09:51,267 -   [+] DOGE 15m: Trend=Bearish
+2026-01-26 13:09:56,312 -   [+] DOGE 1h: Trend=Bullish
+2026-01-26 13:10:01,357 -   [+] DOGE 4h: Trend=Bearish
+2026-01-26 13:10:06,401 -   [+] DOGE 1d: Trend=Bearish
+2026-01-26 13:10:11,452 -   [+] DOGE 4d: Trend=Bearish
+2026-01-26 13:10:11,526 - [Oracle] XRP: Navigating...
+2026-01-26 13:10:27,452 -   [+] XRP 15m: Trend=Bearish
+2026-01-26 13:10:32,510 -   [+] XRP 1h: Trend=Bullish
+2026-01-26 13:10:37,563 -   [+] XRP 4h: Trend=Bearish
+2026-01-26 13:10:42,625 -   [+] XRP 1d: Trend=Bearish
+2026-01-26 13:10:47,673 -   [+] XRP 4d: Trend=Bearish
+2026-01-26 13:10:47,747 - [Oracle] BNB: Navigating...
+2026-01-26 13:11:03,675 -   [+] BNB 15m: Trend=Bullish
+2026-01-26 13:11:08,722 -   [+] BNB 1h: Trend=Bullish
+2026-01-26 13:11:13,770 -   [+] BNB 4h: Trend=Bearish
+2026-01-26 13:11:18,802 -   [+] BNB 1d: Trend=Bullish
+2026-01-26 13:11:23,858 -   [+] BNB 4d: Trend=Bearish
+2026-01-26 13:11:23,921 - [Oracle] LINK: Navigating...
+2026-01-26 13:11:39,761 -   [+] LINK 15m: Trend=Bearish
+2026-01-26 13:11:44,819 -   [+] LINK 1h: Trend=Bullish
+2026-01-26 13:11:49,865 -   [+] LINK 4h: Trend=Bearish
+2026-01-26 13:11:54,926 -   [+] LINK 1d: Trend=Bearish
+2026-01-26 13:11:59,976 -   [+] LINK 4d: Trend=Bearish
+2026-01-26 13:12:01,821 - Generated 2 Oracle Signals
+2026-01-26 13:12:02,670 - Oracle Cycle Completed. Sleeping 15m...
+2026-01-26 13:27:02,678 - --- Oracle Cycle Starting ---
+2026-01-26 13:27:03,590 - [Oracle] BTC: Navigating...
+2026-01-26 13:27:22,603 -   [+] BTC 15m: Trend=Neutral
+2026-01-26 13:27:27,663 -   [+] BTC 1h: Trend=Bullish
+2026-01-26 13:27:32,733 -   [+] BTC 4h: Trend=Bearish
+2026-01-26 13:27:37,803 -   [+] BTC 1d: Trend=Neutral
+2026-01-26 13:27:42,853 -   [+] BTC 4d: Trend=Bearish
+2026-01-26 13:27:42,939 - [Oracle] ETH: Navigating...
+2026-01-26 13:27:58,863 -   [+] ETH 15m: Trend=Neutral
+2026-01-26 13:28:03,934 -   [+] ETH 1h: Trend=Bullish
+2026-01-26 13:28:09,001 -   [+] ETH 4h: Trend=Bearish
+2026-01-26 13:28:14,071 -   [+] ETH 1d: Trend=Neutral
+2026-01-26 13:28:19,115 -   [+] ETH 4d: Trend=Bearish
+2026-01-26 13:28:19,180 - [Oracle] SOL: Navigating...
+2026-01-26 13:28:35,166 -   [+] SOL 15m: Trend=Bearish
+2026-01-26 13:28:40,222 -   [+] SOL 1h: Trend=Bullish
+2026-01-26 13:28:45,274 -   [+] SOL 4h: Trend=Bearish
+2026-01-26 13:28:50,308 -   [+] SOL 1d: Trend=Bearish
+2026-01-26 13:28:55,364 -   [+] SOL 4d: Trend=Bearish
+2026-01-26 13:28:55,440 - [Oracle] DOGE: Navigating...
+2026-01-26 13:29:11,259 -   [+] DOGE 15m: Trend=Bearish
+2026-01-26 13:29:16,310 -   [+] DOGE 1h: Trend=Bullish
+2026-01-26 13:29:21,358 -   [+] DOGE 4h: Trend=Bearish
+2026-01-26 13:29:26,406 -   [+] DOGE 1d: Trend=Bearish
+2026-01-26 13:29:31,448 -   [+] DOGE 4d: Trend=Bearish
+2026-01-26 13:29:31,522 - [Oracle] XRP: Navigating...
+2026-01-26 13:29:47,384 -   [+] XRP 15m: Trend=Bearish
+2026-01-26 13:29:52,442 -   [+] XRP 1h: Trend=Bullish
+2026-01-26 13:29:57,486 -   [+] XRP 4h: Trend=Bearish
+2026-01-26 13:30:02,538 -   [+] XRP 1d: Trend=Bearish
+2026-01-26 13:30:07,581 -   [+] XRP 4d: Trend=Bearish
+2026-01-26 13:30:07,696 - [Oracle] BNB: Navigating...
+2026-01-26 13:30:23,546 -   [+] BNB 15m: Trend=Bullish
+2026-01-26 13:30:28,599 -   [+] BNB 1h: Trend=Bullish
+2026-01-26 13:30:33,663 -   [+] BNB 4h: Trend=Bearish
+2026-01-26 13:30:38,717 -   [+] BNB 1d: Trend=Bullish
+2026-01-26 13:30:43,758 -   [+] BNB 4d: Trend=Bearish
+2026-01-26 13:30:43,825 - [Oracle] LINK: Navigating...
+2026-01-26 13:30:59,723 -   [+] LINK 15m: Trend=Bearish
+2026-01-26 13:31:04,776 -   [+] LINK 1h: Trend=Bullish
+2026-01-26 13:31:09,845 -   [+] LINK 4h: Trend=Bearish
+2026-01-26 13:31:14,903 -   [+] LINK 1d: Trend=Bearish
+2026-01-26 13:31:19,961 -   [+] LINK 4d: Trend=Bearish
+2026-01-26 13:31:21,901 - Generated 2 Oracle Signals
+2026-01-26 13:31:21,932 - Oracle Cycle Completed. Sleeping 15m...
+2026-01-26 13:46:21,942 - --- Oracle Cycle Starting ---
+2026-01-26 13:46:22,869 - [Oracle] BTC: Navigating...
+2026-01-26 13:46:42,073 -   [+] BTC 15m: Trend=Neutral
+2026-01-26 13:46:47,136 -   [+] BTC 1h: Trend=Bullish
+2026-01-26 13:46:52,185 -   [+] BTC 4h: Trend=Bearish
+2026-01-26 13:46:57,249 -   [+] BTC 1d: Trend=Neutral
+2026-01-26 13:47:02,288 -   [+] BTC 4d: Trend=Bearish
+2026-01-26 13:47:02,373 - [Oracle] ETH: Navigating...
+2026-01-26 13:47:18,235 -   [+] ETH 15m: Trend=Neutral
+2026-01-26 13:47:23,302 -   [+] ETH 1h: Trend=Bullish
+2026-01-26 13:47:28,356 -   [+] ETH 4h: Trend=Bearish
+2026-01-26 13:47:33,420 -   [+] ETH 1d: Trend=Neutral
+2026-01-26 13:47:38,467 -   [+] ETH 4d: Trend=Bearish
+2026-01-26 13:47:38,546 - [Oracle] SOL: Navigating...
+2026-01-26 13:47:54,614 -   [+] SOL 15m: Trend=Bearish
+2026-01-26 13:47:59,670 -   [+] SOL 1h: Trend=Bullish
+2026-01-26 13:48:04,715 -   [+] SOL 4h: Trend=Bearish
+2026-01-26 13:48:09,772 -   [+] SOL 1d: Trend=Bearish
+2026-01-26 13:48:14,808 -   [+] SOL 4d: Trend=Bearish
+2026-01-26 13:48:14,881 - [Oracle] DOGE: Navigating...
+2026-01-26 13:48:30,748 -   [+] DOGE 15m: Trend=Bearish
+2026-01-26 13:48:35,822 -   [+] DOGE 1h: Trend=Bullish
+2026-01-26 13:48:40,866 -   [+] DOGE 4h: Trend=Bearish
+2026-01-26 13:48:45,907 -   [+] DOGE 1d: Trend=Bearish
+2026-01-26 13:48:50,960 -   [+] DOGE 4d: Trend=Bearish
+2026-01-26 13:48:51,031 - [Oracle] XRP: Navigating...
+2026-01-26 13:49:06,865 -   [+] XRP 15m: Trend=Bearish
+2026-01-26 13:49:11,935 -   [+] XRP 1h: Trend=Bullish
+2026-01-26 13:49:16,978 -   [+] XRP 4h: Trend=Bearish
+2026-01-26 13:49:22,044 -   [+] XRP 1d: Trend=Bearish
+2026-01-26 13:49:27,112 -   [+] XRP 4d: Trend=Bearish
+2026-01-26 13:49:27,178 - [Oracle] BNB: Navigating...
+2026-01-26 13:49:42,948 -   [+] BNB 15m: Trend=Bullish
+2026-01-26 13:49:47,997 -   [+] BNB 1h: Trend=Bullish
+2026-01-26 13:49:53,037 -   [+] BNB 4h: Trend=Bearish
+2026-01-26 13:49:58,098 -   [+] BNB 1d: Trend=Bullish
+2026-01-26 13:50:03,145 -   [+] BNB 4d: Trend=Bearish
+2026-01-26 13:50:03,220 - [Oracle] LINK: Navigating...
+2026-01-26 13:50:19,210 -   [+] LINK 15m: Trend=Bearish
+2026-01-26 13:50:24,270 -   [+] LINK 1h: Trend=Bullish
+2026-01-26 13:50:29,317 -   [+] LINK 4h: Trend=Bearish
+2026-01-26 13:50:34,381 -   [+] LINK 1d: Trend=Bearish
+2026-01-26 13:50:39,430 -   [+] LINK 4d: Trend=Bearish
+2026-01-26 13:50:41,302 - Generated 2 Oracle Signals
+2026-01-26 13:50:41,327 - Oracle Cycle Completed. Sleeping 15m...
+2026-01-26 14:05:41,331 - --- Oracle Cycle Starting ---
+2026-01-26 14:05:42,344 - [Oracle] BTC: Navigating...
+2026-01-26 14:06:01,364 -   [+] BTC 15m: Trend=Neutral
+2026-01-26 14:06:06,414 -   [+] BTC 1h: Trend=Bullish
+2026-01-26 14:06:11,474 -   [+] BTC 4h: Trend=Bearish
+2026-01-26 14:06:16,522 -   [+] BTC 1d: Trend=Neutral
+2026-01-26 14:06:21,558 -   [+] BTC 4d: Trend=Bearish
+2026-01-26 14:06:21,628 - [Oracle] ETH: Navigating...
+2026-01-26 14:06:37,474 -   [+] ETH 15m: Trend=Neutral
+2026-01-26 14:06:42,531 -   [+] ETH 1h: Trend=Bullish
+2026-01-26 14:06:47,575 -   [+] ETH 4h: Trend=Bearish
+2026-01-26 14:06:52,610 -   [+] ETH 1d: Trend=Neutral
+2026-01-26 14:06:57,648 -   [+] ETH 4d: Trend=Bearish
+2026-01-26 14:06:57,721 - [Oracle] SOL: Navigating...
+2026-01-26 14:07:13,559 -   [+] SOL 15m: Trend=Bearish
+2026-01-26 14:07:18,631 -   [+] SOL 1h: Trend=Bullish
+2026-01-26 14:07:23,694 -   [+] SOL 4h: Trend=Bearish
+2026-01-26 14:07:28,766 -   [+] SOL 1d: Trend=Bearish
+2026-01-26 14:07:33,802 -   [+] SOL 4d: Trend=Bearish
+2026-01-26 14:07:33,887 - [Oracle] DOGE: Navigating...
+2026-01-26 14:07:49,828 -   [+] DOGE 15m: Trend=Bearish
+2026-01-26 14:07:54,870 -   [+] DOGE 1h: Trend=Bullish
+2026-01-26 14:07:59,944 -   [+] DOGE 4h: Trend=Bearish
+2026-01-26 14:08:05,000 -   [+] DOGE 1d: Trend=Bearish
+2026-01-26 14:08:10,044 -   [+] DOGE 4d: Trend=Bearish
+2026-01-26 14:08:10,106 - [Oracle] XRP: Navigating...
+2026-01-26 14:08:25,970 -   [+] XRP 15m: Trend=Bearish
+2026-01-26 14:08:31,037 -   [+] XRP 1h: Trend=Bullish
+2026-01-26 14:08:36,076 -   [+] XRP 4h: Trend=Bearish
+2026-01-26 14:08:41,129 -   [+] XRP 1d: Trend=Bearish
+2026-01-26 14:08:46,169 -   [+] XRP 4d: Trend=Bearish
+2026-01-26 14:08:46,229 - [Oracle] BNB: Navigating...
+2026-01-26 14:09:02,065 -   [+] BNB 15m: Trend=Bullish
+2026-01-26 14:09:07,125 -   [+] BNB 1h: Trend=Bullish
+2026-01-26 14:09:12,172 -   [+] BNB 4h: Trend=Bearish
+2026-01-26 14:09:17,211 -   [+] BNB 1d: Trend=Bullish
+2026-01-26 14:09:22,259 -   [+] BNB 4d: Trend=Bearish
+2026-01-26 14:09:22,329 - [Oracle] LINK: Navigating...
+2026-01-26 14:09:38,255 -   [+] LINK 15m: Trend=Bearish
+2026-01-26 14:09:43,316 -   [+] LINK 1h: Trend=Bullish
+2026-01-26 14:09:48,349 -   [+] LINK 4h: Trend=Bearish
+2026-01-26 14:09:53,408 -   [+] LINK 1d: Trend=Bearish
+2026-01-26 14:09:58,473 -   [+] LINK 4d: Trend=Bearish
+2026-01-26 14:10:00,379 - Generated 2 Oracle Signals
+2026-01-26 14:10:00,404 - Oracle Cycle Completed. Sleeping 15m...
+2026-01-26 14:25:00,411 - --- Oracle Cycle Starting ---
+2026-01-26 14:25:04,506 - [Oracle] BTC: Navigating...
+2026-01-26 14:25:23,578 -   [+] BTC 15m: Trend=Neutral
+2026-01-26 14:25:28,635 -   [+] BTC 1h: Trend=Bullish
+2026-01-26 14:25:33,698 -   [+] BTC 4h: Trend=Bearish
+2026-01-26 14:25:38,754 -   [+] BTC 1d: Trend=Neutral
+2026-01-26 14:25:43,803 -   [+] BTC 4d: Trend=Bearish
+2026-01-26 14:25:43,891 - [Oracle] ETH: Navigating...
+2026-01-26 14:25:59,876 -   [+] ETH 15m: Trend=Neutral
+2026-01-26 14:26:04,932 -   [+] ETH 1h: Trend=Bullish
+2026-01-26 14:26:09,978 -   [+] ETH 4h: Trend=Bearish
+2026-01-26 14:26:15,051 -   [+] ETH 1d: Trend=Neutral
+2026-01-26 14:26:20,101 -   [+] ETH 4d: Trend=Bearish
+2026-01-26 14:26:20,178 - [Oracle] SOL: Navigating...
+2026-01-26 14:26:36,135 -   [+] SOL 15m: Trend=Bearish
+2026-01-26 14:26:41,175 -   [+] SOL 1h: Trend=Bullish
+2026-01-26 14:26:46,209 -   [+] SOL 4h: Trend=Bearish
+2026-01-26 14:26:51,278 -   [+] SOL 1d: Trend=Bearish
+2026-01-26 14:26:56,317 -   [+] SOL 4d: Trend=Bearish
+2026-01-26 14:26:56,391 - [Oracle] DOGE: Navigating...
+2026-01-26 14:27:12,292 -   [+] DOGE 15m: Trend=Bearish
+2026-01-26 14:27:17,344 -   [+] DOGE 1h: Trend=Bullish
+2026-01-26 14:27:22,399 -   [+] DOGE 4h: Trend=Bearish
+2026-01-26 14:27:27,457 -   [+] DOGE 1d: Trend=Bearish
+2026-01-26 14:27:32,520 -   [+] DOGE 4d: Trend=Bearish
+2026-01-26 14:27:32,602 - [Oracle] XRP: Navigating...
+2026-01-26 14:27:48,573 -   [+] XRP 15m: Trend=Bearish
+2026-01-26 14:27:53,624 -   [+] XRP 1h: Trend=Bullish
+2026-01-26 14:27:58,678 -   [+] XRP 4h: Trend=Bearish
+2026-01-26 14:28:03,739 -   [+] XRP 1d: Trend=Bearish
+2026-01-26 14:28:08,785 -   [+] XRP 4d: Trend=Bearish
+2026-01-26 14:28:08,856 - [Oracle] BNB: Navigating...
+2026-01-26 14:28:24,779 -   [+] BNB 15m: Trend=Bullish
+2026-01-26 14:28:29,829 -   [+] BNB 1h: Trend=Bullish
+2026-01-26 14:28:34,886 -   [+] BNB 4h: Trend=Bearish
+2026-01-26 14:28:39,943 -   [+] BNB 1d: Trend=Bullish
+2026-01-26 14:28:44,991 -   [+] BNB 4d: Trend=Bearish
+2026-01-26 14:28:45,065 - [Oracle] LINK: Navigating...
+2026-01-26 14:29:00,916 -   [+] LINK 15m: Trend=Bearish
+2026-01-26 14:29:05,964 -   [+] LINK 1h: Trend=Bullish
+2026-01-26 14:29:11,022 -   [+] LINK 4h: Trend=Bearish
+2026-01-26 14:29:16,067 -   [+] LINK 1d: Trend=Bearish
+2026-01-26 14:29:21,116 -   [+] LINK 4d: Trend=Bearish
+2026-01-26 14:29:22,935 - Generated 2 Oracle Signals
+2026-01-26 14:29:22,968 - Oracle Cycle Completed. Sleeping 15m...
+2026-01-26 14:44:22,974 - --- Oracle Cycle Starting ---
+2026-01-26 14:44:24,134 - [Oracle] BTC: Navigating...
+2026-01-26 14:44:43,121 -   [+] BTC 15m: Trend=Neutral
+2026-01-26 14:44:48,181 -   [+] BTC 1h: Trend=Bullish
+2026-01-26 14:44:53,231 -   [+] BTC 4h: Trend=Bearish
+2026-01-26 14:44:58,304 -   [+] BTC 1d: Trend=Neutral
+2026-01-26 14:45:03,362 -   [+] BTC 4d: Trend=Bearish
+2026-01-26 14:45:03,439 - [Oracle] ETH: Navigating...
+2026-01-26 14:45:19,380 -   [+] ETH 15m: Trend=Neutral
+2026-01-26 14:45:24,445 -   [+] ETH 1h: Trend=Bullish
+2026-01-26 14:45:29,504 -   [+] ETH 4h: Trend=Bearish
+2026-01-26 14:45:34,574 -   [+] ETH 1d: Trend=Neutral
+2026-01-26 14:45:39,623 -   [+] ETH 4d: Trend=Bearish
+2026-01-26 14:45:39,693 - [Oracle] SOL: Navigating...
+2026-01-26 14:45:55,670 -   [+] SOL 15m: Trend=Bearish
+2026-01-26 14:46:00,715 -   [+] SOL 1h: Trend=Bullish
+2026-01-26 14:46:05,768 -   [+] SOL 4h: Trend=Bearish
+2026-01-26 14:46:10,812 -   [+] SOL 1d: Trend=Bearish
+2026-01-26 14:46:15,880 -   [+] SOL 4d: Trend=Bearish
+2026-01-26 14:46:15,958 - [Oracle] DOGE: Navigating...
+2026-01-26 14:46:31,922 -   [+] DOGE 15m: Trend=Bearish
+2026-01-26 14:46:36,990 -   [+] DOGE 1h: Trend=Bullish
+2026-01-26 14:46:42,039 -   [+] DOGE 4h: Trend=Bearish
+2026-01-26 14:46:47,087 -   [+] DOGE 1d: Trend=Bearish
+2026-01-26 14:46:52,138 -   [+] DOGE 4d: Trend=Bearish
+2026-01-26 14:46:52,216 - [Oracle] XRP: Navigating...
+2026-01-26 14:47:08,180 -   [+] XRP 15m: Trend=Bearish
+2026-01-26 14:47:13,228 -   [+] XRP 1h: Trend=Bullish
+2026-01-26 14:47:18,279 -   [+] XRP 4h: Trend=Bearish
+2026-01-26 14:47:23,339 -   [+] XRP 1d: Trend=Bearish
+2026-01-26 14:47:28,421 -   [+] XRP 4d: Trend=Bearish
+2026-01-26 14:47:28,499 - [Oracle] BNB: Navigating...
+2026-01-26 14:47:44,534 -   [+] BNB 15m: Trend=Bullish
+2026-01-26 14:47:49,592 -   [+] BNB 1h: Trend=Bullish
+2026-01-26 14:47:54,629 -   [+] BNB 4h: Trend=Bearish
+2026-01-26 14:47:59,689 -   [+] BNB 1d: Trend=Bullish
+2026-01-26 14:48:04,745 -   [+] BNB 4d: Trend=Bearish
+2026-01-26 14:48:04,814 - [Oracle] LINK: Navigating...
+2026-01-26 14:48:23,105 -   [+] LINK 15m: Trend=Bearish
+2026-01-26 14:48:28,152 -   [+] LINK 1h: Trend=Bullish
+2026-01-26 14:48:33,202 -   [+] LINK 4h: Trend=Bearish
+2026-01-26 14:48:38,268 -   [+] LINK 1d: Trend=Bearish
+2026-01-26 14:48:43,313 -   [+] LINK 4d: Trend=Bearish
+2026-01-26 14:48:45,166 - Generated 2 Oracle Signals
+2026-01-26 14:48:45,193 - Oracle Cycle Completed. Sleeping 15m...
+2026-01-26 15:03:45,209 - --- Oracle Cycle Starting ---
+2026-01-26 15:03:46,174 - [Oracle] BTC: Navigating...
+2026-01-26 15:04:05,244 -   [+] BTC 15m: Trend=Bearish
+2026-01-26 15:04:10,327 -   [+] BTC 1h: Trend=Bullish
+2026-01-26 15:04:15,368 -   [+] BTC 4h: Trend=Bearish
+2026-01-26 15:04:20,426 -   [+] BTC 1d: Trend=Bearish
+2026-01-26 15:04:25,471 -   [+] BTC 4d: Trend=Bearish
+2026-01-26 15:04:25,546 - [Oracle] ETH: Navigating...
+2026-01-26 15:04:41,362 -   [+] ETH 15m: Trend=Bearish
+2026-01-26 15:04:46,432 -   [+] ETH 1h: Trend=Bullish
+2026-01-26 15:04:51,484 -   [+] ETH 4h: Trend=Bearish
+2026-01-26 15:04:56,529 -   [+] ETH 1d: Trend=Bearish
+2026-01-26 15:05:01,574 -   [+] ETH 4d: Trend=Bearish
+2026-01-26 15:05:01,654 - [Oracle] SOL: Navigating...
+2026-01-26 15:05:17,587 -   [+] SOL 15m: Trend=Bearish
+2026-01-26 15:05:22,666 -   [+] SOL 1h: Trend=Bullish
+2026-01-26 15:05:27,715 -   [+] SOL 4h: Trend=Bearish
+2026-01-26 15:05:32,757 -   [+] SOL 1d: Trend=Bearish
+2026-01-26 15:05:37,804 -   [+] SOL 4d: Trend=Bearish
+2026-01-26 15:05:37,883 - [Oracle] DOGE: Navigating...
+2026-01-26 15:05:53,762 -   [+] DOGE 15m: Trend=Bearish
+2026-01-26 15:05:58,827 -   [+] DOGE 1h: Trend=Bullish
+2026-01-26 15:06:03,871 -   [+] DOGE 4h: Trend=Bearish
+2026-01-26 15:06:08,927 -   [+] DOGE 1d: Trend=Bearish
+2026-01-26 15:06:13,973 -   [+] DOGE 4d: Trend=Bearish
+2026-01-26 15:06:14,044 - [Oracle] XRP: Navigating...
+2026-01-26 15:06:29,841 -   [+] XRP 15m: Trend=Bearish
+2026-01-26 15:06:34,891 -   [+] XRP 1h: Trend=Bullish
+2026-01-26 15:06:39,933 -   [+] XRP 4h: Trend=Bearish
+2026-01-26 15:06:44,972 -   [+] XRP 1d: Trend=Bearish
+2026-01-26 15:06:50,028 -   [+] XRP 4d: Trend=Bearish
+2026-01-26 15:06:50,100 - [Oracle] BNB: Navigating...
+2026-01-26 15:07:05,968 -   [+] BNB 15m: Trend=Bearish
+2026-01-26 15:07:11,016 -   [+] BNB 1h: Trend=Bullish
+2026-01-26 15:07:16,061 -   [+] BNB 4h: Trend=Bearish
+2026-01-26 15:07:21,112 -   [+] BNB 1d: Trend=Bearish
+2026-01-26 15:07:26,179 -   [+] BNB 4d: Trend=Bearish
+2026-01-26 15:07:26,251 - [Oracle] LINK: Navigating...
+2026-01-26 15:07:42,140 -   [+] LINK 15m: Trend=Bearish
+2026-01-26 15:07:47,205 -   [+] LINK 1h: Trend=Bullish
+2026-01-26 15:07:52,252 -   [+] LINK 4h: Trend=Bearish
+2026-01-26 15:07:57,304 -   [+] LINK 1d: Trend=Bearish
+2026-01-26 15:08:02,347 -   [+] LINK 4d: Trend=Bearish
+2026-01-26 15:08:04,204 - No NEW Oracle Signals found this cycle.
+2026-01-26 15:08:04,216 - Oracle Cycle Completed. Sleeping 15m...
+2026-01-26 15:23:04,220 - --- Oracle Cycle Starting ---
+2026-01-26 15:23:05,284 - [Oracle] BTC: Navigating...
+2026-01-26 15:23:24,207 -   [+] BTC 15m: Trend=Bearish
+2026-01-26 15:23:29,284 -   [+] BTC 1h: Trend=Bullish
+2026-01-26 15:23:34,335 -   [+] BTC 4h: Trend=Bearish
+2026-01-26 15:23:39,411 -   [+] BTC 1d: Trend=Bearish
+2026-01-26 15:23:44,478 -   [+] BTC 4d: Trend=Bearish
+2026-01-26 15:23:44,557 - [Oracle] ETH: Navigating...
+2026-01-26 15:24:00,494 -   [+] ETH 15m: Trend=Bearish
+2026-01-26 15:24:05,553 -   [+] ETH 1h: Trend=Bullish
+2026-01-26 15:24:10,594 -   [+] ETH 4h: Trend=Bearish
+2026-01-26 15:24:15,644 -   [+] ETH 1d: Trend=Bearish
+2026-01-26 15:24:20,687 -   [+] ETH 4d: Trend=Bearish
+2026-01-26 15:24:20,765 - [Oracle] SOL: Navigating...
+2026-01-26 15:24:36,660 -   [+] SOL 15m: Trend=Bearish
+2026-01-26 15:24:41,714 -   [+] SOL 1h: Trend=Bullish
+2026-01-26 15:24:46,769 -   [+] SOL 4h: Trend=Bearish
+2026-01-26 15:24:51,822 -   [+] SOL 1d: Trend=Bearish
+2026-01-26 15:24:56,864 -   [+] SOL 4d: Trend=Bearish
+2026-01-26 15:24:56,933 - [Oracle] DOGE: Navigating...
+2026-01-26 15:25:15,197 -   [+] DOGE 15m: Trend=Bearish
+2026-01-26 15:25:20,264 -   [+] DOGE 1h: Trend=Bullish
+2026-01-26 15:25:25,315 -   [+] DOGE 4h: Trend=Bearish
+2026-01-26 15:25:30,376 -   [+] DOGE 1d: Trend=Bearish
+2026-01-26 15:25:35,421 -   [+] DOGE 4d: Trend=Bearish
+2026-01-26 15:25:35,497 - [Oracle] XRP: Navigating...
+2026-01-26 15:25:51,315 -   [+] XRP 15m: Trend=Bearish
+2026-01-26 15:25:56,352 -   [+] XRP 1h: Trend=Bullish
+2026-01-26 15:26:01,392 -   [+] XRP 4h: Trend=Bearish
+2026-01-26 15:26:06,466 -   [+] XRP 1d: Trend=Bearish
+2026-01-26 15:26:11,509 -   [+] XRP 4d: Trend=Bearish
+2026-01-26 15:26:11,573 - [Oracle] BNB: Navigating...
+2026-01-26 15:26:27,403 -   [+] BNB 15m: Trend=Bearish
+2026-01-26 15:26:32,469 -   [+] BNB 1h: Trend=Bullish
+2026-01-26 15:26:37,536 -   [+] BNB 4h: Trend=Bearish
+2026-01-26 15:26:42,583 -   [+] BNB 1d: Trend=Bearish
+2026-01-26 15:26:47,653 -   [+] BNB 4d: Trend=Bearish
+2026-01-26 15:26:47,761 - [Oracle] LINK: Navigating...
+2026-01-26 15:27:03,712 -   [+] LINK 15m: Trend=Bearish
+2026-01-26 15:27:08,766 -   [+] LINK 1h: Trend=Bullish
+2026-01-26 15:27:13,828 -   [+] LINK 4h: Trend=Bearish
+2026-01-26 15:27:18,878 -   [+] LINK 1d: Trend=Bearish
+2026-01-26 15:27:23,928 -   [+] LINK 4d: Trend=Bearish
+2026-01-26 15:27:25,825 - No NEW Oracle Signals found this cycle.
+2026-01-26 15:27:25,837 - Oracle Cycle Completed. Sleeping 15m...
+2026-01-26 15:42:25,838 - --- Oracle Cycle Starting ---
+2026-01-26 15:42:27,114 - [Oracle] BTC: Navigating...
+2026-01-26 15:42:46,252 -   [+] BTC 15m: Trend=Bearish
+2026-01-26 15:42:51,323 -   [+] BTC 1h: Trend=Bullish
+2026-01-26 15:42:56,372 -   [+] BTC 4h: Trend=Bearish
+2026-01-26 15:43:01,421 -   [+] BTC 1d: Trend=Bearish
+2026-01-26 15:43:06,464 -   [+] BTC 4d: Trend=Bearish
+2026-01-26 15:43:06,547 - [Oracle] ETH: Navigating...
+2026-01-26 15:43:22,380 -   [+] ETH 15m: Trend=Bearish
+2026-01-26 15:43:27,439 -   [+] ETH 1h: Trend=Bullish
+2026-01-26 15:43:32,485 -   [+] ETH 4h: Trend=Bearish
+2026-01-26 15:43:37,537 -   [+] ETH 1d: Trend=Bearish
+2026-01-26 15:43:42,589 -   [+] ETH 4d: Trend=Bearish
+2026-01-26 15:43:42,662 - [Oracle] SOL: Navigating...
+2026-01-26 15:43:58,550 -   [+] SOL 15m: Trend=Bearish
+2026-01-26 15:44:03,630 -   [+] SOL 1h: Trend=Bullish
+2026-01-26 15:44:08,666 -   [+] SOL 4h: Trend=Bearish
+2026-01-26 15:44:13,716 -   [+] SOL 1d: Trend=Bearish
+2026-01-26 15:44:18,769 -   [+] SOL 4d: Trend=Bearish
+2026-01-26 15:44:18,844 - [Oracle] DOGE: Navigating...
+2026-01-26 15:44:34,700 -   [+] DOGE 15m: Trend=Bearish
+2026-01-26 15:44:39,770 -   [+] DOGE 1h: Trend=Bullish
+2026-01-26 15:44:44,828 -   [+] DOGE 4h: Trend=Bearish
+2026-01-26 15:44:49,887 -   [+] DOGE 1d: Trend=Bearish
+2026-01-26 15:44:54,935 -   [+] DOGE 4d: Trend=Bearish
+2026-01-26 15:44:55,011 - [Oracle] XRP: Navigating...
+2026-01-26 15:45:10,939 -   [+] XRP 15m: Trend=Bearish
+2026-01-26 15:45:15,993 -   [+] XRP 1h: Trend=Bullish
+2026-01-26 15:45:21,043 -   [+] XRP 4h: Trend=Bearish
+2026-01-26 15:45:26,094 -   [+] XRP 1d: Trend=Bearish
+2026-01-26 15:45:31,140 -   [+] XRP 4d: Trend=Bearish
+2026-01-26 15:45:31,219 - [Oracle] BNB: Navigating...
+2026-01-26 15:45:47,010 -   [+] BNB 15m: Trend=Bearish
+2026-01-26 15:45:52,071 -   [+] BNB 1h: Trend=Bullish
+2026-01-26 15:45:57,122 -   [+] BNB 4h: Trend=Bearish
+2026-01-26 15:46:02,164 -   [+] BNB 1d: Trend=Bearish
+2026-01-26 15:46:07,225 -   [+] BNB 4d: Trend=Bearish
+2026-01-26 15:46:07,293 - [Oracle] LINK: Navigating...
+2026-01-26 15:46:23,125 -   [+] LINK 15m: Trend=Bearish
+2026-01-26 15:46:28,178 -   [+] LINK 1h: Trend=Bullish
+2026-01-26 15:46:33,222 -   [+] LINK 4h: Trend=Bearish
+2026-01-26 15:46:38,266 -   [+] LINK 1d: Trend=Bearish
+2026-01-26 15:46:43,313 -   [+] LINK 4d: Trend=Bearish
+2026-01-26 15:46:45,228 - No NEW Oracle Signals found this cycle.
+2026-01-26 15:46:45,243 - Oracle Cycle Completed. Sleeping 15m...
+2026-01-26 16:01:45,252 - --- Oracle Cycle Starting ---
+2026-01-26 16:01:46,179 - [Oracle] BTC: Navigating...
+2026-01-26 16:02:05,255 -   [+] BTC 15m: Trend=Bearish
+2026-01-26 16:02:10,307 -   [+] BTC 1h: Trend=Neutral
+2026-01-26 16:02:15,349 -   [+] BTC 4h: Trend=Bearish
+2026-01-26 16:02:20,399 -   [+] BTC 1d: Trend=Bearish
+2026-01-26 16:02:25,455 -   [+] BTC 4d: Trend=Bearish
+2026-01-26 16:02:25,531 - [Oracle] ETH: Navigating...
+2026-01-26 16:02:41,406 -   [+] ETH 15m: Trend=Bearish
+2026-01-26 16:02:46,458 -   [+] ETH 1h: Trend=Bullish
+2026-01-26 16:02:51,539 -   [+] ETH 4h: Trend=Bearish
+2026-01-26 16:02:56,597 -   [+] ETH 1d: Trend=Bearish
+2026-01-26 16:03:01,661 -   [+] ETH 4d: Trend=Bearish
+2026-01-26 16:03:01,751 - [Oracle] SOL: Navigating...
+2026-01-26 16:03:17,772 -   [+] SOL 15m: Trend=Bearish
+2026-01-26 16:03:22,840 -   [+] SOL 1h: Trend=Bullish
+2026-01-26 16:03:27,889 -   [+] SOL 4h: Trend=Bearish
+2026-01-26 16:03:32,938 -   [+] SOL 1d: Trend=Bearish
+2026-01-26 16:03:37,982 -   [+] SOL 4d: Trend=Bearish
+2026-01-26 16:03:38,058 - [Oracle] DOGE: Navigating...
+2026-01-26 16:03:53,904 -   [+] DOGE 15m: Trend=Bearish
+2026-01-26 16:03:58,957 -   [+] DOGE 1h: Trend=Bullish
+2026-01-26 16:04:04,017 -   [+] DOGE 4h: Trend=Bearish
+2026-01-26 16:04:09,054 -   [+] DOGE 1d: Trend=Bearish
+2026-01-26 16:04:14,105 -   [+] DOGE 4d: Trend=Bearish
+2026-01-26 16:04:14,184 - [Oracle] XRP: Navigating...
+2026-01-26 16:04:29,992 -   [+] XRP 15m: Trend=Bearish
+2026-01-26 16:04:35,057 -   [+] XRP 1h: Trend=Bullish
+2026-01-26 16:04:40,116 -   [+] XRP 4h: Trend=Bearish
+2026-01-26 16:04:45,180 -   [+] XRP 1d: Trend=Bearish
+2026-01-26 16:04:50,226 -   [+] XRP 4d: Trend=Bearish
+2026-01-26 16:04:50,307 - [Oracle] BNB: Navigating...
+2026-01-26 16:05:06,152 -   [+] BNB 15m: Trend=Bearish
+2026-01-26 16:05:11,228 -   [+] BNB 1h: Trend=Bullish
+2026-01-26 16:05:16,275 -   [+] BNB 4h: Trend=Bearish
+2026-01-26 16:05:21,349 -   [+] BNB 1d: Trend=Bearish
+2026-01-26 16:05:26,410 -   [+] BNB 4d: Trend=Bearish
+2026-01-26 16:05:26,482 - [Oracle] LINK: Navigating...
+2026-01-26 16:05:42,292 -   [+] LINK 15m: Trend=Bearish
+2026-01-26 16:05:47,354 -   [+] LINK 1h: Trend=Bullish
+2026-01-26 16:05:52,413 -   [+] LINK 4h: Trend=Bearish
+2026-01-26 16:05:57,484 -   [+] LINK 1d: Trend=Bearish
+2026-01-26 16:06:02,549 -   [+] LINK 4d: Trend=Bearish
+2026-01-26 16:06:04,411 - No NEW Oracle Signals found this cycle.
+2026-01-26 16:06:04,424 - Oracle Cycle Completed. Sleeping 15m...
+2026-01-26 16:21:04,424 - --- Oracle Cycle Starting ---
+2026-01-26 16:21:05,569 - [Oracle] BTC: Navigating...
+2026-01-26 16:21:24,549 -   [+] BTC 15m: Trend=Bearish
+2026-01-26 16:21:29,620 -   [+] BTC 1h: Trend=Neutral
+2026-01-26 16:21:34,693 -   [+] BTC 4h: Trend=Bearish
+2026-01-26 16:21:39,752 -   [+] BTC 1d: Trend=Bearish
+2026-01-26 16:21:44,795 -   [+] BTC 4d: Trend=Bearish
+2026-01-26 16:21:44,870 - [Oracle] ETH: Navigating...
+2026-01-26 16:22:00,690 -   [+] ETH 15m: Trend=Bearish
+2026-01-26 16:22:05,750 -   [+] ETH 1h: Trend=Bullish
+2026-01-26 16:22:10,822 -   [+] ETH 4h: Trend=Bearish
+2026-01-26 16:22:15,868 -   [+] ETH 1d: Trend=Bearish
+2026-01-26 16:22:20,913 -   [+] ETH 4d: Trend=Bearish
+2026-01-26 16:22:20,993 - [Oracle] SOL: Navigating...
+2026-01-26 16:22:37,011 -   [+] SOL 15m: Trend=Bearish
+2026-01-26 16:22:42,075 -   [+] SOL 1h: Trend=Bullish
+2026-01-26 16:22:47,127 -   [+] SOL 4h: Trend=Bearish
+2026-01-26 16:22:52,193 -   [+] SOL 1d: Trend=Bearish
+2026-01-26 16:22:57,243 -   [+] SOL 4d: Trend=Bearish
+2026-01-26 16:22:57,314 - [Oracle] DOGE: Navigating...
+2026-01-26 16:23:13,139 -   [+] DOGE 15m: Trend=Bearish
+2026-01-26 16:23:18,224 -   [+] DOGE 1h: Trend=Bullish
+2026-01-26 16:23:23,285 -   [+] DOGE 4h: Trend=Bearish
+2026-01-26 16:23:28,319 -   [+] DOGE 1d: Trend=Bearish
+2026-01-26 16:23:33,393 -   [+] DOGE 4d: Trend=Bearish
+2026-01-26 16:23:33,464 - [Oracle] XRP: Navigating...
+2026-01-26 16:23:49,358 -   [+] XRP 15m: Trend=Bearish
+2026-01-26 16:23:54,428 -   [+] XRP 1h: Trend=Bullish
+2026-01-26 16:23:59,489 -   [+] XRP 4h: Trend=Bearish
+2026-01-26 16:24:04,563 -   [+] XRP 1d: Trend=Bearish
+2026-01-26 16:24:09,607 -   [+] XRP 4d: Trend=Bearish
+2026-01-26 16:24:09,684 - [Oracle] BNB: Navigating...
+2026-01-26 16:24:25,666 -   [+] BNB 15m: Trend=Bearish
+2026-01-26 16:24:30,709 -   [+] BNB 1h: Trend=Bullish
+2026-01-26 16:24:35,756 -   [+] BNB 4h: Trend=Bearish
+2026-01-26 16:24:40,810 -   [+] BNB 1d: Trend=Bearish
+2026-01-26 16:24:45,874 -   [+] BNB 4d: Trend=Bearish
+2026-01-26 16:24:45,950 - [Oracle] LINK: Navigating...
+2026-01-26 16:25:01,763 -   [+] LINK 15m: Trend=Bearish
+2026-01-26 16:25:06,801 -   [+] LINK 1h: Trend=Bullish
+2026-01-26 16:25:11,842 -   [+] LINK 4h: Trend=Bearish
+2026-01-26 16:25:16,893 -   [+] LINK 1d: Trend=Bearish
+2026-01-26 16:25:21,962 -   [+] LINK 4d: Trend=Bearish
+2026-01-26 16:25:23,823 - No NEW Oracle Signals found this cycle.
+2026-01-26 16:25:23,836 - Oracle Cycle Completed. Sleeping 15m...
+2026-01-26 16:40:23,844 - --- Oracle Cycle Starting ---
+2026-01-26 16:40:24,970 - [Oracle] BTC: Navigating...
+2026-01-26 16:40:43,974 -   [+] BTC 15m: Trend=Bearish
+2026-01-26 16:40:49,027 -   [+] BTC 1h: Trend=Neutral
+2026-01-26 16:40:54,070 -   [+] BTC 4h: Trend=Bearish
+2026-01-26 16:40:59,133 -   [+] BTC 1d: Trend=Bearish
+2026-01-26 16:41:04,181 -   [+] BTC 4d: Trend=Bearish
+2026-01-26 16:41:04,260 - [Oracle] ETH: Navigating...
+2026-01-26 16:41:20,413 -   [+] ETH 15m: Trend=Bearish
+2026-01-26 16:41:25,472 -   [+] ETH 1h: Trend=Bullish
+2026-01-26 16:41:30,511 -   [+] ETH 4h: Trend=Bearish
+2026-01-26 16:41:35,562 -   [+] ETH 1d: Trend=Bearish
+2026-01-26 16:41:40,609 -   [+] ETH 4d: Trend=Bearish
+2026-01-26 16:41:40,681 - [Oracle] SOL: Navigating...
+2026-01-26 16:41:56,682 -   [+] SOL 15m: Trend=Bearish
+2026-01-26 16:42:01,735 -   [+] SOL 1h: Trend=Bullish
+2026-01-26 16:42:06,778 -   [+] SOL 4h: Trend=Bearish
+2026-01-26 16:42:11,826 -   [+] SOL 1d: Trend=Bearish
+2026-01-26 16:42:16,897 -   [+] SOL 4d: Trend=Bearish
+2026-01-26 16:42:16,985 - [Oracle] DOGE: Navigating...
+2026-01-26 16:42:33,084 -   [+] DOGE 15m: Trend=Bearish
+2026-01-26 16:42:38,146 -   [+] DOGE 1h: Trend=Bullish
+2026-01-26 16:42:43,204 -   [+] DOGE 4h: Trend=Bearish
+2026-01-26 16:42:48,295 -   [+] DOGE 1d: Trend=Bearish
+2026-01-26 16:42:53,353 -   [+] DOGE 4d: Trend=Bearish
+2026-01-26 16:42:53,432 - [Oracle] XRP: Navigating...
+2026-01-26 16:43:09,268 -   [+] XRP 15m: Trend=Bearish
+2026-01-26 16:43:14,320 -   [+] XRP 1h: Trend=Bullish
+2026-01-26 16:43:19,384 -   [+] XRP 4h: Trend=Bearish
+2026-01-26 16:43:24,433 -   [+] XRP 1d: Trend=Bearish
+2026-01-26 16:43:29,500 -   [+] XRP 4d: Trend=Bearish
+2026-01-26 16:43:29,577 - [Oracle] BNB: Navigating...
+2026-01-26 16:43:45,387 -   [+] BNB 15m: Trend=Bearish
+2026-01-26 16:43:50,951 -   [+] BNB 1h: Trend=Bullish
+2026-01-26 16:43:56,078 -   [+] BNB 4h: Trend=Bearish
+2026-01-26 16:44:01,152 -   [+] BNB 1d: Trend=Bearish
+2026-01-26 16:44:06,244 -   [+] BNB 4d: Trend=Bearish
+2026-01-26 16:44:06,430 - [Oracle] LINK: Navigating...
+2026-01-26 16:44:22,526 -   [+] LINK 15m: Trend=Bearish
+2026-01-26 16:44:27,592 -   [+] LINK 1h: Trend=Bullish
+2026-01-26 16:44:32,648 -   [+] LINK 4h: Trend=Bearish
+2026-01-26 16:44:37,701 -   [+] LINK 1d: Trend=Bearish
+2026-01-26 16:44:42,747 -   [+] LINK 4d: Trend=Bearish
+2026-01-26 16:44:42,897 - No NEW Oracle Signals found this cycle.
+2026-01-26 16:44:42,923 - Oracle Cycle Completed. Sleeping 15m...

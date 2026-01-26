@@ -170,13 +170,32 @@ def run_runic_analysis():
         # 1. Load Real Logged History
         real_history = load_runic_history()
         
-        # 2. Add to Display List (convert dicts to dataframe compatible dicts)
-        # We process them to ensure format matches 'all_history' schema
-        for item in real_history:
-            # Check if it's already in all_history (Backtest vs Real)
-            # Simple check by ID
-            # Adding it blindly might cause dupes, but pandas drop_duplicates later fixes it
-            item['Status'] = "LOGGED" # Mark as from persistent log
+        # Dedupe real_history internally first (Solve Multiple Logs)
+        seen_keys = set()
+        unique_real = []
+        for x in real_history:
+             # Sanitize Key
+             t = x.get('Entry_Time') or x.get('Timestamp') or "Unknown"
+             k = f"{x.get('Asset')}_{t}"
+             if k not in seen_keys:
+                 unique_real.append(x)
+                 seen_keys.add(k)
+
+        # 2. Add to Display List with UI Mappings (Solve "None" Issues)
+        for item in unique_real:
+            # Map keys for UI Table (which expects 'Time', 'TP', 'SL')
+            if 'Time' not in item:
+                 item['Time'] = item.get('Entry_Time') or item.get('Timestamp')
+            
+            if 'Exit Time' not in item: item['Exit Time'] = "-"
+            
+            # Map Prices
+            if 'TP' not in item: item['TP'] = item.get('Raw_TP', 0.0)
+            if 'SL' not in item: item['SL'] = item.get('Stop_Loss', item.get('Raw_SL', 0.0))
+            if 'Price' not in item: item['Price'] = item.get('Entry_Price', 0.0)
+            
+            # Label
+            item['Status'] = "LOGGED" 
             all_history.append(item)
 
         

@@ -70,5 +70,320 @@
         "Price": 924.13,
         "Stop_Loss": 895.9577,
         "Timestamp": "2026-01-26 10:36:58"
+    },
+    {
+        "Asset": "SOL",
+        "Timeframe": "1D",
+        "Confirm_TF": "4D",
+        "Type": "SHORT",
+        "Price": 133.38,
+        "Stop_Loss": 135.6549,
+        "Timestamp": "2026-01-26 10:56:31"
+    },
+    {
+        "Asset": "BNB",
+        "Timeframe": "15M",
+        "Confirm_TF": "1H",
+        "Type": "LONG",
+        "Price": 924.13,
+        "Stop_Loss": 895.9577,
+        "Timestamp": "2026-01-26 10:56:31"
+    },
+    {
+        "Asset": "BTC",
+        "Timeframe": "1H",
+        "Confirm_TF": "4H",
+        "Type": "SHORT",
+        "Price": 87630.4,
+        "Stop_Loss": 88085.5365,
+        "Timestamp": "2026-01-26 11:15:58"
+    },
+    {
+        "Asset": "SOL",
+        "Timeframe": "15M",
+        "Confirm_TF": "1H",
+        "Type": "SHORT",
+        "Price": 133.38,
+        "Stop_Loss": 135.6549,
+        "Timestamp": "2026-01-26 11:15:58"
+    },
+    {
+        "Asset": "SOL",
+        "Timeframe": "1H",
+        "Confirm_TF": "4H",
+        "Type": "SHORT",
+        "Price": 121.88,
+        "Stop_Loss": 122.7406,
+        "Timestamp": "2026-01-26 11:15:58"
+    },
+    {
+        "Asset": "SOL",
+        "Timeframe": "1D",
+        "Confirm_TF": "4D",
+        "Type": "SHORT",
+        "Price": 133.38,
+        "Stop_Loss": 135.6549,
+        "Timestamp": "2026-01-26 11:15:58"
+    },
+    {
+        "Asset": "BNB",
+        "Timeframe": "1H",
+        "Confirm_TF": "4H",
+        "Type": "SHORT",
+        "Price": 870.65,
+        "Stop_Loss": 876.0183,
+        "Timestamp": "2026-01-26 11:15:58"
+    },
+    {
+        "Asset": "BTC",
+        "Timeframe": "1H",
+        "Confirm_TF": "4H",
+        "Type": "SHORT",
+        "Price": 87630.4,
+        "Stop_Loss": 88085.5365,
+        "Timestamp": "2026-01-26 11:35:16"
+    },
+    {
+        "Asset": "SOL",
+        "Timeframe": "15M",
+        "Confirm_TF": "1H",
+        "Type": "SHORT",
+        "Price": 133.38,
+        "Stop_Loss": 135.6549,
+        "Timestamp": "2026-01-26 11:35:16"
+    },
+    {
+        "Asset": "SOL",
+        "Timeframe": "1H",
+        "Confirm_TF": "4H",
+        "Type": "SHORT",
+        "Price": 121.88,
+        "Stop_Loss": 122.7406,
+        "Timestamp": "2026-01-26 11:35:16"
+    },
+    {
+        "Asset": "SOL",
+        "Timeframe": "1D",
+        "Confirm_TF": "4D",
+        "Type": "SHORT",
+        "Price": 133.38,
+        "Stop_Loss": 135.6549,
+        "Timestamp": "2026-01-26 11:35:16"
+    },
+    {
+        "Asset": "BNB",
+        "Timeframe": "1H",
+        "Confirm_TF": "4H",
+        "Type": "SHORT",
+        "Price": 870.65,
+        "Stop_Loss": 876.0183,
+        "Timestamp": "2026-01-26 11:35:16"
+    },
+    {
+        "Asset": "BTC",
+        "Timeframe": "1H",
+        "Confirm_TF": "4H",
+        "Type": "SHORT",
+        "Price": 87630.4,
+        "Stop_Loss": 88085.5365,
+        "Timestamp": "2026-01-26 11:54:35"
+    },
+    {
+        "Asset": "SOL",
+        "Timeframe": "15M",
+        "Confirm_TF": "1H",
+        "Type": "SHORT",
+        "Price": 133.38,
+        "Stop_Loss": 135.6549,
+        "Timestamp": "2026-01-26 11:54:35"
+    },
+    {
+        "Asset": "SOL",
+        "Timeframe": "1H",
+        "Confirm_TF": "4H",
+        "Type": "SHORT",
+        "Price": 121.88,
+        "Stop_Loss": 122.7406,
+        "Timestamp": "2026-01-26 11:54:35"
+    },
+    {
+        "Asset": "SOL",
+        "Timeframe": "1D",
+        "Confirm_TF": "4D",
+        "Type": "SHORT",
+        "Price": 133.38,
+        "Stop_Loss": 135.6549,
+        "Timestamp": "2026-01-26 11:54:35"
+    },
+    {
+        "Asset": "BNB",
+        "Timeframe": "1H",
+        "Confirm_TF": "4H",
+        "Type": "SHORT",
+        "Price": 870.65,
+        "Stop_Loss": 876.0183,
+        "Timestamp": "2026-01-26 11:54:35"
+    },
+    {
+        "Asset": "SOL",
+        "Timeframe": "1D",
+        "Confirm_TF": "4D",
+        "Type": "SHORT",
+        "Price": 133.38,
+        "Stop_Loss": 135.6549,
+        "Timestamp": "2026-01-26 12:14:04"
+    },
+    {
+        "Asset": "BNB",
+        "Timeframe": "15M",
+        "Confirm_TF": "1H",
+        "Type": "LONG",
+        "Price": 924.13,
+        "Stop_Loss": 895.9577,
+        "Timestamp": "2026-01-26 12:14:04"
+    },
+    {
+        "Asset": "SOL",
+        "Timeframe": "1D",
+        "Confirm_TF": "4D",
+        "Type": "SHORT",
+        "Price": 133.38,
+        "Stop_Loss": 135.6549,
+        "Timestamp": "2026-01-26 12:33:22"
+    },
+    {
+        "Asset": "BNB",
+        "Timeframe": "15M",
+        "Confirm_TF": "1H",
+        "Type": "LONG",
+        "Price": 924.13,
+        "Stop_Loss": 895.9577,
+        "Timestamp": "2026-01-26 12:33:22"
+    },
+    {
+        "Asset": "SOL",
+        "Timeframe": "1D",
+        "Confirm_TF": "4D",
+        "Type": "SHORT",
+        "Price": 133.38,
+        "Stop_Loss": 135.6549,
+        "Timestamp": "2026-01-26 12:52:39"
+    },
+    {
+        "Asset": "BNB",
+        "Timeframe": "15M",
+        "Confirm_TF": "1H",
+        "Type": "LONG",
+        "Price": 924.13,
+        "Stop_Loss": 895.9577,
+        "Timestamp": "2026-01-26 12:52:39"
+    },
+    {
+        "Asset": "SOL",
+        "Timeframe": "1D",
+        "Confirm_TF": "4D",
+        "Type": "SHORT",
+        "Price": 133.38,
+        "Stop_Loss": 135.6549,
+        "Timestamp": "2026-01-26 13:12:01"
+    },
+    {
+        "Asset": "BNB",
+        "Timeframe": "15M",
+        "Confirm_TF": "1H",
+        "Type": "LONG",
+        "Price": 924.13,
+        "Stop_Loss": 895.9577,
+        "Timestamp": "2026-01-26 13:12:01"
+    },
+    {
+        "Asset": "SOL",
+        "Timeframe": "1D",
+        "Confirm_TF": "4D",
+        "Type": "SHORT",
+        "Price": 133.38,
+        "Stop_Loss": 135.6549,
+        "Timestamp": "2026-01-26 13:31:21"
+    },
+    {
+        "Asset": "BNB",
+        "Timeframe": "15M",
+        "Confirm_TF": "1H",
+        "Type": "LONG",
+        "Price": 924.13,
+        "Stop_Loss": 895.9577,
+        "Timestamp": "2026-01-26 13:31:21"
+    },
+    {
+        "Asset": "SOL",
+        "Timeframe": "1D",
+        "Confirm_TF": "4D",
+        "Type": "SHORT",
+        "Price": 133.38,
+        "Stop_Loss": 135.6549,
+        "Timestamp": "2026-01-26 13:50:41"
+    },
+    {
+        "Asset": "BNB",
+        "Timeframe": "15M",
+        "Confirm_TF": "1H",
+        "Type": "LONG",
+        "Price": 924.13,
+        "Stop_Loss": 895.9577,
+        "Timestamp": "2026-01-26 13:50:41"
+    },
+    {
+        "Asset": "SOL",
+        "Timeframe": "1D",
+        "Confirm_TF": "4D",
+        "Type": "SHORT",
+        "Price": 133.38,
+        "Stop_Loss": 135.6549,
+        "Timestamp": "2026-01-26 14:10:00"
+    },
+    {
+        "Asset": "BNB",
+        "Timeframe": "15M",
+        "Confirm_TF": "1H",
+        "Type": "LONG",
+        "Price": 924.13,
+        "Stop_Loss": 895.9577,
+        "Timestamp": "2026-01-26 14:10:00"
+    },
+    {
+        "Asset": "SOL",
+        "Timeframe": "1D",
+        "Confirm_TF": "4D",
+        "Type": "SHORT",
+        "Price": 133.38,
+        "Stop_Loss": 135.6549,
+        "Timestamp": "2026-01-26 14:29:22"
+    },
+    {
+        "Asset": "BNB",
+        "Timeframe": "15M",
+        "Confirm_TF": "1H",
+        "Type": "LONG",
+        "Price": 924.13,
+        "Stop_Loss": 895.9577,
+        "Timestamp": "2026-01-26 14:29:22"
+    },
+    {
+        "Asset": "SOL",
+        "Timeframe": "1D",
+        "Confirm_TF": "4D",
+        "Type": "SHORT",
+        "Price": 133.38,
+        "Stop_Loss": 135.6549,
+        "Timestamp": "2026-01-26 14:48:45"
+    },
+    {
+        "Asset": "BNB",
+        "Timeframe": "15M",
+        "Confirm_TF": "1H",
+        "Type": "LONG",
+        "Price": 924.13,
+        "Stop_Loss": 895.9577,
+        "Timestamp": "2026-01-26 14:48:45"
     }
 ]
