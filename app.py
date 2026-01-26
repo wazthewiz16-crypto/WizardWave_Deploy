@@ -173,8 +173,9 @@ def run_runic_analysis():
                             "Return_Pct": 0.0,
                             "Status": "OPEN",
                             "Strategy": f"Dynamic {s['Type'].title()}", 
+                            "Strategy": f"Dynamic {s['Type'].title()}", 
                             "Action": f"✅ TAKE (Confirm: {s['Confirm_TF']})",
-                            "_sort_key": s.get('Timestamp', datetime.now().isoformat()),
+                            "_sort_key": pd.to_datetime(s.get('Timestamp', datetime.now().isoformat())),
                             "Entry_Time": s.get('Timestamp', datetime.now().isoformat())
                         })
                     a_oracle = pd.DataFrame(fmt_sigs)
@@ -185,7 +186,10 @@ def run_runic_analysis():
         active_dfs = [df for df in [a15m, a1h, a4h, a12h, a1d, a4d, a_cls, a_ichi, a_oracle] if df is not None and not df.empty]
         combined_active = pd.DataFrame()
         if active_dfs:
-            combined_active = pd.concat(active_dfs).sort_values(by='_sort_key', ascending=False)
+            combined_active = pd.concat(active_dfs)
+            # Ensure sort key is datetime
+            combined_active['_sort_key'] = pd.to_datetime(combined_active['_sort_key'], errors='coerce')
+            combined_active = combined_active.sort_values(by='_sort_key', ascending=False)
             
         # Process Discord (Side Effect - OK in thread? Yes, usually I/O)
         # DISABLE IN APP: Monitor Script handles discordant alerts to avoid duplicates

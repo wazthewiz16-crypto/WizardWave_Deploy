@@ -45,8 +45,9 @@ def calculate_ml_features(df, macro_df=None, crypto_macro_df=None):
 
     # --- 0. Pre-Feature: Macro Integration ---
     if macro_df is not None and not macro_df.empty:
+        # Aggressive Dedupe: Group by Index and take last (Robust)
         if not macro_df.index.is_unique:
-            macro_df = macro_df.loc[~macro_df.index.duplicated(keep='last')]
+            macro_df = macro_df.groupby(level=0).last()
             
         macro_aligned = macro_df['close'].reindex(df.index, method='ffill')
         if not macro_aligned.isna().all():
@@ -64,9 +65,9 @@ def calculate_ml_features(df, macro_df=None, crypto_macro_df=None):
         df['dxy_dist'] = 0.0
 
     if crypto_macro_df is not None and not crypto_macro_df.empty:
-        # Correlation with BTC (Crypto Beta)
+        # Aggressive Dedupe for Crypto Macro
         if not crypto_macro_df.index.is_unique:
-            crypto_macro_df = crypto_macro_df.loc[~crypto_macro_df.index.duplicated(keep='last')]
+            crypto_macro_df = crypto_macro_df.groupby(level=0).last()
             
         btc_aligned = crypto_macro_df['close'].reindex(df.index, method='ffill')
         if not btc_aligned.isna().all():
