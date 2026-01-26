@@ -151,8 +151,38 @@ def run_runic_analysis():
         if all_history:
              history_df = pd.DataFrame(all_history)
         
+        # --- Mango Oracle Integration ---
+        a_oracle = pd.DataFrame()
+        try:
+            if os.path.exists("mango_oracle_signals.json"):
+                with open("mango_oracle_signals.json", "r") as f:
+                    o_sigs = json.load(f)
+                
+                if o_sigs:
+                    # Convert to Runic Format
+                    fmt_sigs = []
+                    for s in o_sigs:
+                        fmt_sigs.append({
+                            "Asset": s['Asset'],
+                            "Type": s['Type'],
+                            "Timeframe": s['Timeframe'],
+                            "Price": s['Price'],
+                            "Current_Price": s['Price'],
+                            "Confidence": "Oracle 🔮", # Special badge
+                            "Model": "Oracle",
+                            "Return_Pct": 0.0,
+                            "Status": "OPEN",
+                            "Strategy": f"Dynamic {s['Type'].title()}", 
+                            "Action": f"✅ TAKE (Confirm: {s['Confirm_TF']})",
+                            "_sort_key": s.get('Timestamp', datetime.now().isoformat()),
+                            "Entry_Time": s.get('Timestamp', datetime.now().isoformat())
+                        })
+                    a_oracle = pd.DataFrame(fmt_sigs)
+        except Exception as e:
+            print(f"Oracle Load Error: {e}")
+
         # Aggregate Active
-        active_dfs = [df for df in [a15m, a1h, a4h, a12h, a1d, a4d, a_cls, a_ichi] if df is not None and not df.empty]
+        active_dfs = [df for df in [a15m, a1h, a4h, a12h, a1d, a4d, a_cls, a_ichi, a_oracle] if df is not None and not df.empty]
         combined_active = pd.DataFrame()
         if active_dfs:
             combined_active = pd.concat(active_dfs).sort_values(by='_sort_key', ascending=False)
@@ -270,6 +300,29 @@ def ensure_scraper_running():
         print(f"[!] Scraper start failed: {e}")
 
 ensure_scraper_running()
+
+# --- Oracle Control Panel (Sidebar) ---
+with st.sidebar.expander("🔮 Oracle Controls", expanded=False):
+    if st.button("Invoke Scraper (Main)"):
+        pid_file = "scraper.pid"
+        if os.path.exists(pid_file):
+            try:
+                with open(pid_file, "r") as f:
+                    old_pid = int(f.read().strip())
+                os.kill(old_pid, 9 if os.name != 'nt' else 1)
+            except: pass
+            os.remove(pid_file)
+        
+        # Launch Main
+        creation_flags = 0x08000000 if os.name == 'nt' else 0
+        subprocess.Popen([sys.executable, "scrape_tv_indicators.py"], creationflags=creation_flags)
+        st.toast("Main Scraper Restarted!", icon="🔄")
+
+    if st.button("Oracle Pulse (Signals)"):
+        st.toast("Consulting Oracle...", icon="🔮")
+        # Launch Oracle Single-Shot
+        creation_flags = 0x08000000 if os.name == 'nt' else 0
+        subprocess.Popen([sys.executable, "scrape_mango_oracle.py"], creationflags=creation_flags)
 
 
 
