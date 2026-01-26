@@ -301,6 +301,30 @@ def ensure_scraper_running():
 
 ensure_scraper_running()
 
+def ensure_oracle_running():
+    pid_file = "oracle.pid"
+    
+    if os.path.exists(pid_file):
+        try:
+            with open(pid_file, "r") as f:
+                pid = int(f.read().strip())
+            os.kill(pid, 0)
+            return # Running
+        except:
+            pass # Dead
+            
+    print("[*] Starting Background Oracle...")
+    try:
+        creation_flags = 0x08000000 if os.name == 'nt' else 0
+        proc = subprocess.Popen([sys.executable, "scrape_mango_oracle.py"], creationflags=creation_flags)
+        
+        with open(pid_file, "w") as f:
+            f.write(str(proc.pid))
+    except Exception as e:
+        print(f"[!] Oracle start failed: {e}")
+
+ensure_oracle_running()
+
 # --- Oracle Control Panel (Sidebar) ---
 with st.sidebar.expander("🔮 Oracle Controls", expanded=False):
     if st.button("Invoke Scraper (Main)"):

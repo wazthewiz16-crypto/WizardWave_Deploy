@@ -187,41 +187,49 @@ def process_oracle_logic(scraped_data):
 async def main():
     # Logging Setup
     logging.basicConfig(filename=LOG_FILE, level=logging.INFO, format='%(asctime)s - %(message)s')
-    logging.info("Oracle Scraper Started")
+    logging.info("Oracle Scraper Service Started")
     
     # Init Output
     if not os.path.exists(OUTPUT_FILE):
         with open(OUTPUT_FILE, "w") as f: json.dump([], f)
 
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True, args=['--no-sandbox', '--disable-gpu'])
-        context = await browser.new_context(storage_state=STATE_FILE, viewport={'width': 1920, 'height': 1080})
-        
-        all_scrape_data = {}
-        
-        # Scrape
-        for asset in ASSETS:
-            data = await scrape_oracle_data(context, asset)
-            all_scrape_data[asset['name']] = data
+    while True:
+        try:
+            logging.info("--- Oracle Cycle Starting ---")
+            async with async_playwright() as p:
+                browser = await p.chromium.launch(headless=True, args=['--no-sandbox', '--disable-gpu'])
+                context = await browser.new_context(storage_state=STATE_FILE, viewport={'width': 1920, 'height': 1080})
+                
+                all_scrape_data = {}
+                
+                # Scrape
+                for asset in ASSETS:
+                    data = await scrape_oracle_data(context, asset)
+                    all_scrape_data[asset['name']] = data
+                    
+                await browser.close()
+                
+                # Process Logic
+                new_signals = process_oracle_logic(all_scrape_data)
+                
+                if new_signals:
+                    logging.info(f"Generated {len(new_signals)} Oracle Signals")
+                    # Atomic Write
+                    with open(OUTPUT_FILE, "w") as f:
+                        json.dump(new_signals, f, indent=4)
+                else:
+                    logging.info("No Oracle Signals found this cycle.")
+                    # Optional: Clear if we want "only active"
+                    with open(OUTPUT_FILE, "w") as f:
+                        json.dump([], f)
+                        
+            logging.info("Oracle Cycle Completed. Sleeping 15m...")
             
-        await browser.close()
-        
-        # Process Logic
-        new_signals = process_oracle_logic(all_scrape_data)
-        
-        if new_signals:
-            logging.info(f"Generated {len(new_signals)} Oracle Signals")
-            # Overwrite or Append? 
-            # Runic Alerts usually wants "Current Active".
-            # We overwrite the file with the strict latest snapshot of entries.
-            with open(OUTPUT_FILE, "w") as f:
-                json.dump(new_signals, f, indent=4)
-        else:
-            logging.info("No Oracle Signals found this cycle.")
-            # Clear file to avoid stale signals? Or keep last known?
-            # Safer to clear if we want "Real-time" pullbacks.
-            with open(OUTPUT_FILE, "w") as f:
-                json.dump([], f)
+        except Exception as e:
+            logging.error(f"Oracle Cycle Crash: {e}")
+            logging.error(traceback.format_exc())
+            
+        await asyncio.sleep(900) # 15 Minutes
 
 if __name__ == "__main__":
     asyncio.run(main())
