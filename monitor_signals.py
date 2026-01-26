@@ -466,6 +466,35 @@ def run_analysis_cycle():
     except Exception as e:
          print(f"CLS Init Error: {e}")
 
+    # --- MANGO ORACLE INTEGRATION ---
+    try:
+        if os.path.exists("mango_oracle_signals.json"):
+             with open("mango_oracle_signals.json", "r") as f:
+                 oracle_sigs = json.load(f)
+             if oracle_sigs:
+                 for s in oracle_sigs:
+                     price = s.get('Price', 0.0)
+                     if price is None: price = 0.0
+                     sig = {
+                        "Asset": s['Asset'],
+                        "Timeframe": s['Timeframe'],
+                        "Action": "✅ TAKE",
+                        "Type": s['Type'],
+                        "Signal": f"Dynamic {s['Type'].title()}",
+                        "Entry_Price": price,
+                        "Current_Price": price,
+                        "Entry_Time": s.get('Timestamp', datetime.now().isoformat()),
+                        "Confidence": "Indicator",
+                        "Confidence_Score": 100.0,
+                        "Take_Profit": 0.0,
+                        "Stop_Loss": 0.0,
+                        "Strategy": "Mango Oracle 🔮"
+                     }
+                     all_signals.append(sig)
+                 print(f"Added {len(oracle_sigs)} Oracle Signals.")
+    except Exception as e:
+        print(f"Oracle Error: {e}")
+
     # Process
     if all_signals:
         df_sig = pd.DataFrame(all_signals)
