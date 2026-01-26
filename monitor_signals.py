@@ -467,12 +467,49 @@ def run_analysis_cycle():
          print(f"CLS Init Error: {e}")
 
     # --- MANGO ORACLE INTEGRATION ---
+    print("Checking Oracle Scraper Feed...")
     try:
         if os.path.exists("mango_oracle_signals.json"):
              with open("mango_oracle_signals.json", "r") as f:
                  oracle_sigs = json.load(f)
+             
+             # Load Cooldowns
+             cooldown_file = "oracle_cooldowns.json"
+             cooldowns = {}
+             if os.path.exists(cooldown_file):
+                 try:
+                     with open(cooldown_file, "r") as f: cooldowns = json.load(f)
+                 except: pass
+
              if oracle_sigs:
+                 updated_cooldowns = False
+                 now_ts = time.time()
+                 
+                 # TF to Seconds map
+                 COOLDOWNS = {
+                     "15M": 3600,       # 1 Hour
+                     "1H": 14400,       # 4 Hours
+                     "4H": 43200,       # 12 Hours
+                     "1D": 86400,       # 24 Hours
+                     "4D": 172800       # 48 Hours
+                 }
+
                  for s in oracle_sigs:
+                     # Cooldown Key
+                     c_key = f"{s['Asset']}_{s['Timeframe']}_{s['Type']}"
+                     last_sent = cooldowns.get(c_key, 0)
+                     limit = COOLDOWNS.get(s['Timeframe'].upper(), 3600)
+                     
+                     # Check Eligibility
+                     if (now_ts - last_sent) < limit:
+                         # Skip this iteration (suppress alert)
+                         # We do NOT print "Added" to avoid log spam
+                         continue
+                     
+                     # Update Cooldown
+                     cooldowns[c_key] = now_ts
+                     updated_cooldowns = True
+                     
                      price = s.get('Price', 0.0)
                      if price is None: price = 0.0
                      sig = {
@@ -480,20 +517,26 @@ def run_analysis_cycle():
                         "Timeframe": s['Timeframe'],
                         "Action": "✅ TAKE",
                         "Type": s['Type'],
-                        "Signal": f"Dynamic {s['Type'].title()}",
+                        "Signal": f"Dynamic {s['Type'].title()}", # e.g. Dynamic Long
                         "Entry_Price": price,
                         "Current_Price": price,
                         "Entry_Time": s.get('Timestamp', datetime.now().isoformat()),
-                        "Confidence": "Indicator",
-                        "Confidence_Score": 100.0,
-                        "Take_Profit": 0.0,
+                        "Confidence": "Indicator", # String for display
+                        "Confidence_Score": 100.0, # High prio
+                        "Take_Profit": 0.0, # Dynamic exit
                         "Stop_Loss": s.get('Stop_Loss', 0.0),
                         "Strategy": "Mango Oracle 🔮"
                      }
                      all_signals.append(sig)
-                 print(f"Added {len(oracle_sigs)} Oracle Signals.")
+                     print(f"Added NEW Oracle Signal: {s['Asset']} {s['Timeframe']}")
+                 
+                 if updated_cooldowns:
+                     with open(cooldown_file, "w") as f:
+                         json.dump(cooldowns, f)
+             else:
+                 print("Oracle feed empty.")
     except Exception as e:
-        print(f"Oracle Error: {e}")
+        print(f"Oracle Feed Error: {e}")
 
     # Process
     if all_signals:
