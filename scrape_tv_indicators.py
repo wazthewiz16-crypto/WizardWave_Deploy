@@ -224,9 +224,15 @@ async def scrape_asset_data(browser_context, asset):
             # ALWAYS Take Screenshot for Debugging (Temporary to diagnose accuracy issues)
             try:
                 safe_tf = tf.replace("/","_")
-                filename = f"debug_view_{asset['name']}_{safe_tf}.png"
-                await page.screenshot(path=filename)
-                logging.info(f"       [+] Saved debug view: {filename}")
+                # Force absolute path in current working directory
+                abs_path = os.path.abspath(f"debug_view_{asset['name']}_{safe_tf}.png")
+                
+                await page.screenshot(path=abs_path)
+                
+                if os.path.exists(abs_path):
+                    logging.info(f"       [+] Saved debug view: {abs_path}")
+                else:
+                    logging.error(f"       [!] File write verified FAILED: {abs_path}")
             except Exception as e:
                 logging.error(f"       [!] Screenshot failed: {e}")
             
