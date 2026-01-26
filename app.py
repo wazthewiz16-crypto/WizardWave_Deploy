@@ -325,6 +325,36 @@ def ensure_oracle_running():
 
 ensure_oracle_running()
 
+def ensure_daily_update():
+    """Runs update_data.py once per day to keep market data fresh."""
+    last_file = "last_data_sync.txt"
+    today = datetime.now().strftime("%Y-%m-%d")
+    
+    should_run = True
+    if os.path.exists(last_file):
+        try:
+            with open(last_file, "r") as f:
+                last = f.read().strip()
+            if last == today:
+                should_run = False
+        except: pass
+            
+    if should_run:
+        print("[*] Triggering Daily Data Steward Sync...")
+        try:
+            # Run in background to not block UI
+            creation_flags = 0x08000000 if os.name == 'nt' else 0
+            subprocess.Popen([sys.executable, "update_data.py"], creationflags=creation_flags)
+            
+            with open(last_file, "w") as f:
+                f.write(today)
+                
+            # Optional: Toast if possible (might not show on initial load depending on lifecycle)
+        except Exception as e:
+            print(f"[!] Data Sync Start Error: {e}")
+
+ensure_daily_update()
+
 # --- Oracle Control Panel (Sidebar) ---
 with st.sidebar.expander("🔮 Oracle Controls", expanded=False):
     if st.button("Invoke Scraper (Main)"):
