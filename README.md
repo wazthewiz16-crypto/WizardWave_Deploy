@@ -1,143 +1,115 @@
 # 🧙‍♂️ WizardWave: AI-Powered Trading Signal System
 
-**WizardWave** is a comprehensive, gamified trading dashboard that combines classic technical analysis with modern machine learning to generate, filter, and manage high-probability trading signals. Built with a fantasy-themed "Arcane Portal" interface, it transforms the dry task of monitoring markets into an engaging experience while enforcing strict risk management protocols.
+**WizardWave** is a comprehensive, gamified trading dashboard that combines classic technical analysis, real-time proprietary indicator data, and modern machine learning to generate, filter, and manage high-probability trading signals. Built with a fantasy-themed "Arcane Portal" interface, it transforms the dry task of monitoring markets into an engaging experience while enforcing strict risk management protocols.
 
-Dashboard Preview
-<img width="2011" height="868" alt="image" src="https://github.com/user-attachments/assets/f01385ba-7cfd-4cc0-b1e4-58a16b91319d" />
-
-### New Interfaces
-**Active Runic Alerts**:
-<img width="800" alt="runic_alerts_new" src="./documentation/runic_alerts_v2.png" />
-
-**Signal History with NY Session Highlights**:
-<img width="800" alt="signal_history_new" src="./documentation/signal_history_v2.png" />
+![WizardWave Dashboard](https://github.com/user-attachments/assets/f01385ba-7cfd-4cc0-b1e4-58a16b91319d)
 
 ---
 
 ## ✨ Key Features
 
 ### 🔮 The Arcane Portal (Dashboard)
-- **Multi-Strategy Feed**: Real-time display of active trade setups across Crypto, Forex, and Indices, now supporting **three** distinct engines (WizardWave, WizardScalp, Daily CLS Range).
-- **Runic Alerts V2**: A dedicated "Datapad" sidebar for live signal monitoring.
-  - **Rich Cards**: Displays Entry, Price, Net PnL, TP/SL, and Strategy Type in a compact, readable card.
-  - **Live Updates**: Open positions remain visible ("Active") to keep you in the loop until closed.
-  - **Dynamic Styling**: Active signals display "Confidence" in high-visibility light orange.
-- **Signal History**: A comprehensive log of all past signals.
-  - **Strategy Filter**: Filter history by specific strategy (e.g., "Daily CLS Range" vs "WizardWave").
-  - **Session Highlighting**: Trades executed during the New York Session (8 AM - 5 PM ET) are automatically highlighted.
-- **Realms (Market Sessions)**: A visual 24-hour timeline showing the overlap of major global trading sessions.
+- **Multi-Strategy Feed**: Real-time display of active trade setups across Crypto, Forex, and Indices.
+- **Fractal Alignment (NEW)**: Real-time "Trend" and "Bid Zone" confirmation scraped directly from your TradingView **Mango Dynamic** indicators using a headless browser engine.
+- **Runic Alerts**: A dedicated "Datapad" sidebar for live signal monitoring with "Confidence" scores.
+- **Session Highlighting**: Trades executed during the New York Session (8 AM - 5 PM ET) are automatically highlighted.
+- **Visual Realism**: Matches your actual charting environment by targeting **Perpetual Contract** (.P) charts for crypto assets.
 
 ### 🧠 Logic & Strategies
-**A. WizardWave (HTF)**:
-- **Goal**: Capture major multi-day trends (12H, 1D, 4D).
-- **Type**: AI-Filtered Trend Following.
+1. **WizardWave (Trend)**: Captures major multi-day trends. 
+   - **Pro-Max Edition (NEW)**: Active on 12H timeframes. Uses Dynamic ATR Trailing Stops, Rising ADX confirmation, and RSI overextension filters for high-conviction entries.
+2. **WizardScalp (Momentum)**: Intraday swings. Currently paused on 1h/15m timeframes to prioritize higher-timeframe alpha.
+3. **Daily CLS Range**: Identifies "Continuated Liquidity Sweeps" on the Daily timeframe for precision 1H entries.
+4. **Ichimoku Cloud**: Traditional cloud breakout signals.
+   - **Kumo King Upgrade (NEW)**: Deployed for Crypto and Metals. Uses **Cloud Thickness Filters** to avoid noise and **Kijun Rejection** logic to capture trend pullbacks with high precision.
+5. **Monday Range**: Automates the "Monday High/Low" deviation strategy.
 
-**B. WizardScalp (LTF)**:
-- **Goal**: Capture intraday swings and scalps (15M, 1H, 4H).
-- **Type**: AI-Filtered Momentum.
-
-**C. Daily CLS Range (Mean Reversion)**:
-- **Goal**: Identify "Continuated Liquidity Sweep" candles on the Daily timeframe.
-- **Execution**: Precision execution on the 1H timeframe upon range reclaim.
-- **Risk**: Rule-based (Non-AI) strategy with strict 2-target profit taking.
-- **Safety**: Built-in logic prevents opening duplicate positions on the same asset.
-
-### 🔔 Smart Alerts & Discord
-- **Automated Monitoring**: Background service (`monitor_signals.py`) scans for signals 24/7.
-- **Enhanced Notifications**: Discord alerts feature prettified asset names (e.g., `EUR/USD 🇪🇺`), explicit EST timestamps, and Confidence/R:R metrics.
-- **Deduplication**: Smart filtering preventing alert spam for existing signals.
-
-### 🛡️ Risk Management Shield
-- **Gamified Risk**: Capital is treated as "Mana". Taking trades costs Mana.
-- **Prop Firm Tracking**: Native support for tracking multiple prop firm accounts with visual progress bars for Profit Targets and Drawdown Limits.
-- **Position Size Calculator**: **NEW!** Embedded calculator to instantly determine lot size/units based on Entry, Stop Loss, and Risk ($) amount.
-- **Manual Mode**: Toggle to filter strict high-confidence (>60%) setups only.
+### 🛡️ Risk Management Schema
+- **Gamified "Mana" System**: Capital is treated as "Mana". Taking trades costs Mana based on risk size.
+- **Prop Firm Tracker**: Native support for tracking Drawdown Limits and Profit Targets.
+- **Triple Barrier ML Labeling**: Models are trained using Fixed Time Horizons, Profit Targets, and Stop Losses to determine "True" signal quality.
+- **Dynamic Risk Adjustment**: Pro-Max models automatically adjust Stop Loss placement based on real-time market volatility (ATR).
 
 ---
 
-## ⚙️ How It Works: The Signal Pipeline
+## ⚙️ The Data Pipeline (Architecture)
 
-The system operates on a specialized multi-pipeline that transforms raw market data into actionable intelligence.
+The system uses a **Dual-Pipeline** approach to ensure signal accuracy:
 
-### 1. Data Ingestion (`data_fetcher.py`)
-- **Crypto**: Fetches real-time OHLCV data using `ccxt` (BinanceUS).
-- **Traditional**: Fetches Stocks, Forex, and Indices data using `yfinance`.
-- **Resampling**: Handles custom timeframes like 12H and 4D via robust resampling logic.
+### 1. Market Data Pipeline (Python/Pandas)
+*   **Source**: `ccxt` (Crypto) and `yfinance` (TradFi).
+*   **Processing**: `data_fetcher.py` pulls raw OHLCV data.
+*   **Feature Engineering**: `feature_engine.py` calculates 12+ features (RSI, Volatility, MFI, Cycle Regime, etc.).
+*   **Inference**: `app.py` loads specific ML models (4h, 12h, 1d, 4d) to predict signal probability.
+*   **Hybrid Execution**: Rule-based "Pro-Max" and Ichimoku logic works alongside ML models for multi-layered validation.
 
-### 2. Strategy Logic
-**A. High Timeframe (HTF) - `strategy.py`**:
-- "WizardWave" Trend Following targeting Cloud Breakouts and Zone Pullbacks.
+### 2. Indicator Verification Pipeline (Playwright Scraper)
+*   **Source**: Your actual **TradingView** charts (Headless Browser).
+*   **Agent**: `scrape_tv_indicators.py`.
+*   **Mechanism**:
+    1.  Launches a headless Chromium browser.
+    2.  Navigates to your specific chart layout (`qR1XTue9`).
+    3.  **Maximizes** the chart (Alt+Enter) to isolate data.
+    4.  **Hovers** over the latest candle to ensure "Data Window" freshness.
+    5.  **Extracts** "Trend" (Bullish/Bearish) and "Bid Zone" (Yes/No) using robust Regex parsing.
+*   **Output**: Saves to `mango_dynamic_data.json`, which the Dashboard reads to populate the "Fractal Alignment" table.
+*   **Self-Healing**: If data is missing or ambiguous, it toggles the Data Window (`Alt+D`) or takes a **Debug Screenshot** (`debug_view_*.png`) for diagnosis.
 
-**B. Low Timeframe (LTF) - `strategy_scalp.py`**:
-- "WizardScalp" Momentum targeting Cloud Crosses with ADX > 20 and EMA Trend Filtering.
-
-**C. Range Reversion - `strategy_cls.py`**:
-- "Daily CLS Range" identifying H/L sweeps of the previous candle body.
-
-### 3. Advanced Feature Engineering (`feature_engine.py`)
-Signals are enriched with 8 distinct features before classification:
-- **Volatility**: Rolling standard deviation.
-- **RSI**: Relative Strength Index.
-- **MA Distance**: Mean reversion potential.
-- **ADX**: Trend strength intensity.
-- **Momentum**: Rate of Change (ROC).
-- **RVOL**: Relative Volume (Volume Conviction).
-- **Bollinger Width**: Volatility Squeeze/Expansion state.
-- **Candle Ratio**: Price action conviction (Body vs Range).
-
-### 4. Meta-Labeling Classification
-- **Two Specialized Models**: 
-    - `model_htf.pkl`: Trained on thousands of daily/4-day signals.
-    - `model_ltf.pkl`: Trained on faster intraday data.
-- **Triple Barrier Method**: Models are trained using dynamic Profit Targets and Stop Losses tailored to the asset class (Crypto vs. TradFi).
+### 3. Execution (The App)
+*   **Streamlit**: The frontend combines these two data streams.
+*   **Background Monitor**: `monitor_signals.py` runs as a daemon to send Discord alerts even when the UI is closed.
 
 ---
 
 ## 🛠️ Installation & Setup
 
 1. **Prerequisites**:
-   - Python 3.8+
-   - pip
+   - Python 3.10+
+   - Node.js (for Playwright dependencies)
 
 2. **Install Dependencies**:
    ```bash
    pip install -r requirements.txt
    ```
+   
+3. **Install Browser Engines**:
+   Required for the TradingView scraper to work:
+   ```bash
+   playwright install chromium
+   ```
 
-3. **Run the Application**:
+4. **Run the Application**:
    ```bash
    streamlit run app.py
    ```
-   *To start the background alert monitor:*
-   ```bash
-   python monitor_signals.py
-   ```
-
-4. **Retrain the Models (Optional)**:
-   To update the ML models with the latest data:
-   ```bash
-   python pipeline.py
-   ```
+   *The Scraper and Monitor will auto-start in the background.*
 
 ---
 
 ## 📂 Project Structure
 
-- **`app.py`**: Main application logic (Dashboard, UI, Signal Inference).
-- **`monitor_signals.py`**: Background service for generating Discord alerts.
-- **`pipeline.py`**: Training pipeline for generating `model_htf.pkl` and `model_ltf.pkl`.
-- **`strategy.py`**: HTF Strategy Logic (WizardWave).
-- **`strategy_scalp.py`**: LTF Strategy Logic (WizardScalp).
-- **`strategy_cls.py`**: Daily CLS Range Strategy Logic.
-- **`feature_engine.py`**: Shared library for calculating technical features.
-- **`data_fetcher.py`**: Wrapper for data APIs.
-- **`strategy_config.json`**: Central configuration for assets, strategies, and model parameters.
+- **`app.py`**: The "Arcane Portal" Dashboard UI.
+- **`scrape_tv_indicators.py`**: **(NEW)** The autonomous agent that watches your TradingView charts.
+- **`monitor_signals.py`**: Background daemon that sends Discord alerts.
+- **`pipeline.py`**: Machine Learning training pipeline (Triple Barrier Method).
+- **`feature_engine.py`**: Centralized library for all technical indicators and ML features.
+- **`user_grimoire.json`**: Persists your "Mana" (Risk) and "Spells" (Trade Limits).
+- **`mango_dynamic_data.json`**: The live state of your proprietary indicators (shared between Scraper and App).
 
 ---
 
-## 🧩 Technology Stack
+## 🔧 Troubleshooting
 
-- **Frontend**: Streamlit (Python)
-- **Data Analysis**: Pandas, NumPy, Pandas-TA
-- **Machine Learning**: Scikit-Learn (Random Forest Ensemble)
-- **Data Feeds**: CCXT, yFinance
+### "Fractal Alignment" Data is Inaccurate
+If the "Trend" or "Bid Zone" on the dashboard doesn't match your TradingView chart:
+1.  **Check Screenshots**: Look in the project folder for files named `debug_view_[ASSET]_[TIMEFRAME].png`.
+2.  **Verify Layout**: These images show *exactly* what the bot sees.
+    *   If the bot sees a different chart than you, ensure you are using the same Layout ID (`qR1XTue9`).
+    *   If the bot sees "Spot" data but you trade "Perps", the code now defaults to `.P` (Perpetual) tickers for crypto.
+3.  **Data Window**: Ensure the "Data Window" on your TradingView layout is enabled and includes the "Mango Dynamic" values.
+
+### Scraper Logs
+Check `scraper_debug.log` for detailed execution traces.
+```bash
+tail -f scraper_debug.log
+```

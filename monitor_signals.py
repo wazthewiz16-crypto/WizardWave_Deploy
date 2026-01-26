@@ -14,6 +14,8 @@ from data_fetcher import fetch_data
 from strategy import WizardWaveStrategy
 from strategy_scalp import WizardScalpStrategy
 from strategy_cls import CLSRangeStrategy
+from strategy_ichimoku import IchimokuStrategy
+from strategy_wizard_pro import WizardWaveProStrategy
 from feature_engine import calculate_ml_features
 from pipeline import get_asset_type
 
@@ -248,14 +250,17 @@ def run_analysis_cycle():
     
     # Iterate through each model configuration
     for model_name, model_conf in models_config.items():
-        if model_name not in loaded_models:
+        strat_name = model_conf.get('strategy')
+        model = loaded_models.get(model_name)
+        is_rule_based = strat_name in ["IchimokuStrategy", "WizardWaveProStrategy"]
+        
+        if not model and not is_rule_based:
             continue
             
-        model = loaded_models[model_name]
         timeframes = model_conf['timeframes']
-        strat_name = model_conf['strategy']
-        tb = model_conf['triple_barrier']
+        tb = model_conf.get('triple_barrier', {})
         conf_threshold = model_conf.get('confidence_threshold', 0.50)
+        assets_to_scan = model_conf.get('assets_filter', CONFIG.get('assets', []))
         
         # Run Strategy & Features
         for tf in timeframes:
@@ -267,61 +272,89 @@ def run_analysis_cycle():
                 crypto_macro_df = fetch_data('BTC/USDT', asset_type='crypto', timeframe=tf, limit=300)
             except: pass
 
-            for symbol in CONFIG['assets']:
+            for symbol in assets_to_scan:
                 try:
-                    # Determine Dynamic Features from Model
-                    if hasattr(model, 'feature_names_in_'):
-                        features_list = list(model.feature_names_in_)
-                    else:
-                        features_list = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi']
-                    
                     # Asset Type
                     asset_type = get_asset_type(symbol)
                     fetch_type = 'trad' if asset_type == 'forex' or asset_type == 'trad' else 'crypto'
                     if '-' in symbol or '^' in symbol or '=' in symbol: fetch_type = 'trad'
                     
-                    # --- FILTER: SKIP FOREX ON SWING TIMEFRAMES ---
-                    if asset_type == 'forex' and tf in ['4h', '12h', '1d', '4d']:
+                    # FILTER: SKIP FOREX ON SWING TIMEFRAMES (Exception for Ichimoku)
+                    # FILTER: SKIP FOREX ON SWING TIMEFRAMES (Exception for Ichimoku/Pro)
+                    if asset_type == 'forex' and tf in ['4h', '12h', '1d', '4d'] and strat_name not in ["IchimokuStrategy", "WizardWaveProStrategy"]:
                         continue
 
                     # Fetch
                     df = fetch_data(symbol, asset_type=fetch_type, timeframe=tf, limit=300)
                     if df.empty: continue
                     
-                    # Strategy
+                    # Strategy Factory
                     if strat_name == "WizardWave":
                         strat = WizardWaveStrategy()
+                        df = strat.apply(df)
+                    elif strat_name == "WizardWaveProStrategy":
+                        params = model_conf.get('params', {})
+                        strat = WizardWaveProStrategy(**params)
+                        df = strat.apply(df)
+                    elif strat_name == "IchimokuStrategy":
+                        params = model_conf.get('params', {})
+                        strat = IchimokuStrategy(**params)
+                        df = strat.apply_strategy(df)
+                    elif strat_name == "IchimokuProStrategy":
+                        params = model_conf.get('params', {})
+                        strat = IchimokuProStrategy(**params)
+                        df = strat.apply_strategy(df)
                     else:
                         strat = WizardScalpStrategy(lookback=8)
-                    
-                    df = strat.apply(df)
+                        df = strat.apply(df)
                     df = calculate_ml_features(df, macro_df=macro_df, crypto_macro_df=crypto_macro_df)
                     
-                    # Ensure all features exist
-                    for f in features_list:
-                        if f not in df.columns:
-                            df[f] = 0.0
-                            
-                    # Sigma for Dynamic Barriers
-                    crypto_use_dynamic = tb.get('crypto_use_dynamic', False)
-                    if crypto_use_dynamic and asset_type == 'crypto':
-                         df['sigma'] = df['close'].pct_change().ewm(span=36, adjust=False).std()
-                         df['sigma'] = df['sigma'].bfill().fillna(0.01)
+                    # Predict / Signal Logic
+                    if model:
+                        df = calculate_ml_features(df, macro_df=macro_df, crypto_macro_df=crypto_macro_df)
+                        
+                        # Determine Dynamic Features from Model
+                        if hasattr(model, 'feature_names_in_'):
+                            features_list = list(model.feature_names_in_)
+                        else:
+                            features_list = ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi']
+
+                        # Ensure all features exist
+                        for f in features_list:
+                            if f not in df.columns:
+                                df[f] = 0.0
+                                
+                        # Sigma for Dynamic Barriers
+                        crypto_use_dynamic = tb.get('crypto_use_dynamic', False)
+                        if crypto_use_dynamic and asset_type == 'crypto':
+                             df['sigma'] = df['close'].pct_change().ewm(span=36, adjust=False).std()
+                             df['sigma'] = df['sigma'].bfill().fillna(0.01)
+                        
+                        df = df.dropna()
+                        if df.empty: continue
+                        
+                        last_row = df.iloc[-1].copy()
+                        
+                        # Predict
+                        X_new = pd.DataFrame([last_row[features_list]])
+                        prob = model.predict_proba(X_new)[0][1]
+                    else:
+                        # Rule-based (e.g. Ichimoku)
+                        if 'signal_type' in df.columns:
+                            df_signals = df[df['signal_type'].notna() & (df['signal_type'] != 'NONE')]
+                        else:
+                            df_signals = pd.DataFrame()
+                        
+                        if df_signals.empty: continue
+                        last_row = df_signals.iloc[-1].copy()
+                        prob = 1.0 
                     
-                    df = df.dropna()
-                    if df.empty: continue
-                    
-                    last_row = df.iloc[-1].copy()
-                    
-                    # Predict
-                    X_new = pd.DataFrame([last_row[features_list]])
-                    prob = model.predict_proba(X_new)[0][1]
-                    
-                    signal_type = last_row['signal_type']
-                    if signal_type != 'NONE':
+                    signal_type = last_row.get('signal_type', 'NONE')
+                    if signal_type and signal_type != 'NONE':
                         price = last_row['close']
                         
                         # TP/SL Calculation
+                        crypto_use_dynamic = tb.get('crypto_use_dynamic', False)
                         if 'LONG' in signal_type:
                             if crypto_use_dynamic and asset_type == 'crypto':
                                   sigma = last_row.get('sigma', 0.01)
@@ -343,8 +376,8 @@ def run_analysis_cycle():
                                   pt_pct = k_pt * sigma
                                   sl_pct = k_sl * sigma
                             else:
-                                sl_pct = tb['crypto_sl'] if asset_type=='crypto' else tb.get('forex_sl' if asset_type=='forex' else 'trad_sl', 0.01)
-                                pt_pct = tb['crypto_pt'] if asset_type=='crypto' else tb.get('forex_pt' if asset_type=='forex' else 'trad_pt', 0.02)
+                                 sl_pct = tb.get('crypto_sl' if asset_type=='crypto' else ('forex_sl' if asset_type=='forex' else 'trad_sl'), 0.01)
+                                 pt_pct = tb.get('crypto_pt' if asset_type=='crypto' else ('forex_pt' if asset_type=='forex' else 'trad_pt'), 0.02)
 
                             sl_price = price * (1 + sl_pct)
                             pt_price = price * (1 - pt_pct)
@@ -363,7 +396,8 @@ def run_analysis_cycle():
                             "Confidence": f"{prob*100:.1f}%",
                             "Confidence_Score": prob*100,
                             "Take_Profit": round(pt_price, 4),
-                            "Stop_Loss": round(sl_price, 4)
+                            "Stop_Loss": round(sl_price, 4),
+                            "Strategy": f"{strat_name} ({tf})"
                         }
                         
                         all_signals.append(sig)
@@ -371,24 +405,29 @@ def run_analysis_cycle():
                 except Exception as e:
                     pass
 
-    # --- CLS STRATEGY SCAN (TradFi Only) ---
+    # --- CLS STRATEGY SCAN ---
     print("Running Daily CLS Range Scan...")
     try:
         cls_strat = CLSRangeStrategy() 
+        cls_config = models_config.get('1h_cls', {})
+        cls_whitelist = cls_config.get('assets_filter', [])
         
         for symbol in CONFIG['assets']:
             try:
-                # Filter TradFi
                 asset_type = get_asset_type(symbol)
-                is_tradfi = False
-                if asset_type == 'forex' or asset_type == 'trad': is_tradfi = True
-                elif '-' in symbol or '^' in symbol or '=' in symbol: is_tradfi = True
+                is_tradfi = (asset_type == 'forex' or asset_type == 'trad') or ('-' in symbol or '^' in symbol or '=' in symbol)
                 
-                if not is_tradfi: continue
+                # Filter: Allow TradFi (Legacy) OR Whitelisted Crypto (BTC/ETH)
+                is_whitelisted = symbol in cls_whitelist or symbol.replace("BINANCE:", "") in cls_whitelist
+                
+                if not (is_tradfi or is_whitelisted):
+                    continue
                 
                 # Fetch MTF Data
-                df_htf = fetch_data(symbol, asset_type='trad', timeframe='1d', limit=500)
-                df_ltf = fetch_data(symbol, asset_type='trad', timeframe='1h', limit=400)
+                f_type = 'trad' if is_tradfi else 'crypto'
+                
+                df_htf = fetch_data(symbol, asset_type=f_type, timeframe='1d', limit=500)
+                df_ltf = fetch_data(symbol, asset_type=f_type, timeframe='1h', limit=400)
                 
                 if df_htf.empty or df_ltf.empty: continue
                 

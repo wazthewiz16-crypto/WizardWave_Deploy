@@ -34,10 +34,19 @@ class WizardScalpStrategy:
         model_path = os.path.join(os.path.dirname(__file__), 'wizard_scalp_ml_model.pkl')
         if os.path.exists(model_path):
             try:
-                self.model_data = joblib.load(model_path)
-                print("[SUCCESS] Scalp ML Filter Loaded.")
-            except:
-                print("[WARNING] Failed to load Scalp ML.")
+                loaded = joblib.load(model_path)
+                if isinstance(loaded, dict):
+                    self.model_data = loaded
+                else:
+                    # Legacy fallback: Bare model
+                    self.model_data = {
+                        'model': loaded,
+                        'features': ['volatility', 'rsi', 'ma_dist', 'adx', 'mom', 'rvol', 'bb_width', 'candle_ratio', 'atr_pct', 'mfi', 'month_sin', 'cycle_regime', 'close_frac'],
+                        'threshold': 0.51
+                    }
+                print(f"[SUCCESS] Scalp ML Filter Loaded.")
+            except Exception as e:
+                print(f"[WARNING] Failed to load Scalp ML: {e}")
 
     def apply(self, df: pd.DataFrame) -> pd.DataFrame:
         if df.empty:
@@ -162,23 +171,30 @@ class WizardScalpStrategy:
         
         # --- 5. ML Meta-Labeling Filter ---
         if self.model_data and 'signal_type' in df.columns:
-            df = calculate_ml_features(df)
-            features = self.model_data['features']
-            model = self.model_data['model']
-            thresh = self.model_data['threshold']
-            
-            sig_mask = df['signal_type'] != 'NONE'
-            if sig_mask.any():
-                X = df.loc[sig_mask, features].fillna(0).values
-                probs = model.predict_proba(X)[:, 1]
+            try:
+                df = calculate_ml_features(df)
+                features = self.model_data.get('features', [])
+                model = self.model_data.get('model')
+                thresh = self.model_data.get('threshold', 0.50)
                 
-                # Apply filter: if prob < threshold, reset signal to NONE
-                # We do this using a list comprehension or mapping back to the df
-                prob_idx = 0
-                for idx, row in df[sig_mask].iterrows():
-                    if probs[prob_idx] < thresh:
-                        df.at[idx, 'signal_type'] = "NONE"
-                    prob_idx += 1
+                sig_mask = (df['signal_type'] != 'NONE')
+                if sig_mask.any() and model:
+                    # Ensure all required features exist
+                    available_feats = [f for f in features if f in df.columns]
+                    if len(available_feats) == len(features):
+                        X = df.loc[sig_mask, features].fillna(0).values
+                        probs = model.predict_proba(X)[:, 1]
+                        
+                        prob_idx = 0
+                        for idx, row in df[sig_mask].iterrows():
+                            if probs[prob_idx] < thresh:
+                                df.at[idx, 'signal_type'] = "NONE"
+                            prob_idx += 1
+                    else:
+                        pass # print(f"[WARN] Scalp ML features missing: {set(features) - set(df.columns)}")
+            except Exception as e:
+                # print(f"[WARN] Scalp ML Filtering Error: {e}")
+                pass
 
         # --- 6. Triple Barrier Generation (SL/TP) ---
         # Fixed 1.0% SL / 1.5% TP for Scalps

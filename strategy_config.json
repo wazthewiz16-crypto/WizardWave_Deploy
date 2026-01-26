@@ -60,9 +60,14 @@
             "timeframes": [
                 "12h"
             ],
-            "strategy": "WizardWave",
+            "strategy": "WizardWaveProStrategy",
             "model_file": "model_12h.pkl",
             "confidence_threshold": 0.50,
+            "params": {
+                "atr_mult": 2.5,
+                "rsi_upper": 75,
+                "rsi_lower": 25
+            },
             "triple_barrier": {
                 "time_limit_bars": 24,
                 "crypto_pt": 0.06,
@@ -91,9 +96,7 @@
             }
         },
         "1h": {
-            "timeframes": [
-                "1h"
-            ],
+            "timeframes": [],
             "strategy": "WizardScalp",
             "model_file": "wizard_scalp_ml_model.pkl",
             "confidence_threshold": 0.60,
@@ -110,10 +113,92 @@
                 "crypto_dyn_sl_k": 1.5
             }
         },
-        "15m": {
+        "1h_cls": {
             "timeframes": [
-                "15m"
+                "1h"
             ],
+            "strategy": "CLSRangeStrategy",
+            "assets_filter": [
+                "BTC/USDT",
+                "ETH/USDT"
+            ],
+            "model_file": "north_star_ml_model.pkl",
+            "confidence_threshold": 0.0,
+            "triple_barrier": {
+                "time_limit_bars": 48,
+                "crypto_pt": 0.04,
+                "crypto_sl": 0.02
+            }
+        },
+        "4h_ichi_crypto": {
+            "timeframes": [
+                "4h"
+            ],
+            "strategy": "IchimokuProStrategy",
+            "assets_filter": [
+                "BTC/USDT",
+                "SOL/USDT"
+            ],
+            "params": {
+                "tenkan": 7,
+                "kijun": 21,
+                "span_b": 42,
+                "displacement": 21,
+                "adx_threshold": 22,
+                "thickness_mult": 0.6
+            },
+            "triple_barrier": {
+                "time_limit_bars": 48,
+                "crypto_pt": 0.05,
+                "crypto_sl": 0.02
+            }
+        },
+        "4h_ichi_forex": {
+            "timeframes": [
+                "4h"
+            ],
+            "strategy": "IchimokuStrategy",
+            "assets_filter": [
+                "EURUSD=X"
+            ],
+            "params": {
+                "tenkan": 20,
+                "kijun": 60,
+                "span_b": 120,
+                "displacement": 30,
+                "adx_threshold": 20
+            },
+            "triple_barrier": {
+                "time_limit_bars": 72,
+                "forex_pt": 0.01,
+                "forex_sl": 0.005
+            }
+        },
+        "4h_ichi_metals": {
+            "timeframes": [
+                "4h"
+            ],
+            "strategy": "IchimokuProStrategy",
+            "assets_filter": [
+                "GC=F",
+                "SI=F"
+            ],
+            "params": {
+                "tenkan": 20,
+                "kijun": 60,
+                "span_b": 120,
+                "displacement": 30,
+                "adx_threshold": 22,
+                "thickness_mult": 0.6
+            },
+            "triple_barrier": {
+                "time_limit_bars": 72,
+                "trad_pt": 0.02,
+                "trad_sl": 0.01
+            }
+        },
+        "15m": {
+            "timeframes": [],
             "strategy": "WizardScalp",
             "model_file": "model_15m.pkl",
             "confidence_threshold": 0.62,

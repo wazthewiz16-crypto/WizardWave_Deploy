@@ -120,21 +120,39 @@ class CLSRangeStrategy:
         # --- 2. Process LTF (Entries) ---
         df = merged.copy()
         
+        # RVOL Calculation (Trap Identification)
+        # retail traders get trapped on high volume breakouts/breakdowns that fail.
+        # We look for a volume spike (stops triggering) followed by a reclaim.
+        df['vol_sma'] = df['volume'].rolling(20).mean()
+        df['rvol'] = df['volume'] / df['vol_sma']
+        
+        # Trap Confirmation: Did we see a volume spike recently? (Capitulation/Stop Hunt)
+        # Check max rvol in last 3 candles to catch the capitulation candle or the reclaim candle
+        df['recent_rvol_max'] = df['rvol'].rolling(3).max()
+        
+        has_trap_volume = df['recent_rvol_max'] > 1.5  # Strict filter: 50% above average volume
+        
+        # RSI Calculation (Trap Extremes)
+        # Verify the "Trap" actually pushed price to extremes (Oversold/Overbought)
+        df['rsi'] = ta.rsi(df['close'], length=14)
+        df['recent_rsi_min'] = df['rsi'].rolling(3).min()
+        df['recent_rsi_max'] = df['rsi'].rolling(3).max()
+        
+        is_oversold = df['recent_rsi_min'] < 35
+        is_overbought = df['recent_rsi_max'] > 65
+
         # Logic: Deviation & Reclaim
         # range_low and range_high come from HTF
         
         # Reclaim Long: Price dips below Range Low, then Closes back above Range Low
-        # We also need a "Deviation" confirmation? 
-        # Standard: Just the reclaim event is the trigger after a deviation existed.
-        
         reclaim_long = (df['close'] > df['range_low']) & (df['close'].shift(1) < df['range_low'])
         reclaim_short = (df['close'] < df['range_high']) & (df['close'].shift(1) > df['range_high'])
         
         # Filter: Ensure Range Exists
         range_exists = df['range_high'].notna() & df['range_low'].notna()
         
-        df['long_signal'] = reclaim_long & range_exists
-        df['short_signal'] = reclaim_short & range_exists
+        df['long_signal'] = reclaim_long & range_exists & has_trap_volume & is_oversold
+        df['short_signal'] = reclaim_short & range_exists & has_trap_volume & is_overbought
         
         conditions = [df['long_signal'], df['short_signal']]
         choices = ["CLS_LONG", "CLS_SHORT"]
@@ -254,6 +272,67 @@ class CLSRangeStrategy:
         
         df['stop_loss'] = np.where(df['signal_type'] == 'CLS_LONG', df['recent_min'] * 0.999, # Tight Forex SL
                                    np.where(df['signal_type'] == 'CLS_SHORT', df['recent_max'] * 1.001, np.nan))
+        
+        return df
+
+    def apply_4h_15m(self, df_htf: pd.DataFrame, df_ltf: pd.DataFrame) -> pd.DataFrame:
+        """
+        Specialized Logic for 4H Range / 15m Execution.
+        - Adds TREND FILTER (EMA 50 on 4H) to filter noise.
+        - Only trades 'With Trend' Traps (e.g., Bull Trend + Bear Trap at Support).
+        """
+        if df_htf.empty or df_ltf.empty:
+            return df_ltf
+            
+        htf = df_htf.copy()
+        
+        # 1. Ranges (Sweeps)
+        window = 10 # Reduced to 10 (Catch more local sweeps)
+        htf['rolling_max'] = htf['high'].shift(1).rolling(window=window).max()
+        htf['rolling_min'] = htf['low'].shift(1).rolling(window=window).min()
+        
+        
+        htf['swept_low'] = htf['low'] < htf['rolling_min']
+        htf['swept_high'] = htf['high'] > htf['rolling_max']
+        
+        # 3. Define Valid Ranges
+        # We assume range holds until broken/invalidated? 
+        # Simple Logic: The candle that Swept establishes the level.
+        htf['range_high'] = np.where(htf['swept_high'], htf['high'], np.nan)
+        htf['range_low'] = np.where(htf['swept_low'], htf['low'], np.nan)
+        
+        # Fill
+        htf['range_high'] = htf['range_high'].ffill()
+        htf['range_low'] = htf['range_low'].ffill()
+        
+        # Merge
+        htf = htf.sort_index()
+        df = pd.merge_asof(df_ltf.sort_index(), htf[['range_high', 'range_low']], 
+                          left_index=True, right_index=True, direction='backward')
+                          
+        # 4. Entry Logic (15m) - Momentum Pivot
+        reclaim_long = (df['close'] > df['range_low']) & (df['close'].shift(1) < df['range_low'])
+        reclaim_short = (df['close'] < df['range_high']) & (df['close'].shift(1) > df['range_high'])
+        
+        range_exists = df['range_high'].notna() & df['range_low'].notna()
+        
+        # Momentum Indicators (15m)
+        # We look for a trend starting after the reclaim
+        df['ema_fast'] = ta.ema(df['close'], length=9)
+        df['ema_slow'] = ta.ema(df['close'], length=21)
+        adx_df = ta.adx(df['high'], df['low'], df['close'], length=14)
+        if adx_df is not None:
+             df['adx'] = adx_df['ADX_14']
+        else:
+             df['adx'] = 0
+        
+        # Combined Filter: Reclaim + EMA Cross + ADX Trend Confirmation
+        valid_long = reclaim_long & range_exists & (df['ema_fast'] > df['ema_slow']) & (df['adx'] > 18)
+        valid_short = reclaim_short & range_exists & (df['ema_fast'] < df['ema_slow']) & (df['adx'] > 18)
+        
+        conditions = [valid_long, valid_short]
+        choices = ["CLS_LONG", "CLS_SHORT"]
+        df['signal_type'] = np.select(conditions, choices, default="NONE")
         
         return df
 
