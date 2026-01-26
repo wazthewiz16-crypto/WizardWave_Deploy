@@ -167,19 +167,38 @@ def run_runic_analysis():
         if h_ichi: all_history.extend(h_ichi)
         
         # --- PERSISTENT HISTORY MERGE ---
+        # 0. Index Simulated History (Backtest) to prevent Duplicates
+        # We prefer Simulated items because they have calculated fields (Exit Time, Status, PnL)
+        sim_keys = set()
+        for x in all_history:
+             # Normalize Time: Remove 'T' from ISO format if present to match simple string
+             t_raw = str(x.get('Time', ''))
+             t_norm = t_raw.replace("T", " ")
+             sim_keys.add(f"{x.get('Asset')}_{t_norm}")
+
         # 1. Load Real Logged History
         real_history = load_runic_history()
         
-        # Dedupe real_history internally first (Solve Multiple Logs)
-        seen_keys = set()
+        # Dedupe real_history internally AND against Backtest
+        seen_real_keys = set()
         unique_real = []
+        
         for x in real_history:
              # Sanitize Key
              t = x.get('Entry_Time') or x.get('Timestamp') or "Unknown"
-             k = f"{x.get('Asset')}_{t}"
-             if k not in seen_keys:
-                 unique_real.append(x)
-                 seen_keys.add(k)
+             t_norm = str(t).replace("T", " ") # Normalize: 2023-01-01T12:00 -> 2023-01-01 12:00
+             
+             k_internal = f"{x.get('Asset')}_{t}" # Unique ID in file
+             k_match = f"{x.get('Asset')}_{t_norm}" # Match against Backtest
+             
+             if k_internal not in seen_real_keys:
+                 seen_real_keys.add(k_internal)
+                 
+                 # CRITICAL: Only add if NOT in Simulated History
+                 # This avoids showing the same trade twice (once from Backtest, once from Log)
+                 # But preserves "Vanished" trades (not in Backtest anymore)
+                 if k_match not in sim_keys:
+                     unique_real.append(x)
 
         # 2. Add to Display List with UI Mappings (Solve "None" Issues)
         for item in unique_real:

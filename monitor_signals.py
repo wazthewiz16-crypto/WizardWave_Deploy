@@ -6,7 +6,7 @@ import pandas as pd
 pd.set_option('future.no_silent_downcasting', True)
 import random
 import urllib.request
-from datetime import datetime
+from datetime import datetime, timedelta
 import traceback
 
 # Import Project Modules
@@ -495,15 +495,39 @@ def run_analysis_cycle():
                  }
 
                  for s in oracle_sigs:
+                     # --- AGE CHECK (Fix Duplicate/Old Alert Spam) ---
+                     ts_str = s.get('Timestamp')
+                     if ts_str:
+                          try:
+                             # Timestamp is EST (UTC-5) from Scraper
+                             s_dt = datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S')
+                             
+                             # Current EST Time
+                             now_est = datetime.utcnow() - timedelta(hours=5)
+                             
+                             # Calculate Age
+                             age_seconds = (now_est - s_dt).total_seconds()
+                             
+                             # Filter out signals older than 4 hours (Generous buffer for 4H/Daily, tight enough for 15m)
+                             # If it's a "Daily" signal, it might be valid for 24h, but we only want to ALERT when it's NEW.
+                             # If scraper keeps it "Sticky", timestamp remains old.
+                             # So if timestamp is > 4h old, we assume we already alerted or missed the boat.
+                             if age_seconds > 14400: 
+                                 # print(f"Skipping Old Signal: {s['Asset']} {age_seconds}s old")
+                                 continue
+                          except Exception as e: 
+                             print(f"Time Parse Error: {e}")
+                             pass
+
                      # Cooldown Key
                      c_key = f"{s['Asset']}_{s['Timeframe']}_{s['Type']}"
                      last_sent = cooldowns.get(c_key, 0)
+                     
+                     # Use timeframe-specific limits
                      limit = COOLDOWNS.get(s['Timeframe'].upper(), 3600)
                      
-                     # Check Eligibility
+                     # Check Eligibility (Time.time() is system agnostic, used for relative cooldown)
                      if (now_ts - last_sent) < limit:
-                         # Skip this iteration (suppress alert)
-                         # We do NOT print "Added" to avoid log spam
                          continue
                      
                      # Update Cooldown
