@@ -469,15 +469,15 @@ with st.sidebar.expander("🔮 Oracle Controls", expanded=False):
             import sys
             import os
             try:
-                kwargs = {}
-                # Only use CREATE_NEW_CONSOLE on native Windows (nt)
+                # Force visible windows on Windows using 'start' command
                 if os.name == 'nt':
-                     kwargs['creationflags'] = 0x00000010
+                    subprocess.Popen(f'start "Oracle Scraper" "{sys.executable}" scrape_tv.py', shell=True)
+                    subprocess.Popen(f'start "Oracle Alerter" "{sys.executable}" alert_manager.py', shell=True)
+                else:
+                    # Fallback for non-Windows
+                    subprocess.Popen([sys.executable, "scrape_tv.py"])
+                    subprocess.Popen([sys.executable, "alert_manager.py"])
                 
-                # Launch Scraper
-                subprocess.Popen([sys.executable, "scrape_tv.py"], **kwargs)
-                # Launch Alerter
-                subprocess.Popen([sys.executable, "alert_manager.py"], **kwargs)
                 st.toast("Oracle V2 Services Started!", icon="🚀")
             except Exception as e:
                 st.error(f"Failed: {e}")

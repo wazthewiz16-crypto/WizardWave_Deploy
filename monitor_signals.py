@@ -509,15 +509,14 @@ if __name__ == "__main__":
     # We allow them to run in separate consoles so user can see logs
     # Using Popen to not block
     try:
-        kwargs = {}
         if os.name == 'nt':
-            kwargs['creationflags'] = 0x00000010
-        
-        print("Launching Oracle Scraper (scrape_tv.py)...")
-        subprocess.Popen([sys.executable, "scrape_tv.py"], **kwargs)
-        
-        print("Launching Oracle Alert Manager (alert_manager.py)...")
-        subprocess.Popen([sys.executable, "alert_manager.py"], **kwargs)
+            print("Launching Oracle Services in new windows...")
+            subprocess.Popen(f'start "Oracle Scraper" "{sys.executable}" scrape_tv.py', shell=True)
+            subprocess.Popen(f'start "Oracle Alerter" "{sys.executable}" alert_manager.py', shell=True)
+        else:
+            print("Launching Oracle Services (Background)...")
+            subprocess.Popen([sys.executable, "scrape_tv.py"])
+            subprocess.Popen([sys.executable, "alert_manager.py"])
         
     except Exception as e:
         print(f"Failed to launch background services: {e}")
