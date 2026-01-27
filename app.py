@@ -469,10 +469,12 @@ with st.sidebar.expander("🔮 Oracle Controls", expanded=False):
             import sys
             import os
             try:
-                # Force visible windows on Windows using 'start' command
+                # Force visible windows using 'start' + 'cmd /k' to KEEP OPEN on error
                 if os.name == 'nt':
-                    subprocess.Popen(f'start "Oracle Scraper" "{sys.executable}" scrape_tv.py', shell=True)
-                    subprocess.Popen(f'start "Oracle Alerter" "{sys.executable}" alert_manager.py', shell=True)
+                    # We use sys.executable to ensure we use the same Python env
+                    # We wrap the python call in 'cmd /k' so the window stays open if it crashes
+                    subprocess.Popen(f'start "Oracle Scraper" cmd /k "{sys.executable}" scrape_tv.py', shell=True)
+                    subprocess.Popen(f'start "Oracle Alerter" cmd /k "{sys.executable}" alert_manager.py', shell=True)
                 else:
                     # Fallback for non-Windows
                     subprocess.Popen([sys.executable, "scrape_tv.py"])
