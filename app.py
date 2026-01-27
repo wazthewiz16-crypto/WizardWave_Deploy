@@ -468,10 +468,13 @@ with st.sidebar.expander("🔮 Oracle Controls", expanded=False):
             import subprocess
             import sys
             try:
+                # 0x00000010 is CREATE_NEW_CONSOLE
+                c_flags = 0x00000010
+                
                 # Launch Scraper
-                subprocess.Popen([sys.executable, "scrape_tv.py"], creationflags=subprocess.CREATE_NEW_CONSOLE)
+                subprocess.Popen([sys.executable, "scrape_tv.py"], creationflags=c_flags)
                 # Launch Alerter
-                subprocess.Popen([sys.executable, "alert_manager.py"], creationflags=subprocess.CREATE_NEW_CONSOLE)
+                subprocess.Popen([sys.executable, "alert_manager.py"], creationflags=c_flags)
                 st.toast("Oracle V2 Services Started!", icon="🚀")
             except Exception as e:
                 st.error(f"Failed: {e}")
