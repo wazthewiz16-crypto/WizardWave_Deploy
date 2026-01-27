@@ -118,15 +118,24 @@ def process_logic():
             if curr_trend == "Bullish" and htf_trend == "Bullish":
                 if p <= low_vals['entry_up']:
                     sig_type = "LONG"
-                    # SL below the cloud
-                    sl_price = min(low_vals['d1'], low_vals['d2']) * 0.995
+                    # SL Logic: Tighter for LTF, Wider for HTF
+                    is_ltf = low_tf in ["15m", "1h", "4h"]
+                    buffer = 0.005 if is_ltf else 0.02 # 0.5% vs 2.0%
+                    
+                    # SL is below value band
+                    cloud_bottom = min(low_vals['d1'], low_vals['d2'])
+                    sl_price = cloud_bottom * (1 - buffer)
 
             # SHORT: Bearish + Price > Entry Bottom
             if curr_trend == "Bearish" and htf_trend == "Bearish":
                 if p >= low_vals['entry_down']:
                     sig_type = "SHORT"
-                    # SL above the cloud
-                    sl_price = max(low_vals['d1'], low_vals['d2']) * 1.005
+                    # SL Logic
+                    is_ltf = low_tf in ["15m", "1h", "4h"]
+                    buffer = 0.005 if is_ltf else 0.02
+                    
+                    cloud_top = max(low_vals['d1'], low_vals['d2'])
+                    sl_price = cloud_top * (1 + buffer)
             
             if sig_type:
                 # --- DEDUPLICATION ---
@@ -148,11 +157,15 @@ def process_logic():
                 
                 if should_alert:
                     print(f"  >>> SIGNAL FOUND: {name} {low_tf} {sig_type} @ {p}")
+                    
+                    # Timestamp
+                    entry_time = datetime.now().strftime('%Y-%m-%d %H:%M EST')
+                    
                     payload = {
                         "username": "Mango Oracle 🔮",
                         "embeds": [{
                             "title": f"🔮 {sig_type} Signal: {name}",
-                            "description": f"**Timeframe:** {low_tf}\n**Price:** {p}\n**SL:** {sl_price:.4f}\n**Confirm:** {high_tf} Trend Aligned",
+                            "description": f"**Timeframe:** {low_tf}\n**Entry Price:** {p}\n**Stop Loss:** {sl_price:.4f}\n**Entry Time:** {entry_time}\n**Confirm:** {high_tf} Trend Aligned",
                             "color": 5763719 if sig_type == "LONG" else 15548997
                         }]
                     }
