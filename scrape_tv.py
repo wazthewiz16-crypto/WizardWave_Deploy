@@ -80,13 +80,20 @@ async def scrape_cycle():
                     
                     for tf in TIMEFRAMES:
                         # Switch TF
-                        await page.keyboard.type(tf)
+                        await page.keyboard.press(f"{tf}") # Type keys
                         await page.keyboard.press("Enter")
-                        await page.wait_for_timeout(2500) # Fast switch
+                        await page.wait_for_timeout(3000) # Wait for load
                         
-                        # Data Window needs a hover
-                        await page.mouse.move(1400, 500)
-                        await page.wait_for_timeout(300)
+                        # ENSURE LATEST CANDLE
+                        # 1. Reset Chart View (Alt + R) to snap to latest
+                        await page.keyboard.press("Alt+r")
+                        await page.wait_for_timeout(1000)
+                        
+                        # 2. Hover the "Right Margin" (Future/Empty space)
+                        # Hovering the empty space to the right of price shows the LATEST candle values.
+                        # Coordinate 1400 was likely too far left (historical). 1850 is safer on 1920 width.
+                        await page.mouse.move(1850, 500) 
+                        await page.wait_for_timeout(500)
                         
                         # Scrape Text
                         content = await page.inner_text("body")
