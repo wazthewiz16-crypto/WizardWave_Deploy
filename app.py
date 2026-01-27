@@ -469,14 +469,20 @@ with st.sidebar.expander("🔮 Oracle Controls", expanded=False):
             import sys
             import os
             try:
-                # Force visible windows using 'start' + 'cmd /k' to KEEP OPEN on error
+                # METHOD 3: The "Nuclear Option" - Generate a .bat file
+                # This bypasses all Python subprocess quoting issues.
                 if os.name == 'nt':
-                    # We use sys.executable to ensure we use the same Python env
-                    # We wrap the python call in 'cmd /k' so the window stays open if it crashes
-                    subprocess.Popen(f'start "Oracle Scraper" cmd /k "{sys.executable}" scrape_tv.py', shell=True)
-                    subprocess.Popen(f'start "Oracle Alerter" cmd /k "{sys.executable}" alert_manager.py', shell=True)
+                    bat_script = f"""@echo off
+                    start "Oracle Scraper" cmd /k "{sys.executable}" scrape_tv.py
+                    start "Oracle Alerter" cmd /k "{sys.executable}" alert_manager.py
+                    """
+                    with open("launch_oracle.bat", "w") as f:
+                        f.write(bat_script)
+                        
+                    # Launch the bat file
+                    subprocess.Popen("launch_oracle.bat", shell=True)
                 else:
-                    # Fallback for non-Windows
+                    # Non-Windows
                     subprocess.Popen([sys.executable, "scrape_tv.py"])
                     subprocess.Popen([sys.executable, "alert_manager.py"])
                 
