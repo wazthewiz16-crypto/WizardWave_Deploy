@@ -9,7 +9,7 @@ RAW_DATA_FILE = "tv_raw_data.json"
 HISTORY_FILE = "processed_alerts.json"
 
 # Webhook URL
-WEBHOOK_URL = "https://discord.com/api/webhooks/1321966675529924618/u0kYg0uT3o2J-A4nZYL-uAgV5oiET0SzkM1oJLpMfl2Z3-vN_V5vVp7U5r5d5b5l5e" 
+WEBHOOK_URL = "https://discord.com/api/webhooks/1453411250548510730/sGwwz8eauP1VYw_6pMOfWwwJaBuxN8fJuUjKH5mIGSsrplyTBLhLSU07L5lQ84MS7qlF" 
 
 def load_history():
     if os.path.exists(HISTORY_FILE):
