@@ -72,27 +72,33 @@ def process_logic():
             if len(valid_vals) < 2: 
                 continue
             
-            def parse_mango_vals(vals):
-                d1 = vals[0]
-                d2 = vals[1]
-                
-                entries = vals[2:]
-                if not entries:
-                    e_up = max(d1, d2) * 1.02
-                    e_down = min(d1, d2) * 0.98
-                else:
-                    e_up = max(entries)
-                    e_down = min(entries)
-                    
-                return {"d1": d1, "d2": d2, "entry_up": e_up, "entry_down": e_down}
+            # Retrieve Values
+            # User confirmed 5 values:
+            # 0: MangoD1
+            # 1: MangoD2
+            # 2: BuyOp / SellOp (Trigger Price?)
+            # 3: Entry Zone Upper
+            # 4: Entry Zone Lower
             
-            low_vals = parse_mango_vals(valid_vals)
-            # Safe handle HTF
-            if len(htf_vals_clean) < 2:
-                # If HTF missing data, assume neutral or allow permissive?
-                # For robust system, we require confirmation. Skip if missing.
+            if len(curr['mango']) < 5: 
                 continue
-            htf_vals = parse_mango_vals(htf_vals_clean)
+                
+            def parse_mango_vals(vals):
+                # Strict Mapping from Screenshot
+                return {
+                    "d1": vals[0],
+                    "d2": vals[1],
+                    "op": vals[2],
+                    "entry_up": vals[3],
+                    "entry_down": vals[4]
+                }
+            
+            low_vals = parse_mango_vals(curr['mango'])
+            
+            # HTF might not have all 5 if data window is scrolled or different?
+            # Assuming HTF has same structure.
+            if len(htf['mango']) < 5: continue
+            htf_vals = parse_mango_vals(htf['mango'])
             
             # --- TREND LOGIC ---
             def get_trend(price, v):

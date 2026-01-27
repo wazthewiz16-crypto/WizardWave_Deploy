@@ -111,18 +111,40 @@ def parse_content(text):
     # Need to be very robust here.
     mango_vals = []
     
+    # Text dump structure based on user image:
+    # Mango Dynamic V5
+    # MangoD1 1.9724
+    # MangoD2 2.0425
+    # BuyOp 1.9218
+    # Entry Zone Upper 2.0750
+    # Entry Zone Lower 1.9624
+    # ...
+    # Mango Equilibrium Tracker
+    
     # Find "Mango Dynamic V5"
     idx = text.find("Mango Dynamic V5")
     if idx != -1:
         sub = text[idx+16:] # Skip title
         lines = [l.strip() for l in sub.split('\n') if l.strip()]
-        for line in lines[:20]: # Check first 20 lines
-             # Heuristic: Value line usually looks like a number
-             if re.match(r'^[+\-0-9,.]+%?$', line):
+        
+        for line in lines:
+             # STOP if we hit the next indicator
+             if "Equilibrium" in line or "Delta" in line or "Vol" in line:
+                 break
+             
+             # Extract Number from line (it might be "Label Value" or just "Value")
+             # Regex to find the LAST number in the line (Value is usually on the right)
+             matches = re.findall(r'[+\-0-9,.]+%?', line)
+             if matches:
+                 # Take the last match as the value
+                 val_str = matches[-1].replace(',', '').replace('%', '')
                  try:
-                    v = float(line.replace(',','').replace('%',''))
-                    mango_vals.append(v)
+                     v = float(val_str)
+                     # Sanity check: Value must be > 0
+                     if v > 0:
+                        mango_vals.append(v)
                  except: pass
+             
              if len(mango_vals) >= 5: break
     
     return {
