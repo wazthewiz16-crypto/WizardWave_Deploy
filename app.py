@@ -462,41 +462,8 @@ pass
 
 # --- Oracle Control Panel (Sidebar) ---
 with st.sidebar.expander("🔮 Oracle Controls", expanded=False):
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Start Oracle V2"):
-            import subprocess
-            import sys
-            import os
-            try:
-                # METHOD 3: The "Nuclear Option" - Generate a .bat file
-                # This bypasses all Python subprocess quoting issues.
-                if os.name == 'nt':
-                    bat_script = f"""@echo off
-                    start "Oracle Scraper" cmd /k "{sys.executable}" scrape_tv.py
-                    start "Oracle Alerter" cmd /k "{sys.executable}" alert_manager.py
-                    """
-                    with open("launch_oracle.bat", "w") as f:
-                        f.write(bat_script)
-                        
-                    # Launch the bat file
-                    subprocess.Popen("launch_oracle.bat", shell=True)
-                else:
-                    # Non-Windows
-                    subprocess.Popen([sys.executable, "scrape_tv.py"])
-                    subprocess.Popen([sys.executable, "alert_manager.py"])
-                
-                st.toast("Oracle V2 Services Started!", icon="🚀")
-            except Exception as e:
-                st.error(f"Failed: {e}")
-            
-    with col2:
-        if st.button("Kill Oracle (Manual)"):
-            st.info("Please close the terminal windows manually.")
-
-    # Old controls removed for clarity or kept as legacy? 
-    # Keeping clean.
     pass
+    # Placeholder while fixing subprocess logic
 
     if st.button("Oracle Pulse (Signals)"):
         st.toast("Consulting Oracle...", icon="🔮")
