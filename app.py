@@ -255,6 +255,42 @@ def run_runic_analysis():
                             "Entry_Time": s.get('Timestamp', datetime.now().isoformat())
                         })
                     a_oracle = pd.DataFrame(fmt_sigs)
+                    
+                    # --- FORCE SAVE ORACLE TO HISTORY NOW ---
+                    # Because wait-and-save cycle in 'Aggregate Active' might miss them if UI refresh is slow.
+                    # We inject them into the 'unique_real' list if they are missing from history.
+                    try:
+                        temp_hist = load_runic_history()
+                        t_keys = set(f"{x.get('Asset')}_{x.get('Entry_Time')}" for x in temp_hist)
+                        
+                        added_any = False
+                        for fs in fmt_sigs:
+                            k = f"{fs['Asset']}_{fs['Entry_Time']}"
+                            if k not in t_keys:
+                                # Prepare item for history
+                                h_item = fs.copy()
+                                h_item['Time'] = fs['Entry_Time']
+                                h_item['TP'] = 0.0 # Dynamic
+                                h_item['SL'] = fs['Stop_Loss']
+                                h_item['Price'] = fs['Entry_Price']
+                                h_item['Status'] = "LOGGED"
+                                # Sanitize
+                                if isinstance(h_item.get('_sort_key'), pd.Timestamp):
+                                    h_item['_sort_key'] = h_item['_sort_key'].isoformat()
+                                
+                                temp_hist.append(h_item)
+                                added_any = True
+                                
+                                # ALSO Add to current display list 'all_history' immediately
+                                # Check against 'seen_real_keys' from block above to avoid double add
+                                k_internal = f"{fs['Asset']}_{fs['Entry_Time']}"
+                                if k_internal not in seen_real_keys:
+                                    all_history.append(h_item)
+                                    seen_real_keys.add(k_internal)
+
+                        if added_any:
+                            save_runic_history(temp_hist)
+                    except: pass
         except Exception as e:
             print(f"Oracle Load Error: {e}")
 

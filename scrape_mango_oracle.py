@@ -14,6 +14,7 @@ OUTPUT_FILE = "mango_oracle_signals.json"
 LOG_FILE = "oracle_scraper_debug.log"
 
 ASSETS = [
+    # Crypto
     {"symbol": "BINANCE:BTCUSDT.P", "name": "BTC"},
     {"symbol": "BINANCE:ETHUSDT.P", "name": "ETH"},
     {"symbol": "BINANCE:SOLUSDT.P", "name": "SOL"},
@@ -21,7 +22,23 @@ ASSETS = [
     {"symbol": "BINANCE:XRPUSDT.P", "name": "XRP"},
     {"symbol": "BINANCE:BNBUSDT.P", "name": "BNB"},
     {"symbol": "BINANCE:LINKUSDT.P", "name": "LINK"},
-    # Add TradFi if needed, but focus on Crypto for dynamic/bid logic first
+    {"symbol": "BINANCE:ARBUSDT.P", "name": "ARB"},
+    {"symbol": "BINANCE:AVAXUSDT.P", "name": "AVAX"},
+    {"symbol": "BINANCE:ADAUSDT.P", "name": "ADA"},
+    
+    # TradFi / Indices (Use OANDA/CapitalCom for reliable data)
+    {"symbol": "OANDA:NAS100USD", "name": "NDX"},
+    {"symbol": "OANDA:SPX500USD", "name": "SPX"},
+    {"symbol": "OANDA:AU200AUD", "name": "AUS200"},
+    {"symbol": "CAPITALCOM:DXY", "name": "DXY"},
+    {"symbol": "OANDA:XAUUSD", "name": "GOLD"},
+    {"symbol": "OANDA:WTICOUSD", "name": "OIL"},
+    {"symbol": "OANDA:XAGUSD", "name": "SILVER"},
+    
+    # Forex
+    {"symbol": "FX:EURUSD", "name": "EURUSD"},
+    {"symbol": "FX:GBPUSD", "name": "GBPUSD"},
+    {"symbol": "FX:AUDUSD", "name": "AUDUSD"},
 ]
 
 # Order matters: Low to High for confirmation
@@ -176,25 +193,29 @@ def process_oracle_logic(scraped_data):
                 ukey = f"{asset_name}_{low_tf.upper()}_{sig_type}"
                 final_ts = est_now.strftime('%Y-%m-%d %H:%M:%S')
                 
+                # Debug Check
+                # logging.info(f"Checking Sticky: {ukey} in {list(existing_state.keys())}")
+                
                 if ukey in existing_state:
                     old_ts_str = existing_state[ukey]
                     try:
                         old_dt = datetime.strptime(old_ts_str, '%Y-%m-%d %H:%M:%S')
                         # If old signal is less than X hours old, keep it.
-                        # 15m -> 2h, 4h -> 12h?
-                        # Let's simplify: If it's in the file (which is capped at 50), keep it.
-                        # Assuming the file is the "Active" list.
-                        # But we must ensure it's not ANCIENT.
                         diff = (est_now - old_dt).total_seconds() / 3600
                         
                         # Timout based on TF?
-                        limit = 4
-                        if "4H" in low_tf.upper(): limit = 12
-                        if "1D" in low_tf.upper(): limit = 24
+                        limit = 6
+                        if "4H" in low_tf.upper(): limit = 24
+                        if "1D" in low_tf.upper(): limit = 48
                         
                         if diff < limit:
                             final_ts = old_ts_str
-                    except: pass
+                            # logging.info(f"  -> KEPT Sticky TS: {final_ts}")
+                        else:
+                            pass # logging.info(f"  -> EXPIRED Sticky TS: {diff:.1f}h > {limit}h")
+                            
+                    except Exception as e: 
+                        logging.error(f"Sticky Date Parse Error: {e}")
 
                 signals.append({
                     "Asset": asset_name,
