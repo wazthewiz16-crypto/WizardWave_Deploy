@@ -509,14 +509,15 @@ if __name__ == "__main__":
     # We allow them to run in separate consoles so user can see logs
     # Using Popen to not block
     try:
-        # 0x00000010 is CREATE_NEW_CONSOLE
-        c_flags = 0x00000010
+        kwargs = {}
+        if os.name == 'nt':
+            kwargs['creationflags'] = 0x00000010
         
         print("Launching Oracle Scraper (scrape_tv.py)...")
-        subprocess.Popen([sys.executable, "scrape_tv.py"], creationflags=c_flags)
+        subprocess.Popen([sys.executable, "scrape_tv.py"], **kwargs)
         
         print("Launching Oracle Alert Manager (alert_manager.py)...")
-        subprocess.Popen([sys.executable, "alert_manager.py"], creationflags=c_flags)
+        subprocess.Popen([sys.executable, "alert_manager.py"], **kwargs)
         
     except Exception as e:
         print(f"Failed to launch background services: {e}")
