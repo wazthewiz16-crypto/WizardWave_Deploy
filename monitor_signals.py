@@ -466,101 +466,14 @@ def run_analysis_cycle():
     except Exception as e:
          print(f"CLS Init Error: {e}")
 
-    # --- MANGO ORACLE INTEGRATION ---
-    print("Checking Oracle Scraper Feed...")
+    # --- MANGO ORACLE INTEGRATION (DISABLED) ---
+    # print("Checking Oracle Scraper Feed... (DISABLED)")
     try:
-        if os.path.exists("mango_oracle_signals.json"):
-             with open("mango_oracle_signals.json", "r") as f:
-                 oracle_sigs = json.load(f)
-             
-             # Load Cooldowns
-             cooldown_file = "oracle_cooldowns.json"
-             cooldowns = {}
-             if os.path.exists(cooldown_file):
-                 try:
-                     with open(cooldown_file, "r") as f: cooldowns = json.load(f)
-                 except: pass
-
-             if oracle_sigs:
-                 updated_cooldowns = False
-                 now_ts = time.time()
-                 
-                 # TF to Seconds map
-                 COOLDOWNS = {
-                     "15M": 3600,       # 1 Hour
-                     "1H": 14400,       # 4 Hours
-                     "4H": 43200,       # 12 Hours
-                     "1D": 86400,       # 24 Hours
-                     "4D": 172800       # 48 Hours
-                 }
-
-                 for s in oracle_sigs:
-                     # --- AGE CHECK (Fix Duplicate/Old Alert Spam) ---
-                     ts_str = s.get('Timestamp')
-                     if ts_str:
-                          try:
-                             # Timestamp is EST (UTC-5) from Scraper
-                             s_dt = datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S')
-                             
-                             # Current EST Time
-                             now_est = datetime.utcnow() - timedelta(hours=5)
-                             
-                             # Calculate Age
-                             age_seconds = (now_est - s_dt).total_seconds()
-                             
-                             # Filter out signals older than 4 hours (Generous buffer for 4H/Daily, tight enough for 15m)
-                             # If it's a "Daily" signal, it might be valid for 24h, but we only want to ALERT when it's NEW.
-                             # If scraper keeps it "Sticky", timestamp remains old.
-                             # So if timestamp is > 4h old, we assume we already alerted or missed the boat.
-                             if age_seconds > 14400: 
-                                 # print(f"Skipping Old Signal: {s['Asset']} {age_seconds}s old")
-                                 continue
-                          except Exception as e: 
-                             print(f"Time Parse Error: {e}")
-                             pass
-
-                     # Cooldown Key
-                     c_key = f"{s['Asset']}_{s['Timeframe']}_{s['Type']}"
-                     last_sent = cooldowns.get(c_key, 0)
-                     
-                     # Use timeframe-specific limits
-                     limit = COOLDOWNS.get(s['Timeframe'].upper(), 3600)
-                     
-                     # Check Eligibility (Time.time() is system agnostic, used for relative cooldown)
-                     if (now_ts - last_sent) < limit:
-                         continue
-                     
-                     # Update Cooldown
-                     cooldowns[c_key] = now_ts
-                     updated_cooldowns = True
-                     
-                     price = s.get('Price', 0.0)
-                     if price is None: price = 0.0
-                     sig = {
-                        "Asset": s['Asset'],
-                        "Timeframe": s['Timeframe'],
-                        "Action": "✅ TAKE",
-                        "Type": s['Type'],
-                        "Signal": f"Dynamic {s['Type'].title()}", # e.g. Dynamic Long
-                        "Entry_Price": price,
-                        "Current_Price": price,
-                        "Entry_Time": s.get('Timestamp', datetime.now().isoformat()),
-                        "Confidence": "Indicator", # String for display
-                        "Confidence_Score": 100.0, # High prio
-                        "Take_Profit": 0.0, # Dynamic exit
-                        "Stop_Loss": s.get('Stop_Loss', 0.0),
-                        "Strategy": "Mango Oracle 🔮"
-                     }
-                     all_signals.append(sig)
-                     print(f"Added NEW Oracle Signal: {s['Asset']} {s['Timeframe']}")
-                 
-                 if updated_cooldowns:
-                     with open(cooldown_file, "w") as f:
-                         json.dump(cooldowns, f)
-             else:
-                 print("Oracle feed empty.")
+         # Disabled logic to stop duplicate alerts
+         pass
     except Exception as e:
         print(f"Oracle Feed Error: {e}")
+
 
     # Process
     if all_signals:
