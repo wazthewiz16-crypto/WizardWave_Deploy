@@ -3,7 +3,7 @@ import re
 import json
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from playwright.async_api import async_playwright
 
 # --- CONFIG ---
@@ -103,10 +103,17 @@ async def scrape_cycle():
                         asset_results[tf] = data
                         # print(f"  {tf}: C={data.get('close')}")
                     
+                    # EST Timestamp Calculation (UTC - 5)
+                    # Simple manual adjustment
+                    now_utc = datetime.utcnow()
+                    est_offset = timedelta(hours=-5)
+                    now_est = now_utc + est_offset
+                    ts_est_str = now_est.strftime('%Y-%m-%d %H:%M:%S EST')
+
                     all_data.append({
                         "asset": name,
                         "raw_data": asset_results,
-                        "scraped_at": datetime.now().isoformat()
+                        "scraped_at": ts_est_str
                     })
                     
                 except Exception as e:
