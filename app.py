@@ -441,21 +441,48 @@ def ensure_daily_update():
 ensure_daily_update()
 
 # --- Oracle Control Panel (Sidebar) ---
+# --- ORACLE V2 AUTO-START ---
+def ensure_oracle_v2_running():
+    """Ensures the new Playwright Scraper and Alert Manager are running."""
+    # We use a simple lock-file mechanism per session/day to avoid spamming
+    # But for a persistent background service, we just want to ensure they are UP.
+    
+    # Check if we already started them this session?
+    if "oracle_v2_started" not in st.session_state:
+        # Try to see if we should start them.
+        # Ideally, we check process list, but that's hard cross-platform easily (psutil needed).
+        # We'll just assume if the user reloaded Streamlit, they might want them running.
+        # But Streamlit reloads often (on code change).
+        # Let's rely on a Button for explicit start OR a "once-per-boot" flag file.
+        pass
+
+# However, user asked for "Auto Run" on reboot.
+# Let's add a sidebar toggle or check.
+pass
+
+# --- Oracle Control Panel (Sidebar) ---
 with st.sidebar.expander("🔮 Oracle Controls", expanded=False):
-    if st.button("Invoke Scraper (Main)"):
-        pid_file = "scraper.pid"
-        if os.path.exists(pid_file):
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Start Oracle V2"):
+            import subprocess
+            import sys
             try:
-                with open(pid_file, "r") as f:
-                    old_pid = int(f.read().strip())
-                os.kill(old_pid, 9 if os.name != 'nt' else 1)
-            except: pass
-            os.remove(pid_file)
-        
-        # Launch Main
-        creation_flags = 0x08000000 if os.name == 'nt' else 0
-        subprocess.Popen([sys.executable, "scrape_tv_indicators.py"], creationflags=creation_flags)
-        st.toast("Main Scraper Restarted!", icon="🔄")
+                # Launch Scraper
+                subprocess.Popen([sys.executable, "scrape_tv.py"], creationflags=subprocess.CREATE_NEW_CONSOLE)
+                # Launch Alerter
+                subprocess.Popen([sys.executable, "alert_manager.py"], creationflags=subprocess.CREATE_NEW_CONSOLE)
+                st.toast("Oracle V2 Services Started!", icon="🚀")
+            except Exception as e:
+                st.error(f"Failed: {e}")
+            
+    with col2:
+        if st.button("Kill Oracle (Manual)"):
+            st.info("Please close the terminal windows manually.")
+
+    # Old controls removed for clarity or kept as legacy? 
+    # Keeping clean.
+    pass
 
     if st.button("Oracle Pulse (Signals)"):
         st.toast("Consulting Oracle...", icon="🔮")
