@@ -141,9 +141,32 @@ def process_oracle_logic(scraped_data):
         try:
             with open(OUTPUT_FILE, "r") as f:
                 old_sigs = json.load(f)
+                
+                # Sort by timestamp to ensure we process orders correctly if needed, 
+                # but we want MIN timestamp for sticky logic.
                 for s in old_sigs:
                     k = f"{s['Asset']}_{s['Timeframe']}_{s['Type']}"
-                    existing_state[k] = s['Timestamp']
+                    ts = s['Timestamp']
+                    
+                    # Store the EARLIEST timestamp seen for this signal type
+                    if k not in existing_state:
+                         existing_state[k] = ts
+                    else:
+                         # Compare and keep older
+                         try:
+                             curr_stored = datetime.strptime(existing_state[k], '%Y-%m-%d %H:%M:%S')
+                             new_ts = datetime.strptime(ts, '%Y-%m-%d %H:%M:%S')
+                             if new_ts < curr_stored:
+                                 existing_state[k] = ts
+                         except: pass
+
+                # Clean duplicates from file itself (Self-Healing)
+                # If we have multiple entries for same Key but different timestamps, 
+                # we technically only want the "Active" one or the original one?
+                # For Oracle file, we only want the LATEST status of that signal, but with ORIGINAL timestamp.
+                # Actually, the file is a log of "Active Signals".
+                # Let's dedupe in-memory and rewrite if needed? 
+                # Doing it at end of cycle is safer.
         except: pass
     
     for asset_name, tfs in scraped_data.items():
@@ -269,20 +292,52 @@ async def main():
                         except: pass
                     
                     # Deduplicate: Unique Key = Asset + Timeframe + Timestamp
-                    # Actually, if the timestamp is the same, it's the same signal.
-                    # Create a set of keys
-                    existing_keys = set(f"{s['Asset']}_{s['Timeframe']}_{s['Timestamp']}" for s in existing_signals)
+                    # Actually, we want to remove "Same Signal, Different Key (Timestamp)" duplicates.
+                    # We want to keep ONLY the one with the "Sticky" timestamp if possible.
                     
-                    merged_signals = existing_signals.copy()
-                    for sig in new_signals:
-                        key = f"{sig['Asset']}_{sig['Timeframe']}_{sig['Timestamp']}"
-                        if key not in existing_keys:
-                            merged_signals.append(sig)
-                            existing_keys.add(key) 
-                            
-                    # Keep last 50 signals to avoid infinite growth?
+                    # 1. Build map of "Asset_TF_Type" -> [Signal Objects]
+                    sig_map = {}
+                    all_candidates = existing_signals + new_signals
+                    
+                    for s in all_candidates:
+                        k = f"{s['Asset']}_{s['Timeframe']}_{s['Type']}"
+                        if k not in sig_map: sig_map[k] = []
+                        sig_map[k].append(s)
+                    
+                    # 2. Select BEST for each key
+                    final_list = []
+                    for k, candidates in sig_map.items():
+                        # Sort by Timestamp (Earliest first)
+                        # We want the ORIGINAL signal time.
+                        try:
+                            candidates.sort(key=lambda x: datetime.strptime(x['Timestamp'], '%Y-%m-%d %H:%M:%S'))
+                        except: pass
+                        
+                        # Take the first one (Oldest)
+                        # But wait, if the NEW signal has updated Price/SL, we might want that data, but OLD timestamp.
+                        # The "Signals" generated above ALREADY have the sticky timestamp applied.
+                        # So if we have Old(14:00) and New(14:00), they match.
+                        # If we have Old(14:00) and New(14:20), it means sticky failed.
+                        # We should prefer 14:00.
+                        
+                        best_sig = candidates[0]
+                        # Update price to latest if available in candidates?
+                        # Actually, keeping the original entry price is better for "Entry" record.
+                        # But "Current Price" is not stored here.
+                        # Let's just keep the OLDEST entry to stabilize the ID.
+                        
+                        final_list.append(best_sig)
+                        
+                    # 3. Serialize
+                    merged_signals = final_list
+                    
+                    # Keep last 50
                     if len(merged_signals) > 50:
-                        merged_signals = merged_signals[-50:]
+                        # Sort by timestamp to keep latest 50 distinct signals
+                         try:
+                            merged_signals.sort(key=lambda x: datetime.strptime(x['Timestamp'], '%Y-%m-%d %H:%M:%S'))
+                         except: pass
+                         merged_signals = merged_signals[-50:]
 
                     # Atomic Write
                     with open(OUTPUT_FILE, "w") as f:
