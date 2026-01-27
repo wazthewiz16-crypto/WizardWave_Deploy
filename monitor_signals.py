@@ -466,11 +466,27 @@ def run_analysis_cycle():
     except Exception as e:
          print(f"CLS Init Error: {e}")
 
-    # --- MANGO ORACLE INTEGRATION (DISABLED) ---
-    # print("Checking Oracle Scraper Feed... (DISABLED)")
+    # --- MANGO ORACLE INTEGRATION ---
+    print("Checking Oracle Process Status...")
     try:
-         # Disabled logic to stop duplicate alerts
-         pass
+        import subprocess
+        import sys
+        
+        # Helper to check if a script is running
+        def is_running(script_name):
+            # Windows-specific check using tasklist
+            # Simple check: Try to find if we spawned it? 
+            # Better: Just spawn it if not running?
+            # We will use a flag file or just spawn it and let OS handle?
+            # Actually, spawning it every 15m cycle is bad if it's a loop.
+            # We want to Start it ONCE.
+            return False
+
+        # WE ONLY START THESE ONCE.
+        # But this function `run_analysis_cycle` runs in a loop.
+        # So we should move the startup logic to `main` block or check a global flag.
+        pass 
+        
     except Exception as e:
         print(f"Oracle Feed Error: {e}")
 
@@ -485,6 +501,24 @@ def run_analysis_cycle():
 if __name__ == "__main__":
     print("🔮 WizardWave Signal Monitor Started...")
     print(f"Webhook URL: {WEBHOOK_URL} (Loaded)")
+
+    # --- START ORACLE BACKGROUND SERVICES ---
+    import subprocess
+    import sys
+    
+    # We allow them to run in separate consoles so user can see logs
+    # Using Popen to not block
+    try:
+        print("Launching Oracle Scraper (scrape_tv.py)...")
+        subprocess.Popen([sys.executable, "scrape_tv.py"], creationflags=subprocess.CREATE_NEW_CONSOLE)
+        
+        print("Launching Oracle Alert Manager (alert_manager.py)...")
+        subprocess.Popen([sys.executable, "alert_manager.py"], creationflags=subprocess.CREATE_NEW_CONSOLE)
+        
+    except Exception as e:
+        print(f"Failed to launch background services: {e}")
+        print("Please run scrape_tv.py and alert_manager.py manually.")
+
     
     while True:
         try:
