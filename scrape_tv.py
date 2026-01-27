@@ -12,9 +12,31 @@ DATA_FILE = "tv_raw_data.json"
 
 # Full List from app.py
 ASSETS = [
-    # Crypto (Testing Subset)
+    # Crypto
     {"symbol": "BINANCE:BTCUSDT.P", "name": "BTC"},
     {"symbol": "BINANCE:ETHUSDT.P", "name": "ETH"},
+    {"symbol": "BINANCE:SOLUSDT.P", "name": "SOL"},
+    {"symbol": "BINANCE:DOGEUSDT.P", "name": "DOGE"},
+    {"symbol": "BINANCE:XRPUSDT.P", "name": "XRP"},
+    {"symbol": "BINANCE:BNBUSDT.P", "name": "BNB"},
+    {"symbol": "BINANCE:LINKUSDT.P", "name": "LINK"},
+    {"symbol": "BINANCE:ARBUSDT.P", "name": "ARB"},
+    {"symbol": "BINANCE:AVAXUSDT.P", "name": "AVAX"},
+    {"symbol": "BINANCE:ADAUSDT.P", "name": "ADA"},
+    
+    # TradFi / Indices
+    {"symbol": "OANDA:NAS100USD", "name": "NDX"},
+    {"symbol": "OANDA:SPX500USD", "name": "SPX"},
+    {"symbol": "OANDA:AU200AUD", "name": "AUS200"},
+    {"symbol": "CAPITALCOM:DXY", "name": "DXY"},
+    {"symbol": "OANDA:XAUUSD", "name": "GOLD"},
+    {"symbol": "OANDA:WTICOUSD", "name": "OIL"},
+    {"symbol": "OANDA:XAGUSD", "name": "SILVER"},
+    
+    # Forex
+    {"symbol": "FX:EURUSD", "name": "EURUSD"},
+    {"symbol": "FX:GBPUSD", "name": "GBPUSD"},
+    {"symbol": "FX:AUDUSD", "name": "AUDUSD"},
 ]
 
 TIMEFRAMES = ["15m", "1h", "4h", "1d", "4d"]
