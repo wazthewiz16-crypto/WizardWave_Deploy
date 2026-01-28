@@ -2640,7 +2640,7 @@ def show_runic_alerts():
                             btn_style = "border: 1px solid rgba(255,255,255,0.1); background-color: rgba(0,0,0,0.3); color: white; padding: 0.25rem 0.5rem; font-size: 0.8rem; cursor: pointer; width: 100%; border-radius: 4px; text-align: center;"
                             
                             with ac1:
-                                if st.button("👁️ View", key=f"btn_v_{unique_id}", use_container_width=True, type="secondary"):
+                                if st.button("👁️ View", key=f"btn_v_{unique_id}_{index}", use_container_width=True, type="secondary"):
                                     st.session_state['active_signal'] = row.to_dict()
                                     st.session_state['active_view_mode'] = 'details' 
                                     tv_sym = get_tv_symbol({'symbol': row.get('Symbol', row.get('Asset'))})
@@ -2648,7 +2648,7 @@ def show_runic_alerts():
                                     st.session_state['active_tab'] = 'PORTAL' 
                                     st.rerun()
                             with ac2:
-                                if st.button("🧮 Calc", key=f"btn_c_{unique_id}", use_container_width=True, type="secondary"):
+                                if st.button("🧮 Calc", key=f"btn_c_{unique_id}_{index}", use_container_width=True, type="secondary"):
                                     st.session_state['active_signal'] = row.to_dict()
                                     st.session_state['active_view_mode'] = 'calculator'
                                     st.session_state['active_tab'] = 'RISK'
