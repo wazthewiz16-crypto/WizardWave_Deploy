@@ -191,15 +191,15 @@ def run_runic_analysis():
              k_internal = f"{x.get('Asset')}_{t}" # Unique ID in file
              k_match = f"{x.get('Asset')}_{t_norm}" # Match against Backtest
              
-                if k_internal not in seen_real_keys:
-                    seen_real_keys.add(k_internal)
-                    
-                    # CRITICAL: Only add if NOT in Simulated History
-                    if k_match not in sim_keys:
-                        # Allow Oracle Signals (Removed filter)
-                        # if x.get('Model') == 'Oracle': continue
-                        
-                        unique_real.append(x)
+             if k_internal not in seen_real_keys:
+                 seen_real_keys.add(k_internal)
+                 
+                 # CRITICAL: Only add if NOT in Simulated History
+                 if k_match not in sim_keys:
+                     # Allow Oracle Signals (Removed filter)
+                     # if x.get('Model') == 'Oracle': continue
+                     
+                     unique_real.append(x)
 
         # 2. Add to Display List with UI Mappings (Solve "None" Issues)
         for item in unique_real:
