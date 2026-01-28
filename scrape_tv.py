@@ -105,7 +105,8 @@ async def scrape_cycle():
                     
                     # EST Timestamp Calculation (UTC - 5)
                     # Simple manual adjustment
-                    now_utc = datetime.utcnow()
+                    from datetime import timezone
+                    now_utc = datetime.now(timezone.utc)
                     est_offset = timedelta(hours=-5)
                     now_est = now_utc + est_offset
                     ts_est_str = now_est.strftime('%Y-%m-%d %H:%M:%S EST')

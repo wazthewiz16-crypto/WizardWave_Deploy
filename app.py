@@ -470,12 +470,12 @@ with st.sidebar.expander("🔮 Oracle Controls", expanded=False):
             import os
             try:
                 # Launch in Background, redirecting output to files
-                # This allows the process to run without a window
+                # Use -u for unbuffered output so logs appear immediately
                 with open("oracle_scraper.log", "a") as f_s:
-                    subprocess.Popen([sys.executable, "scrape_tv.py"], stdout=f_s, stderr=subprocess.STDOUT)
+                    subprocess.Popen([sys.executable, "-u", "scrape_tv.py"], stdout=f_s, stderr=subprocess.STDOUT)
                 
                 with open("oracle_alerter.log", "a") as f_a:
-                    subprocess.Popen([sys.executable, "alert_manager.py"], stdout=f_a, stderr=subprocess.STDOUT)
+                    subprocess.Popen([sys.executable, "-u", "alert_manager.py"], stdout=f_a, stderr=subprocess.STDOUT)
                 
                 st.toast("Oracle Services Started in Background!", icon="☁️")
             except Exception as e:
