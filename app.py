@@ -447,18 +447,73 @@ def ensure_oracle_v2_running():
     # We use a simple lock-file mechanism per session/day to avoid spamming
     # But for a persistent background service, we just want to ensure they are UP.
     
-    # Check if we already started them this session?
-    if "oracle_v2_started" not in st.session_state:
-        # Try to see if we should start them.
-        # Ideally, we check process list, but that's hard cross-platform easily (psutil needed).
-        # We'll just assume if the user reloaded Streamlit, they might want them running.
-        # But Streamlit reloads often (on code change).
-        # Let's rely on a Button for explicit start OR a "once-per-boot" flag file.
-        pass
+# --- ORACLE LIFECYCLE MANAGEMENT ---
+def ensure_oracle_life_cycle():
+    """
+    Ensures that the Oracle Scraper and Alerter are running.
+    Uses a PID file to prevent duplicate processes across Streamlit re-runs.
+    """
+    PID_FILE = "oracle_state.json"
+    now_str = datetime.now().strftime("%Y-%m-%d")
+    
+    start_needed = False
+    
+    # 1. Check if we need to start
+    if not os.path.exists(PID_FILE):
+        start_needed = True
+    else:
+        try:
+            with open(PID_FILE, 'r') as f:
+                state = json.load(f)
+            
+            # Check Date rollover
+            if state.get('date') != now_str:
+                start_needed = True # New day, restart services often good practice
+            else:
+                # Check if processes are actually alive
+                s_pid = state.get('scraper_pid')
+                a_pid = state.get('alerter_pid')
+                
+                try:
+                    os.kill(s_pid, 0) # Signal 0 checks existence
+                    os.kill(a_pid, 0)
+                except OSError:
+                    start_needed = True # One or both died
+        except Exception:
+            start_needed = True # Corrupt file
 
-# However, user asked for "Auto Run" on reboot.
-# Let's add a sidebar toggle or check.
-pass
+    # 2. Start if needed
+    if start_needed:
+        print(f"[{datetime.now()}] 🔮 Oracle Services not detected. Auto-starting...")
+        import subprocess
+        import sys
+        
+        try:
+             # Scraper
+            with open("oracle_scraper.log", "a") as f_s:
+                p_s = subprocess.Popen([sys.executable, "-u", "scrape_tv.py"], stdout=f_s, stderr=subprocess.STDOUT)
+            
+            # Alerter
+            with open("oracle_alerter.log", "a") as f_a:
+                p_a = subprocess.Popen([sys.executable, "-u", "alert_manager.py"], stdout=f_a, stderr=subprocess.STDOUT)
+            
+            # Save State
+            new_state = {
+                "date": now_str,
+                "scraper_pid": p_s.pid,
+                "alerter_pid": p_a.pid
+            }
+            with open(PID_FILE, 'w') as f:
+                json.dump(new_state, f)
+                
+            # Optional: Toast (might not show on initial load, but prints to console)
+            print(f"[{datetime.now()}] 🔮 Oracle Services Launched. PIDs: {p_s.pid}, {p_a.pid}")
+            
+        except Exception as e:
+            print(f"Failed to auto-start Oracle: {e}")
+
+# Run Lifecycle Check on App Load
+ensure_oracle_life_cycle()
 
 # --- Oracle Control Panel (Sidebar) ---
 with st.sidebar.expander("🔮 Oracle Controls", expanded=False):
