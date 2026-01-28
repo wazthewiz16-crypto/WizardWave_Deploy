@@ -233,7 +233,9 @@ def run_runic_analysis():
                     o_data = json.load(f)
                 if o_data:
                     a_oracle = pd.DataFrame(o_data)
-                    # Normalize columns if needed
+                    # Normalize columns
+                    a_oracle['Action'] = "✅ TAKE 100%" # Hardcode high conviction
+                    a_oracle['Status'] = "OPEN"
         except Exception as e: 
             print(f"Error loading oracle signals: {e}")
             pass
@@ -2470,7 +2472,7 @@ def show_runic_alerts():
             
             df_display = combined_active.copy()
             if show_take_only and 'Action' in df_display.columns:
-                df_display = df_display[df_display['Action'].str.contains("TAKE")]
+                df_display = df_display[df_display['Action'].str.contains("TAKE", case=False, na=False)]
 
             # --- TRADING PLAN FILTERING ---
             if st.session_state.get('plan_active', False):
@@ -2478,6 +2480,7 @@ def show_runic_alerts():
                 plan_conf = st.session_state.get('plan_min_conf', 55)
                 # Parse conf if string
                 def _parse_conf_plan(x):
+                    if isinstance(x, str) and "Oracle" in x: return 100.0
                     try: return float(str(x).replace('%',''))
                     except: return 0.0
                 if 'Confidence' in df_display.columns:
