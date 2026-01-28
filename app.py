@@ -236,6 +236,11 @@ def run_runic_analysis():
                     # Normalize columns
                     a_oracle['Action'] = "✅ TAKE 100%" # Hardcode high conviction
                     a_oracle['Status'] = "OPEN"
+                    # Map Signal -> Type
+                    if 'Signal' in a_oracle.columns:
+                        a_oracle['Type'] = a_oracle['Signal']
+                    else:
+                        a_oracle['Type'] = "LONG" # Fallback
         except Exception as e: 
             print(f"Error loading oracle signals: {e}")
             pass
