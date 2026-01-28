@@ -221,6 +221,11 @@ def run_runic_analysis():
         history_df = pd.DataFrame()
         if all_history:
              history_df = pd.DataFrame(all_history)
+             # CLEANUP: Remove Bad Data
+             if 'Time' in history_df.columns:
+                 history_df = history_df[~history_df['Time'].astype(str).isin(["Unknown", "None"])]
+             if 'Price' in history_df.columns:
+                 history_df = history_df[pd.to_numeric(history_df['Price'], errors='coerce') > 0]
         
         # --- Mango Oracle Integration (ENABLED) ---
         a_oracle = pd.DataFrame()
@@ -248,6 +253,10 @@ def run_runic_analysis():
                         if c in a_oracle.columns:
                             a_oracle[c] = pd.to_numeric(a_oracle[c], errors='coerce').round(4)
                     
+                    # Deduplicate Oracle DF itself (keep last)
+                    if 'Entry_Time' in a_oracle.columns and 'Asset' in a_oracle.columns:
+                         a_oracle.drop_duplicates(subset=['Asset', 'Entry_Time'], keep='last', inplace=True)
+
                     # Calculate PnL if possible
                     if 'active_tickers' in st.session_state and st.session_state.active_tickers:
                         # Create map: "BTC" -> 95000
