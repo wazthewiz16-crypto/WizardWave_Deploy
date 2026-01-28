@@ -188,5 +188,5 @@ if __name__ == "__main__":
                 process_logic()
             except Exception as e:
                 print(f"Alert Loop Crash: {e}")
-            print("Sleeping 60s...")
-            time.sleep(60)
+            print("Sleeping 120s...")
+            time.sleep(120)

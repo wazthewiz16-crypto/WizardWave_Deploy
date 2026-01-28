@@ -80,7 +80,7 @@ async def scrape_cycle():
                     
                     for tf in TIMEFRAMES:
                         # Switch TF
-                        await page.keyboard.press(f"{tf}") # Type keys
+                        await page.keyboard.type(tf)
                         await page.keyboard.press("Enter")
                         await page.wait_for_timeout(3000) # Wait for load
                         
@@ -202,5 +202,5 @@ if __name__ == "__main__":
             except Exception as e:
                 print(f"Main Loop Crash: {e}")
                 
-            print("Sleeping 15m...")
-            time.sleep(900) # 15 min loop
+            print("Sleeping 20m...")
+            time.sleep(1200) # 20 min loop
