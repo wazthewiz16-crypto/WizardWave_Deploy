@@ -462,8 +462,56 @@ pass
 
 # --- Oracle Control Panel (Sidebar) ---
 with st.sidebar.expander("🔮 Oracle Controls", expanded=False):
-    pass
-    # Placeholder while fixing subprocess logic
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Start Oracle (Background)"):
+            import subprocess
+            import sys
+            import os
+            try:
+                # Launch in Background, redirecting output to files
+                # This allows the process to run without a window
+                with open("oracle_scraper.log", "a") as f_s:
+                    subprocess.Popen([sys.executable, "scrape_tv.py"], stdout=f_s, stderr=subprocess.STDOUT)
+                
+                with open("oracle_alerter.log", "a") as f_a:
+                    subprocess.Popen([sys.executable, "alert_manager.py"], stdout=f_a, stderr=subprocess.STDOUT)
+                
+                st.toast("Oracle Services Started in Background!", icon="☁️")
+            except Exception as e:
+                st.error(f"Failed: {e}")
+            
+    with col2:
+        if st.button("Kill Oracle Processes"):
+             # On Windows, this is tricky to do safely by name only without killing other python scripts
+             # But we can try taskkill filtered?
+             # For now, just warn.
+             st.info("To stop, run 'taskkill /f /im python.exe' in terminal (Warning: Stops App too)")
+
+    # --- LOG VIEWER ---
+    st.markdown("---")
+    st.caption("Oracle Logs (Live Feed)")
+    
+    log_tab1, log_tab2 = st.tabs(["Scraper Logs", "Alerter Logs"])
+    
+    with log_tab1:
+        if os.path.exists("oracle_scraper.log"):
+            with open("oracle_scraper.log", "r") as f:
+                lines = f.readlines()
+                st.code("".join(lines[-20:]), language="text") # Show last 20 lines
+        else:
+            st.info("No scraper log found.")
+            
+    with log_tab2:
+        if os.path.exists("oracle_alerter.log"):
+            with open("oracle_alerter.log", "r") as f:
+                lines = f.readlines()
+                st.code("".join(lines[-20:]), language="text")
+        else:
+            st.info("No alerter log found.")
+            
+    if st.button("Refresh Logs"):
+        st.rerun()
 
     if st.button("Oracle Pulse (Signals)"):
         st.toast("Consulting Oracle...", icon="🔮")
