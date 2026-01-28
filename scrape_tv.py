@@ -71,37 +71,56 @@ async def scrape_cycle():
                     # Better: Press it once at the start of the entire cycle? 
                     # Actually, the Data Window state persists in the *tab* or *local storage*.
                     # Let's try pressing it ONLY for the first asset.
-                    if asset == ASSETS[0]:
-                        print("  > Toggling Data Window (First Run)...")
-                        await page.keyboard.press("Alt+d")
-                        await page.wait_for_timeout(1000)
-
                     asset_results = {}
                     
                     for tf in TIMEFRAMES:
                         # Switch TF
                         await page.keyboard.type(tf)
                         await page.keyboard.press("Enter")
-                        await page.wait_for_timeout(3000) # Wait for load
+                        await page.wait_for_timeout(4000) # Increased wait for load
                         
                         # ENSURE LATEST CANDLE
-                        # 1. Reset Chart View (Alt + R) to snap to latest
-                        await page.keyboard.press("Alt+r")
+                        await page.keyboard.press("Alt+r") # Reset View
                         await page.wait_for_timeout(1000)
                         
-                        # 2. Hover the "Right Margin" (Future/Empty space)
-                        # Hovering the empty space to the right of price shows the LATEST candle values.
-                        # Coordinate 1400 was likely too far left (historical). 1850 is safer on 1920 width.
-                        await page.mouse.move(1850, 500) 
-                        await page.wait_for_timeout(500)
+                        # Hover Chart (Center-Right to ensure Latest Candle)
+                        # 1600 is safer than 1850 (which hits Price Scale)
+                        await page.mouse.move(1600, 500) 
+                        await page.wait_for_timeout(1000)
                         
-                        # Scrape Text
-                        content = await page.inner_text("body")
+                        # --- ROBUST DATA EXTRACTION ---
+                        # Retry loop to find "Mango Dynamic V5"
+                        attempts = 0
+                        max_attempts = 3
+                        content = ""
+                        
+                        while attempts < max_attempts:
+                            content = await page.inner_text("body")
+                            
+                            if "Mango Dynamic V5" in content:
+                                break # Found it!
+                            
+                            # If missing, try toggling Data Window
+                            print(f"    ! Indictors missing on {tf}. Toggling Data Window (Attempt {attempts+1})...")
+                            await page.keyboard.press("Alt+d")
+                            await page.wait_for_timeout(1500)
+                            
+                            # Move mouse again to wake up UI
+                            await page.mouse.move(1600, 500)
+                            attempts += 1
+                        
+                        # Last ditch: Scroll just in case
+                        if "Mango Dynamic V5" not in content:
+                             print(f"    ! Still missing. Attempting Scroll...")
+                             # Attempt to focus data window (hard to target blindly, but we try PageDown)
+                             # Or just generic scroll
+                             await page.mouse.wheel(0, 500)
+                             await page.wait_for_timeout(1000)
+                             content = await page.inner_text("body")
                         
                         # Parse
                         data = parse_content(content)
                         asset_results[tf] = data
-                        # print(f"  {tf}: C={data.get('close')}")
                     
                     # EST Timestamp Calculation (UTC - 5)
                     # Simple manual adjustment
