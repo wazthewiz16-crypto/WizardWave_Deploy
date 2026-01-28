@@ -191,22 +191,20 @@ def run_runic_analysis():
              k_internal = f"{x.get('Asset')}_{t}" # Unique ID in file
              k_match = f"{x.get('Asset')}_{t_norm}" # Match against Backtest
              
-             if k_internal not in seen_real_keys:
-                 seen_real_keys.add(k_internal)
-                 
-                 # CRITICAL: Only add if NOT in Simulated History
-                 # This avoids showing the same trade twice (once from Backtest, once from Log)
-                 # But preserves "Vanished" trades (not in Backtest anymore)
-                 if k_match not in sim_keys:
-                     # Filter OUT Oracle Signals if user wants them gone
-                     if x.get('Model') == 'Oracle': continue
-                     
-                     unique_real.append(x)
+                if k_internal not in seen_real_keys:
+                    seen_real_keys.add(k_internal)
+                    
+                    # CRITICAL: Only add if NOT in Simulated History
+                    if k_match not in sim_keys:
+                        # Allow Oracle Signals (Removed filter)
+                        # if x.get('Model') == 'Oracle': continue
+                        
+                        unique_real.append(x)
 
         # 2. Add to Display List with UI Mappings (Solve "None" Issues)
         for item in unique_real:
             # Map keys for UI Table (which expects 'Time', 'TP', 'SL')
-            if 'Time' not in item or item['Time'] is None:
+            if 'Time' not in item or item['Time'] is None or str(item['Time']) == "None":
                  item['Time'] = item.get('Entry_Time') or item.get('Timestamp') or "Unknown"
             
             if 'Exit Time' not in item: item['Exit Time'] = "-"
@@ -219,7 +217,6 @@ def run_runic_analysis():
             # Label
             item['Status'] = "LOGGED" 
             all_history.append(item)
-
         
         history_df = pd.DataFrame()
         if all_history:
@@ -244,6 +241,12 @@ def run_runic_analysis():
                     
                     a_oracle['Strategy'] = "Oracle"
                     if 'TP' in a_oracle.columns: a_oracle['Take_Profit'] = a_oracle['TP']
+                    
+                    # Rounding
+                    cols_to_round = ['Take_Profit', 'Stop_Loss', 'Entry_Price', 'TP', 'SL']
+                    for c in cols_to_round:
+                        if c in a_oracle.columns:
+                            a_oracle[c] = pd.to_numeric(a_oracle[c], errors='coerce').round(4)
                     
                     # Calculate PnL if possible
                     if 'active_tickers' in st.session_state and st.session_state.active_tickers:
