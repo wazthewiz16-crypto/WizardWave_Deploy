@@ -2541,7 +2541,7 @@ def show_runic_alerts():
                     with st.container():
                         # --- NEW "DATAPAD" RUNIC CARD DESIGN (Full Width) ---
                         with st.container():
-                            is_long = "LONG" in row.get('Type', '')
+                            is_long = "LONG" in str(row.get('Type', ''))
                             direction_color = "#00ff88" if is_long else "#ff3344"
                             asset_name = row['Asset']
                             icon_char = "⚡"
