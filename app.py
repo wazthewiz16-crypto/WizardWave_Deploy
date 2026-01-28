@@ -206,15 +206,15 @@ def run_runic_analysis():
         # 2. Add to Display List with UI Mappings (Solve "None" Issues)
         for item in unique_real:
             # Map keys for UI Table (which expects 'Time', 'TP', 'SL')
-            if 'Time' not in item:
-                 item['Time'] = item.get('Entry_Time') or item.get('Timestamp')
+            if 'Time' not in item or item['Time'] is None:
+                 item['Time'] = item.get('Entry_Time') or item.get('Timestamp') or "Unknown"
             
             if 'Exit Time' not in item: item['Exit Time'] = "-"
             
             # Map Prices
-            if 'TP' not in item: item['TP'] = item.get('Raw_TP', 0.0)
-            if 'SL' not in item: item['SL'] = item.get('Stop_Loss', item.get('Raw_SL', 0.0))
-            if 'Price' not in item: item['Price'] = item.get('Entry_Price', 0.0)
+            if 'TP' not in item or item['TP'] is None: item['TP'] = item.get('Raw_TP', 0.0)
+            if 'SL' not in item or item['SL'] is None: item['SL'] = item.get('Stop_Loss', item.get('Raw_SL', 0.0))
+            if 'Price' not in item or item['Price'] is None: item['Price'] = item.get('Entry_Price', 0.0)
             
             # Label
             item['Status'] = "LOGGED" 
@@ -241,6 +241,36 @@ def run_runic_analysis():
                         a_oracle['Type'] = a_oracle['Signal']
                     else:
                         a_oracle['Type'] = "LONG" # Fallback
+                    
+                    a_oracle['Strategy'] = "Oracle"
+                    if 'TP' in a_oracle.columns: a_oracle['Take_Profit'] = a_oracle['TP']
+                    
+                    # Calculate PnL if possible
+                    if 'active_tickers' in st.session_state and st.session_state.active_tickers:
+                        # Create map: "BTC" -> 95000
+                        price_map = {}
+                        for t in st.session_state.active_tickers:
+                            sym = t['symbol'] # e.g. BTC/USDT:USDT or BTC/USDT
+                            base = sym.split('/')[0] if '/' in sym else sym
+                            price_map[base] = t['last']
+                            price_map[sym] = t['last'] # Safety
+                        
+                        def calc_oracle_pnl(row):
+                            asset = row.get('Asset')
+                            entry = float(row.get('Entry_Price', 0))
+                            if entry == 0: return 0.0
+                            
+                            curr = price_map.get(asset)
+                            if not curr: return 0.0
+                            
+                            direction = 1 if "LONG" in str(row.get('Type','')) else -1
+                            pnl = ((curr - entry) / entry) * 100 * direction
+                            return round(pnl, 2)
+                        
+                        a_oracle['PnL (%)'] = a_oracle.apply(calc_oracle_pnl, axis=1)
+                    else:
+                        a_oracle['PnL (%)'] = 0.0
+
         except Exception as e: 
             print(f"Error loading oracle signals: {e}")
             pass
