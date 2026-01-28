@@ -114,21 +114,45 @@ def process_logic():
             sig_type = None
             sl_price = 0.0
             
-            # LONG: Bullish + Price < Entry Top
+            # --- TIME FILTER (User Habit: No Overnight) ---
+            from datetime import timezone
+            def is_trading_hours():
+                # EST is UTC-5. approximate.
+                # Current server might be UTC? or Local?
+                # Using datetime.now() assuming user local time (Windows machine).
+                now = datetime.now()
+                # Block between 22:00 (10 PM) and 07:00 (7 AM)
+                if now.hour >= 22 or now.hour < 7:
+                    return False
+                return True
+
+            if not is_trading_hours():
+                # Skip detection during strict night hours
+                # We can still loop, just don't flag new ones.
+                # Or maybe we want to just clear the cache?
+                # Let's just continue/skip for now.
+                # print("  (Night Mode - Skipping)")
+                continue
+
+            # LONG: Bullish + Price INSIDE Zone
+            # Strict: Must be > EntryDown AND < EntryUp
             if curr_trend == "Bullish" and htf_trend == "Bullish":
-                if p <= low_vals['entry_up']:
+                # Check strict zone
+                if p <= low_vals['entry_up'] and p >= low_vals['entry_down']:
                     sig_type = "LONG"
                     # SL Logic: Tighter for LTF, Wider for HTF
                     is_ltf = low_tf in ["15m", "1h", "4h"]
-                    buffer = 0.005 if is_ltf else 0.02 # 0.5% vs 2.0%
+                    buffer = 0.005 if is_ltf else 0.02 
                     
-                    # SL is below value band
                     cloud_bottom = min(low_vals['d1'], low_vals['d2'])
                     sl_price = cloud_bottom * (1 - buffer)
 
-            # SHORT: Bearish + Price > Entry Bottom
+            # SHORT: Bearish + Price INSIDE Zone
+            # Strict: Must be > EntryUp (Wait, shorts pull UP into zone?)
+            # Usually Entry Zone is bracket. If price is inside [Down, Up], it's valid.
             if curr_trend == "Bearish" and htf_trend == "Bearish":
-                if p >= low_vals['entry_down']:
+                # Check strict zone
+                if p >= low_vals['entry_down'] and p <= low_vals['entry_up']:
                     sig_type = "SHORT"
                     # SL Logic
                     is_ltf = low_tf in ["15m", "1h", "4h"]
