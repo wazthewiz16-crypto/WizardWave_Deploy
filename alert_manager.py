@@ -116,28 +116,20 @@ def process_logic():
             
             # --- TIME FILTER (User Habit: No Overnight) ---
             from datetime import timezone
-            def is_trading_hours():
-                # EST is UTC-5. approximate.
-                # Current server might be UTC? or Local?
-                # Using datetime.now() assuming user local time (Windows machine).
-                now = datetime.now()
-                # Block between 22:00 (10 PM) and 07:00 (7 AM)
-                if now.hour >= 22 or now.hour < 7:
-                    return False
-                return True
-
-            if not is_trading_hours():
-                # Skip detection during strict night hours
-                # We can still loop, just don't flag new ones.
-                # Or maybe we want to just clear the cache?
-                # Let's just continue/skip for now.
+            def get_est_time():
+                # Force UTC-5 regardless of system headers
+                return datetime.now(timezone.utc) - timedelta(hours=5)
+            
+            now_est = get_est_time()
+            
+            # Active Hours: 05:00 (5 AM) to 23:00 (11 PM)
+            if now_est.hour < 5 or now_est.hour >= 23:
                 # print("  (Night Mode - Skipping)")
                 continue
 
             # LONG: Bullish + Price INSIDE Zone
             # Strict: Must be > EntryDown AND < EntryUp
             if curr_trend == "Bullish" and htf_trend == "Bullish":
-                # Check strict zone
                 if p <= low_vals['entry_up'] and p >= low_vals['entry_down']:
                     sig_type = "LONG"
                     # SL Logic: Tighter for LTF, Wider for HTF
@@ -148,10 +140,8 @@ def process_logic():
                     sl_price = cloud_bottom * (1 - buffer)
 
             # SHORT: Bearish + Price INSIDE Zone
-            # Strict: Must be > EntryUp (Wait, shorts pull UP into zone?)
-            # Usually Entry Zone is bracket. If price is inside [Down, Up], it's valid.
+            # Strict: Must be > EntryUp (Wait, usually Entry Zone is bracket. If price is inside [Down, Up], it's valid.)
             if curr_trend == "Bearish" and htf_trend == "Bearish":
-                # Check strict zone
                 if p >= low_vals['entry_down'] and p <= low_vals['entry_up']:
                     sig_type = "SHORT"
                     # SL Logic
@@ -162,6 +152,17 @@ def process_logic():
                     sl_price = cloud_top * (1 + buffer)
             
             if sig_type:
+                # --- CALCULATE TP (Risk:Reward) ---
+                # LTF (15m, 1h, 4h) -> 2R
+                # HTF (12h, 1d, 4d) -> 3R
+                risk = abs(p - sl_price)
+                rr_mult = 2 if low_tf in ["15m", "1h", "4h"] else 3
+                
+                if sig_type == "LONG":
+                    tp_price = p + (risk * rr_mult)
+                else:
+                    tp_price = p - (risk * rr_mult)
+
                 # --- DEDUPLICATION ---
                 uid = f"{name}_{low_tf}_{sig_type}"
                 last_ts_str = history.get(uid)
@@ -183,13 +184,13 @@ def process_logic():
                     print(f"  >>> SIGNAL FOUND: {name} {low_tf} {sig_type} @ {p}")
                     
                     # Timestamp
-                    entry_time = datetime.now().strftime('%Y-%m-%d %H:%M EST')
+                    entry_time_str = now_est.strftime('%Y-%m-%d %H:%M EST')
                     
                     payload = {
                         "username": "Mango Oracle 🔮",
                         "embeds": [{
                             "title": f"🔮 {sig_type} Signal: {name}",
-                            "description": f"**Timeframe:** {low_tf}\n**Entry Price:** {p}\n**Stop Loss:** {sl_price:.4f}\n**Entry Time:** {entry_time}\n**Confirm:** {high_tf} Trend Aligned",
+                            "description": f"**Timeframe:** {low_tf}\n**Entry:** {p}\n**TP ({rr_mult}R):** {tp_price:.4f}\n**SL:** {sl_price:.4f}\n**Time:** {entry_time_str}\n**Confirm:** {high_tf} Trend Aligned",
                             "color": 5763719 if sig_type == "LONG" else 15548997
                         }]
                     }
