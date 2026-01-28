@@ -43,21 +43,22 @@ The system uses a **Dual-Pipeline** approach to ensure signal accuracy:
 *   **Inference**: `app.py` loads specific ML models (4h, 12h, 1d, 4d) to predict signal probability.
 *   **Hybrid Execution**: Rule-based "Pro-Max" and Ichimoku logic works alongside ML models for multi-layered validation.
 
-### 2. Indicator Verification Pipeline (Playwright Scraper)
+### 2. Indicator Verification Pipeline (Oracle V2)
 *   **Source**: Your actual **TradingView** charts (Headless Browser).
-*   **Agent**: `scrape_tv_indicators.py`.
-*   **Mechanism**:
-    1.  Launches a headless Chromium browser.
-    2.  Navigates to your specific chart layout (`qR1XTue9`).
-    3.  **Maximizes** the chart (Alt+Enter) to isolate data.
-    4.  **Hovers** over the latest candle to ensure "Data Window" freshness.
-    5.  **Extracts** "Trend" (Bullish/Bearish) and "Bid Zone" (Yes/No) using robust Regex parsing.
-*   **Output**: Saves to `mango_dynamic_data.json`, which the Dashboard reads to populate the "Fractal Alignment" table.
-*   **Self-Healing**: If data is missing or ambiguous, it toggles the Data Window (`Alt+D`) or takes a **Debug Screenshot** (`debug_view_*.png`) for diagnosis.
+*   **Agents**:
+    *   **`scrape_tv.py`**: Launches a headless browser, navigates to charts, handles Data Window toggling (`Alt+D`), and extracts "Mango Dynamic" values.
+    *   **`alert_manager.py`**: Processes the raw data to generate signals with advanced filtering.
+*   **Refined Logic (Oracle V2)**:
+    *   **Time Filter**: Only active during New York sessions (05:00 AM - 11:00 PM EST).
+    *   **Strict Zone**: Signals only trigger if price is strictly *inside* the indicator's Entry Zone (preventing chase entries).
+    *   **Dynamic Targets**: Calculates Take Profit (TP) based on timeframe (2R for LTF, 3R for HTF).
+*   **Output**: Saves to `tv_raw_data.json` and `processed_alerts.json`.
+*   **Self-Healing**: If data is missing or ambiguous, the scraper robustly retries toggling the Data Window and scrolling the view.
 
 ### 3. Execution (The App)
 *   **Streamlit**: The frontend combines these two data streams.
-*   **Background Monitor**: `monitor_signals.py` runs as a daemon to send Discord alerts even when the UI is closed.
+*   **Auto-Pilot**: The app automatically launches the background Oracle services (`scrape_tv.py` + `alert_manager.py`) upon startup.
+*   **In-App Monitoring**: View live logs from the background scrapers directly in the "Oracle Controls" sidebar.
 
 ---
 
@@ -82,19 +83,20 @@ The system uses a **Dual-Pipeline** approach to ensure signal accuracy:
    ```bash
    streamlit run app.py
    ```
-   *The Scraper and Monitor will auto-start in the background.*
+   *The Oracle Scraper and Alerter will auto-start in the background.*
+   *Alternatively, run `start_oracle_services.bat` on Windows for a standalone console view.*
 
 ---
 
 ## 📂 Project Structure
 
 - **`app.py`**: The "Arcane Portal" Dashboard UI.
-- **`scrape_tv_indicators.py`**: **(NEW)** The autonomous agent that watches your TradingView charts.
-- **`monitor_signals.py`**: Background daemon that sends Discord alerts.
+- **`scrape_tv.py`**: **(Oracle Scraper)** Headless browser agent that monitors TradingView.
+- **`alert_manager.py`**: **(Oracle Alerter)** Logic engine for filtering signals and sending Discord webhooks.
 - **`pipeline.py`**: Machine Learning training pipeline (Triple Barrier Method).
 - **`feature_engine.py`**: Centralized library for all technical indicators and ML features.
 - **`user_grimoire.json`**: Persists your "Mana" (Risk) and "Spells" (Trade Limits).
-- **`mango_dynamic_data.json`**: The live state of your proprietary indicators (shared between Scraper and App).
+- **`start_oracle_services.bat`**: Windows batch file for manual service launching.
 
 ---
 
