@@ -186,6 +186,7 @@ def process_logic():
                     # Timestamp
                     entry_time_str = now_est.strftime('%Y-%m-%d %H:%M EST')
                     
+                    # 1. Discord Alert
                     payload = {
                         "username": "Mango Oracle 🔮",
                         "embeds": [{
@@ -195,7 +196,42 @@ def process_logic():
                         }]
                     }
                     send_discord_alert(payload)
+                    
+                    # 2. Update Dedupe History
                     history[uid] = datetime.now().isoformat()
+                    
+                    # 3. Log to Dashboard JSON (oracle_signals.json)
+                    signal_data = {
+                        "Asset": name,
+                        "Signal": sig_type, # LONG/SHORT
+                        "Timeframe": low_tf,
+                        "Entry_Price": p,
+                        "Stop_Loss": sl_price,
+                        "TP": tp_price,
+                        "Entry_Time": entry_time_str,
+                        "Confidence": "Oracle 🔮",
+                        "Model": "Oracle",
+                        "Method": "Fractal Alignment",
+                        "RR": rr_mult,
+                        "_sort_key": datetime.now().isoformat()
+                    }
+                    
+                    # Append to file safely
+                    ORACLE_LOG_FILE = "oracle_signals.json"
+                    existing_sigs = []
+                    if os.path.exists(ORACLE_LOG_FILE):
+                        try:
+                            with open(ORACLE_LOG_FILE, "r") as f:
+                                existing_sigs = json.load(f)
+                        except: pass
+                    
+                    existing_sigs.append(signal_data)
+                    # Keep last 100?
+                    if len(existing_sigs) > 100: existing_sigs = existing_sigs[-100:]
+                    
+                    with open(ORACLE_LOG_FILE, "w") as f:
+                        json.dump(existing_sigs, f, indent=4)
+                        
                     new_alerts_sent += 1
 
     save_history(history)

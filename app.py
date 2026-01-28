@@ -225,13 +225,18 @@ def run_runic_analysis():
         if all_history:
              history_df = pd.DataFrame(all_history)
         
-        # --- Mango Oracle Integration (DISABLED) ---
+        # --- Mango Oracle Integration (ENABLED) ---
         a_oracle = pd.DataFrame()
-        # DISABLED BY USER REQUEST
-        # try:
-        #     if os.path.exists("mango_oracle_signals.json"):
-        #         ...
-        # except Exception as e: ...
+        try:
+            if os.path.exists("oracle_signals.json"):
+                with open("oracle_signals.json", "r") as f:
+                    o_data = json.load(f)
+                if o_data:
+                    a_oracle = pd.DataFrame(o_data)
+                    # Normalize columns if needed
+        except Exception as e: 
+            print(f"Error loading oracle signals: {e}")
+            pass
         
 
         # Aggregate Active
