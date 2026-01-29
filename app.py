@@ -223,16 +223,16 @@ def run_runic_analysis():
         
         # --- ORACLE INJECTION: Force Active Signals into History ---
         # Since runic_history.json is often stale for Oracle, we inject fresh ones here.
-        if os.path.exists("oracle_signals.json"):
+        if os.path.exists("mango_oracle_signals.json"):
             try:
-                with open("oracle_signals.json", "r") as f:
+                with open("mango_oracle_signals.json", "r") as f:
                      o_inj = json.load(f)
                 if o_inj:
                      # Get existing keys to prevent duplicates
                      hist_keys = set([f"{x.get('Asset')}_{x.get('Time')}" for x in all_history])
                      
                      for o in o_inj:
-                         tm = o.get('Entry_Time', 'Unknown')
+                         tm = o.get('Entry_Time') or o.get('Timestamp') or 'Unknown'
                          key = f"{o.get('Asset')}_{tm}"
                          if key not in hist_keys:
                              o['Time'] = tm
@@ -258,8 +258,8 @@ def run_runic_analysis():
         # --- Mango Oracle Integration (ENABLED) ---
         a_oracle = pd.DataFrame()
         try:
-            if os.path.exists("oracle_signals.json"):
-                with open("oracle_signals.json", "r") as f:
+            if os.path.exists("mango_oracle_signals.json"):
+                with open("mango_oracle_signals.json", "r") as f:
                     o_data = json.load(f)
                 if o_data:
                     a_oracle = pd.DataFrame(o_data)

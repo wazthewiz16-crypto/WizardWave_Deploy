@@ -217,7 +217,7 @@ def process_logic():
                     }
                     
                     # Append to file safely
-                    ORACLE_LOG_FILE = "oracle_signals.json"
+                    ORACLE_LOG_FILE = "mango_oracle_signals.json"
                     existing_sigs = []
                     if os.path.exists(ORACLE_LOG_FILE):
                         try:
