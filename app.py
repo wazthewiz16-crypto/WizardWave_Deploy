@@ -221,6 +221,31 @@ def run_runic_analysis():
             item['Status'] = "LOGGED" 
             all_history.append(item)
         
+        # --- ORACLE INJECTION: Force Active Signals into History ---
+        # Since runic_history.json is often stale for Oracle, we inject fresh ones here.
+        if os.path.exists("oracle_signals.json"):
+            try:
+                with open("oracle_signals.json", "r") as f:
+                     o_inj = json.load(f)
+                if o_inj:
+                     # Get existing keys to prevent duplicates
+                     hist_keys = set([f"{x.get('Asset')}_{x.get('Time')}" for x in all_history])
+                     
+                     for o in o_inj:
+                         tm = o.get('Entry_Time', 'Unknown')
+                         key = f"{o.get('Asset')}_{tm}"
+                         if key not in hist_keys:
+                             o['Time'] = tm
+                             o['Strategy'] = "Oracle"
+                             o['Status'] = "LOGGED"
+                             if 'TP' not in o: o['TP'] = o.get('Take_Profit', 0.0)
+                             if 'SL' not in o: o['SL'] = o.get('Stop_Loss', 0.0)
+                             if 'Price' not in o: o['Price'] = o.get('Entry_Price', 0.0)
+                             
+                             all_history.append(o)
+                             hist_keys.add(key)
+            except: pass
+        
         history_df = pd.DataFrame()
         if all_history:
              history_df = pd.DataFrame(all_history)
@@ -2525,7 +2550,7 @@ def show_runic_alerts():
             
             df_display = combined_active.copy()
             if show_take_only and 'Action' in df_display.columns:
-                df_display = df_display[df_display['Action'].str.contains("TAKE", case=False, na=False)]
+                df_display = df_display[df_display['Action'].astype(str).str.contains("TAKE", case=False, na=False)]
 
             # --- TRADING PLAN FILTERING ---
             if st.session_state.get('plan_active', False):
