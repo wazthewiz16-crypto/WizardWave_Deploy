@@ -260,7 +260,6 @@ def run_runic_analysis():
                     if 'Entry_Time' in a_oracle.columns and 'Asset' in a_oracle.columns:
                          a_oracle.drop_duplicates(subset=['Asset', 'Entry_Time'], keep='last', inplace=True)
 
-                    # Calculate PnL if possible
                     if 'active_tickers' in st.session_state and st.session_state.active_tickers:
                         # Create map: "BTC" -> 95000
                         price_map = {}
@@ -285,8 +284,12 @@ def run_runic_analysis():
                         a_oracle['PnL (%)'] = a_oracle.apply(calc_oracle_pnl, axis=1)
                     else:
                         a_oracle['PnL (%)'] = 0.0
+                    
+                    # DEBUG: Check count
+                    # st.sidebar.info(f"Oracle Signals Loaded: {len(a_oracle)}")
 
         except Exception as e: 
+            st.sidebar.error(f"Oracle Load Error: {e}")
             print(f"Error loading oracle signals: {e}")
             pass
         
