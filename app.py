@@ -184,6 +184,9 @@ def run_runic_analysis():
         unique_real = []
         
         for x in real_history:
+             # SKIP loading Oracle from history file (Use active source of truth instead)
+             if x.get('Strategy') == 'Oracle' or x.get('Model') == 'Oracle': continue
+             
              # Sanitize Key
              t = x.get('Entry_Time') or x.get('Timestamp') or "Unknown"
              t_norm = str(t).replace("T", " ") # Normalize: 2023-01-01T12:00 -> 2023-01-01 12:00
